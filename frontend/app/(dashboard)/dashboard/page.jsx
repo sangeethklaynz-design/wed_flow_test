@@ -1,3 +1,5 @@
+"use client";
+
 import { Bell } from "lucide-react";
 import StatCard from "@/components/dashboard/StatCard";
 import RsvpBreakdown from "@/components/dashboard/RsvpBreakdown";
