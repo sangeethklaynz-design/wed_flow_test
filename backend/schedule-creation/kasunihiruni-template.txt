@@ -1,0 +1,37 @@
+# Schedule PDF template (background + optional text style)
+# Usage (from wedflow/backend):
+#   node scripts/update_schedule_template.js schedule-creation/kasunihiruni-template.txt
+#   npm run update-schedule-template -- schedule-creation/kasunihiruni-template.txt
+#
+# Required:
+#   email
+#
+# Optional:
+#   background_image   file name only → assets/<couple-slug>/<name>
+#   typography keys below (omit a key to keep the previous/default value)
+#
+# Fonts must live in: assets/fonts/
+# Background image under: assets/<couple-slug>/
+# Couple names, wedding date, hotel, and events are read from the DB.
+
+email=admintest@gmail.com
+background_image=schedule bg.png
+
+# --- Text style (current defaults — edit to override) ---
+name_font=BonheurRoyale-Regular.ttf
+name_font_size=48
+name_line_height=44
+name_second_line_indent=22
+
+subtitle_font=CormorantGaramond-Regular.ttf
+subtitle_font_size=9.5
+subtitle_tracking=2.8
+
+time_font=PlayfairDisplay-Medium.ttf
+time_font_size=11
+
+event_font=CormorantGaramond-SemiBold.ttf
+event_font_size=11
+
+footer_font=CormorantGaramond-Regular.ttf
+footer_font_size=10.5

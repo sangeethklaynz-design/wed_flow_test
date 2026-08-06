@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useParams } from "next/navigation";
 import { MapPin, Play, SkipForward } from "lucide-react";
 import { apiRequest } from "@/lib/api";
-import { getAccessToken, clearAuthSession } from "@/lib/auth";
+import GuestRsvpForm from "@/components/invite/GuestRsvpForm";
 
 function preloadImages(urls) {
   urls.filter(Boolean).forEach((url) => {
@@ -25,14 +25,14 @@ function formatDisplayDate(dateStr) {
   });
 }
 
-function InviteTemplate({ data }) {
+function PublicInviteTemplate({ data }) {
   const { wedding, invitation, images, milestones, contacts } = data;
   const heroImage = images?.[0]?.url;
 
   return (
     <div className="bg-white rounded-[32px] border border-border card-shadow overflow-hidden">
       {heroImage ? (
-        <div className="relative w-full h-56 sm:h-72 md:h-80 bg-cream">
+        <div className="relative w-full h-56 sm:h-72 bg-cream">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={heroImage}
@@ -41,8 +41,8 @@ function InviteTemplate({ data }) {
           />
         </div>
       ) : (
-        <div className="w-full h-40 bg-gold/60 flex items-center justify-center">
-          <p className="font-serif text-2xl text-navy">
+        <div className="w-full h-40 bg-gold/60 flex items-center justify-center px-4">
+          <p className="font-serif text-2xl text-navy text-center">
             {wedding?.coupleNames || "Our Wedding"}
           </p>
         </div>
@@ -51,9 +51,9 @@ function InviteTemplate({ data }) {
       <div className="p-6 md:p-8 space-y-8">
         <div className="text-center">
           <p className="text-muted text-sm mb-2">You are invited</p>
-          <h2 className="font-serif font-bold text-3xl md:text-4xl text-navy mb-3">
+          <h1 className="font-serif font-bold text-3xl md:text-4xl text-navy mb-3">
             {wedding?.coupleNames || "—"}
-          </h2>
+          </h1>
           {wedding?.weddingDate ? (
             <p className="text-navy font-medium">
               {formatDisplayDate(wedding.weddingDate)}
@@ -69,8 +69,8 @@ function InviteTemplate({ data }) {
         {(invitation?.hotelName ||
           invitation?.poruwaTime ||
           invitation?.googleMapsLink) && (
-          <div className="bg-cream rounded-2xl border border-border p-5 md:p-6 space-y-3">
-            <h3 className="font-serif font-bold text-xl text-navy">Ceremony</h3>
+          <div className="bg-cream rounded-2xl border border-border p-5 space-y-3">
+            <h2 className="font-serif font-bold text-xl text-navy">Ceremony</h2>
             {invitation.poruwaTime ? (
               <p className="text-navy text-sm">
                 Poruwa time:{" "}
@@ -98,10 +98,10 @@ function InviteTemplate({ data }) {
 
         {images?.length > 1 ? (
           <div>
-            <h3 className="font-serif font-bold text-xl text-navy mb-4">
+            <h2 className="font-serif font-bold text-xl text-navy mb-4">
               Our moments
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            </h2>
+            <div className="grid grid-cols-2 gap-3">
               {images.slice(1).map((img) => (
                 <div
                   key={img.id}
@@ -121,9 +121,9 @@ function InviteTemplate({ data }) {
 
         {milestones?.length ? (
           <div>
-            <h3 className="font-serif font-bold text-xl text-navy mb-4">
+            <h2 className="font-serif font-bold text-xl text-navy mb-4">
               Our story
-            </h3>
+            </h2>
             <div className="space-y-4">
               {milestones.map((m) => (
                 <div
@@ -162,9 +162,9 @@ function InviteTemplate({ data }) {
 
         {contacts?.length ? (
           <div>
-            <h3 className="font-serif font-bold text-xl text-navy mb-4">
+            <h2 className="font-serif font-bold text-xl text-navy mb-4">
               Contacts
-            </h3>
+            </h2>
             <div className="space-y-3">
               {contacts.map((c) => (
                 <div
@@ -190,7 +190,7 @@ function InviteTemplate({ data }) {
         ) : null}
 
         {invitation?.thankYouNote ? (
-          <p className="text-center text-muted text-sm leading-relaxed pt-2">
+          <p className="text-center text-muted text-sm leading-relaxed">
             {invitation.thankYouNote}
           </p>
         ) : null}
@@ -199,20 +199,22 @@ function InviteTemplate({ data }) {
   );
 }
 
-export default function InvitePage() {
-  const router = useRouter();
+export default function PublicGuestInvitePage() {
+  const params = useParams();
+  const token = String(params?.token || "");
   const videoRef = useRef(null);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [invite, setInvite] = useState(null);
-  const [phase, setPhase] = useState("loading"); // loading | video | template | empty
+  const [phase, setPhase] = useState("loading");
   const [videoStarted, setVideoStarted] = useState(false);
-  const [waitingForData, setWaitingForData] = useState(false);
 
   useEffect(() => {
-    const token = getAccessToken();
     if (!token) {
-      router.replace("/login");
+      setError("Missing invitation link");
+      setLoading(false);
+      setPhase("empty");
       return;
     }
 
@@ -220,28 +222,19 @@ export default function InvitePage() {
 
     (async () => {
       try {
-        const data = await apiRequest("/api/couple/invite", { token });
+        const data = await apiRequest(`/api/public/invite/${encodeURIComponent(token)}`);
         if (cancelled) return;
-
         setInvite(data);
         preloadImages((data.images || []).map((img) => img.url));
 
         if (data.video?.hasVideo && data.video.url) {
           setPhase("video");
-        } else if (data.invitation || (data.images || []).length > 0) {
-          setPhase("template");
         } else {
-          setPhase("empty");
+          setPhase("template");
         }
-        setError("");
       } catch (err) {
         if (cancelled) return;
-        if (err.status === 401) {
-          clearAuthSession();
-          router.replace("/login");
-          return;
-        }
-        setError(err.message || "Failed to load invitation");
+        setError(err.message || "Invitation not found");
         setPhase("empty");
       } finally {
         if (!cancelled) setLoading(false);
@@ -251,127 +244,96 @@ export default function InvitePage() {
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [token]);
 
-  const showTemplate = () => {
-    if (!invite) {
-      setWaitingForData(true);
-      return;
-    }
-    setWaitingForData(false);
-    setPhase("template");
-  };
-
-  useEffect(() => {
-    if (waitingForData && invite) {
-      setWaitingForData(false);
-      setPhase(
-        invite.invitation || (invite.images || []).length
-          ? "template"
-          : "empty"
-      );
-    }
-  }, [waitingForData, invite]);
-
-  const videoUrl = invite?.video?.url;
-
-  const headerSubtitle = useMemo(() => {
-    if (phase === "video") return "Intro video · preview for guests";
-    if (phase === "template") return "Invitation template · preview for guests";
-    return "Preview how guests see your invite";
-  }, [phase]);
+  const showTemplate = () => setPhase("template");
 
   return (
-    <div className="p-6 md:p-8 lg:p-12 w-full flex flex-col h-full min-h-[calc(100vh-80px)] md:min-h-screen">
-      <div className="mb-6 md:mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-        <div>
-          <h1 className="font-serif font-bold text-3xl md:text-4xl text-navy mb-2">
-            Invitation
-          </h1>
-          <p className="text-muted text-sm md:text-base">{headerSubtitle}</p>
+    <div className="min-h-screen bg-cream">
+      <div className="max-w-lg mx-auto px-4 py-8 sm:py-10 space-y-6">
+        <div className="text-center">
+          <p className="font-serif text-2xl font-bold text-navy">Wed Flow</p>
+          <p className="text-muted text-xs mt-1">Wedding invitation</p>
         </div>
 
-        {phase === "video" ? (
-          <button
-            type="button"
-            onClick={showTemplate}
-            className="inline-flex items-center gap-2 self-start sm:self-auto bg-navy text-white font-medium px-4 py-2.5 rounded-xl hover:bg-navy/90 transition-colors"
-          >
-            <SkipForward className="w-4 h-4" strokeWidth={2.25} />
-            Skip to invite
-          </button>
+        {error ? (
+          <div className="bg-red-50 border border-red-100 text-red-600 text-sm rounded-2xl px-4 py-3 text-center">
+            {error}
+          </div>
+        ) : null}
+
+        {loading || phase === "loading" ? (
+          <div className="min-h-[40vh] rounded-[32px] bg-white border border-border card-shadow flex items-center justify-center">
+            <p className="text-muted text-sm">Opening invitation…</p>
+          </div>
+        ) : null}
+
+        {phase === "video" && invite?.video?.url ? (
+          <div className="relative w-full min-h-[55vh] rounded-[32px] overflow-hidden card-shadow bg-[#1A1D2E]">
+            <video
+              ref={videoRef}
+              src={invite.video.url}
+              className="absolute inset-0 w-full h-full object-cover"
+              playsInline
+              controls={videoStarted}
+              onEnded={showTemplate}
+            />
+            {!videoStarted ? (
+              <button
+                type="button"
+                onClick={async () => {
+                  setVideoStarted(true);
+                  try {
+                    await videoRef.current?.play();
+                  } catch {
+                    // controls available if autoplay blocked
+                  }
+                }}
+                className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-navy/35"
+              >
+                <span className="w-16 h-16 rounded-full bg-white/95 text-navy flex items-center justify-center shadow-lg">
+                  <Play className="w-7 h-7 ml-0.5" fill="currentColor" />
+                </span>
+                <span className="text-white font-medium text-sm">Play intro</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={showTemplate}
+                className="absolute top-4 right-4 z-20 inline-flex items-center gap-1.5 bg-white/90 text-navy text-xs font-medium px-3 py-2 rounded-full"
+              >
+                <SkipForward className="w-3.5 h-3.5" />
+                Skip
+              </button>
+            )}
+          </div>
+        ) : null}
+
+        {phase === "template" && invite ? (
+          <div className="space-y-6">
+            <PublicInviteTemplate data={invite} />
+            <GuestRsvpForm
+              token={token}
+              guest={invite.guest}
+              onSubmitted={(guest) =>
+                setInvite((prev) => (prev ? { ...prev, guest } : prev))
+              }
+            />
+          </div>
+        ) : null}
+
+        {phase === "empty" && !loading ? (
+          <div className="min-h-[40vh] rounded-[32px] bg-white border border-border card-shadow flex flex-col items-center justify-center px-6 text-center">
+            <p className="font-serif font-bold text-2xl text-navy mb-2">
+              Invitation unavailable
+            </p>
+            <p className="text-muted text-sm">
+              This link may be invalid or expired. Please contact the couple for
+              a new invitation.
+            </p>
+          </div>
         ) : null}
       </div>
-
-      {error ? (
-        <div className="mb-6 bg-red-50 border border-red-100 text-red-600 text-sm rounded-2xl px-4 py-3">
-          {error}
-        </div>
-      ) : null}
-
-      {loading || phase === "loading" ? (
-        <div className="flex-1 min-h-[50vh] rounded-[32px] bg-white border border-border card-shadow flex items-center justify-center">
-          <p className="text-muted text-sm">Loading invitation…</p>
-        </div>
-      ) : null}
-
-      {phase === "video" && videoUrl ? (
-        <div className="relative w-full flex-1 min-h-[60vh] md:min-h-[70vh] rounded-[32px] overflow-hidden card-shadow bg-[#1A1D2E]">
-          <video
-            ref={videoRef}
-            src={videoUrl}
-            className="absolute inset-0 w-full h-full object-cover"
-            playsInline
-            controls={videoStarted}
-            onEnded={showTemplate}
-          />
-
-          {!videoStarted ? (
-            <button
-              type="button"
-              onClick={async () => {
-                setVideoStarted(true);
-                try {
-                  await videoRef.current?.play();
-                } catch {
-                  // Browser may block autoplay with sound; controls remain available
-                }
-              }}
-              className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-navy/35 hover:bg-navy/45 transition-colors"
-            >
-              <span className="w-16 h-16 rounded-full bg-white/95 text-navy flex items-center justify-center shadow-lg">
-                <Play className="w-7 h-7 ml-0.5" fill="currentColor" />
-              </span>
-              <span className="text-white font-medium text-sm tracking-wide">
-                Play intro
-              </span>
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-
-      {phase === "template" && invite ? (
-        waitingForData ? (
-          <div className="flex-1 min-h-[50vh] rounded-[32px] bg-white border border-border card-shadow flex items-center justify-center">
-            <p className="text-muted text-sm">Preparing invitation…</p>
-          </div>
-        ) : (
-          <InviteTemplate data={invite} />
-        )
-      ) : null}
-
-      {phase === "empty" && !loading ? (
-        <div className="flex-1 min-h-[50vh] rounded-[32px] bg-white border border-border card-shadow flex flex-col items-center justify-center px-6 text-center">
-          <p className="font-serif font-bold text-2xl text-navy mb-2">
-            Invitation not ready yet
-          </p>
-          <p className="text-muted text-sm max-w-md">
-            No invitation content is linked to this wedding yet. Once video,
-            images, and template details are added in the database, they will
-            appear here.
-          </p>
-        </div>
-      ) : null}
     </div>
   );
 }

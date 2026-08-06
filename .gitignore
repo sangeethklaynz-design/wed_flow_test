@@ -70,6 +70,13 @@ web_modules/
 .env.*
 !.env.example
 
+# Couple registration files (may contain passwords) — keep the sample template
+backend/couple-registrations/*
+!backend/couple-registrations/example.txt
+
+# Runtime uploads / generated PDFs
+backend/uploads/
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache

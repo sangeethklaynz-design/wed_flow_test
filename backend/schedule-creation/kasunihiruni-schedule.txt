@@ -1,0 +1,33 @@
+# Sample schedule creation input
+# Usage (from wedflow/backend):
+#   node scripts/create_schedule.js schedule-creation/kasunihiruni-schedule.txt
+#   npm run create-schedule -- schedule-creation/kasunihiruni-schedule.txt
+#
+# Required:
+#   email
+#
+# Optional:
+#   replace_existing=true   delete existing events before insert (default: false)
+#
+# Events — one per line after the header fields:
+#   start|end|title|notes
+#   start and end are HH:mm (24h)
+#   notes are optional
+#   Max 13 events appear on the first PDF page; extras continue on page 2
+
+email=admintest@gmail.com
+replace_existing=true
+
+09:00|09:45|Guest Arrival & Welcome Tea|Main Ballroom
+09:45|10:30|Poruwa Ceremony|
+10:30|11:00|Family Blessings|
+11:00|12:00|Photo Session|Garden Lawn
+12:00|13:00|Cocktail Hour|Ocean Terrace
+13:00|14:30|Wedding Lunch|
+14:30|15:00|Cake Cutting|
+15:00|15:30|Speeches & Toasts|
+15:30|16:30|First Dance & Open Floor|
+16:30|17:00|Bouquet Toss|
+17:00|18:00|Evening Reception|
+18:00|18:30|Send-Off|
+18:30|19:00|After Party Notes|

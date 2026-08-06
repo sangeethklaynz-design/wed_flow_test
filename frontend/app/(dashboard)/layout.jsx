@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Home, Mail, Users, Calendar, LogOut } from "lucide-react";
 import clsx from "clsx";
 import Image from "next/image";
+import { logout, getStoredUser } from "@/lib/auth";
 
 const navItems = [
   { name: "Home", href: "/dashboard", icon: Home },
@@ -13,8 +15,34 @@ const navItems = [
   { name: "Schedule", href: "/schedule", icon: Calendar },
 ];
 
+function buildInitials(coupleNames) {
+  if (!coupleNames) return "W";
+  const parts = String(coupleNames)
+    .split("&")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0][0] || ""}&${parts[1][0] || ""}`.toUpperCase();
+  }
+  return coupleNames.slice(0, 2).toUpperCase();
+}
+
 export default function DashboardLayout({ children }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    setUser(getStoredUser());
+  }, [pathname]);
+
+  const handleLogout = () => {
+    logout();
+    router.push("/login");
+  };
+
+  const coupleNames = user?.coupleNames || "Couple";
+  const initials = buildInitials(coupleNames);
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#fdfcf9]">
@@ -54,15 +82,27 @@ export default function DashboardLayout({ children }) {
         <div className="p-4 border-t border-[#eef0f3]">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-sm overflow-hidden border border-[#e69e46]">
-                <Image src="/couple-avatar.png" alt="Kasun & Hiruni" width={40} height={40} className="object-cover" />
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-[#1A1D2E] border-2 border-[#e69e46] shadow-sm"
+                title="Premium member"
+              >
+                <span className="font-serif font-bold text-[#e69e46] text-[11px] leading-none tracking-tight">
+                  {initials}
+                </span>
               </div>
               <div>
-                <p className="font-serif font-bold text-navy text-sm">Kasun & Hiruni</p>
+                <p className="font-serif font-bold text-navy text-sm">
+                  {coupleNames}
+                </p>
                 <span className="text-[10px] bg-[#fcecd4] text-[#e69e46] px-2 py-0.5 rounded-full font-medium">Premium Membership</span>
               </div>
             </div>
-            <button className="text-muted hover:text-red-500 transition-colors">
+            <button
+              type="button"
+              onClick={handleLogout}
+              aria-label="Log out"
+              className="text-muted hover:text-red-500 transition-colors"
+            >
               <LogOut className="w-5 h-5" />
             </button>
           </div>

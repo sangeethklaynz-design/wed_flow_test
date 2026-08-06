@@ -1,0 +1,37 @@
+# Sample couple registration file for admins.
+# Usage (from wedflow/backend):
+#   node scripts/register_couple.js couple-registrations/example.txt
+#
+# Rules:
+# - One key=value per line
+# - Lines starting with # are comments
+# - Required: bride_name, groom_name, email, wedding_date, hotel_name
+# - Optional: password, hotel_address, google_maps_link, poruwa_time,
+#   weather_note, parking_note, special_text, thank_you_note,
+#   up to 2 contacts (contact1_*, contact2_*)
+# - wedding_date format: YYYY-MM-DD
+# - poruwa_time format: HH:mm
+
+bride_name=Hiruni
+groom_name=Kasun
+email=kasun.hiruni@example.com
+wedding_date=2026-11-14
+hotel_name=Galle Face Hotel
+hotel_address=2 Galle Road, Colombo 03
+google_maps_link=https://maps.google.com/?q=Galle+Face+Hotel
+poruwa_time=16:00
+weather_note=Warm coastal evening — light outdoor attire recommended
+parking_note=Complimentary valet at the main lobby entrance
+special_text=With joy in our hearts, we invite you to celebrate our wedding day.
+thank_you_note=Thank you for sharing this special moment with us.
+
+contact1_name=Kasun Perera
+contact1_phone=+94771234567
+contact1_relation=Groom
+
+contact2_name=Hiruni Fernando
+contact2_phone=+94772345678
+contact2_relation=Bride
+
+# Optional — remove this line to auto-generate a password:
+# password=TempPass123!

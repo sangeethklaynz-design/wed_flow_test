@@ -1,11 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, Search } from "lucide-react";
 import clsx from "clsx";
 import GuestCard from "@/components/guests/GuestCard";
 import GuestTable from "@/components/guests/GuestTable";
 import AddGuestModal from "@/components/guests/AddGuestModal";
+import GuestViewModal from "@/components/guests/GuestViewModal";
+import ConfirmDeleteModal from "@/components/guests/ConfirmDeleteModal";
+import { apiRequest } from "@/lib/api";
+import { clearAuthSession, getAccessToken } from "@/lib/auth";
 
 const FILTERS = [
   { id: "all", label: "All" },
@@ -14,49 +19,52 @@ const FILTERS = [
   { id: "declined", label: "Declined" },
 ];
 
-const INITIAL_GUESTS = [
-  {
-    id: 1,
-    name: "Amaya Fernando",
-    phone: "+94771234567",
-    status: "confirmed",
-    guestCount: 3,
-  },
-  {
-    id: 2,
-    name: "Nuwan Perera",
-    phone: "+94772345678",
-    status: "pending",
-    guestCount: 1,
-  },
-  {
-    id: 3,
-    name: "Kavindi Silva",
-    phone: "+94773456789",
-    status: "declined",
-    guestCount: 1,
-  },
-  {
-    id: 4,
-    name: "Tharindu Jayasuriya",
-    phone: "+94774567890",
-    status: "confirmed",
-    guestCount: 2,
-  },
-  {
-    id: 5,
-    name: "Ishara Bandara",
-    phone: "+94775678901",
-    status: "pending",
-    guestCount: 1,
-  },
-];
+function getInviteBaseUrl() {
+  if (typeof window !== "undefined" && window.location?.origin) {
+    return window.location.origin;
+  }
+  return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+}
 
 export default function GuestsPage() {
-  const [guests, setGuests] = useState(INITIAL_GUESTS);
+  const router = useRouter();
+  const [guests, setGuests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
   const [addOpen, setAddOpen] = useState(false);
+  const [viewGuest, setViewGuest] = useState(null);
+  const [editGuest, setEditGuest] = useState(null);
+  const [deleteGuest, setDeleteGuest] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  const loadGuests = useCallback(async () => {
+    const token = getAccessToken();
+    if (!token) {
+      router.replace("/login");
+      return;
+    }
+
+    try {
+      const data = await apiRequest("/api/couple/guests", { token });
+      setGuests(data.guests || []);
+      setError("");
+    } catch (err) {
+      if (err.status === 401) {
+        clearAuthSession();
+        router.replace("/login");
+        return;
+      }
+      setError(err.message || "Failed to load guests");
+    } finally {
+      setLoading(false);
+    }
+  }, [router]);
+
+  useEffect(() => {
+    loadGuests();
+  }, [loadGuests]);
 
   const filteredGuests = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -70,15 +78,97 @@ export default function GuestsPage() {
     });
   }, [guests, query, filter]);
 
-  const handleAdd = (guest) => {
-    setGuests((prev) => [{ ...guest, id: Date.now() }, ...prev]);
-    setFilter("all");
+  const handleAdd = async (payload) => {
+    const token = getAccessToken();
+    if (!token) return;
+    setSaving(true);
+    try {
+      const data = await apiRequest("/api/couple/guests", {
+        method: "POST",
+        token,
+        body: {
+          name: payload.name,
+          phone: payload.phone,
+          guestCount: payload.guestCount,
+          note: payload.note,
+          tableNumber: payload.tableNumber,
+        },
+      });
+      setGuests((prev) => [data.guest, ...prev]);
+      setFilter("all");
+      setError("");
+    } catch (err) {
+      setError(err.message || "Failed to add guest");
+      throw err;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleEdit = async (payload) => {
+    const token = getAccessToken();
+    if (!token || !payload.id) return;
+    setSaving(true);
+    try {
+      const data = await apiRequest(`/api/couple/guests/${payload.id}`, {
+        method: "PUT",
+        token,
+        body: {
+          name: payload.name,
+          phone: payload.phone,
+          guestCount: payload.guestCount,
+          note: payload.note,
+          tableNumber: payload.tableNumber,
+        },
+      });
+      setGuests((prev) =>
+        prev.map((g) => (g.id === data.guest.id ? data.guest : g))
+      );
+      if (viewGuest?.id === data.guest.id) setViewGuest(data.guest);
+      setEditGuest(null);
+      setError("");
+    } catch (err) {
+      setError(err.message || "Failed to update guest");
+      throw err;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteGuest) return;
+    const token = getAccessToken();
+    if (!token) return;
+    setSaving(true);
+    try {
+      await apiRequest(`/api/couple/guests/${deleteGuest.id}`, {
+        method: "DELETE",
+        token,
+      });
+      setGuests((prev) => prev.filter((g) => g.id !== deleteGuest.id));
+      if (viewGuest?.id === deleteGuest.id) setViewGuest(null);
+      setDeleteGuest(null);
+      setFilter("all");
+      setError("");
+    } catch (err) {
+      setError(err.message || "Failed to delete guest");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleShare = (guest) => {
-    const text = `You're invited! Please RSVP — ${guest.name}`;
+    const inviteUrl = guest.uniqueToken
+      ? `${getInviteBaseUrl()}/i/${guest.uniqueToken}`
+      : "";
+    const text = inviteUrl
+      ? `You're invited to our wedding! Open your invitation and RSVP here:\n${inviteUrl}`
+      : `You're invited! Please RSVP — ${guest.name}`;
+
     if (typeof navigator !== "undefined" && navigator.share) {
-      navigator.share({ title: "Wedding Invite", text }).catch(() => {});
+      navigator
+        .share({ title: "Wedding Invite", text, url: inviteUrl || undefined })
+        .catch(() => {});
       return;
     }
     if (typeof navigator !== "undefined" && navigator.clipboard) {
@@ -88,17 +178,20 @@ export default function GuestsPage() {
 
   return (
     <div className="p-6 md:p-8 lg:p-12 w-full">
-      {/* Mobile title */}
       <div className="md:hidden mb-6">
         <h1 className="font-serif font-bold text-3xl text-navy">Guests</h1>
       </div>
 
-      {/* Desktop header — page name only (matches Dashboard) */}
       <div className="hidden md:flex items-center mb-8 bg-white p-5 rounded-2xl border border-border">
         <h1 className="font-serif font-bold text-2xl text-navy">Guests</h1>
       </div>
 
-      {/* Controls */}
+      {error ? (
+        <div className="mb-6 bg-red-50 border border-red-100 text-red-600 text-sm rounded-2xl px-4 py-3">
+          {error}
+        </div>
+      ) : null}
+
       <div className="mb-6 md:mb-8 md:bg-white md:rounded-2xl md:border md:border-border md:p-5 md:card-shadow">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4">
           <div className="relative w-full md:max-w-sm shrink-0">
@@ -157,9 +250,12 @@ export default function GuestsPage() {
         </div>
       </div>
 
-      {/* Mobile card list */}
+      {loading ? (
+        <p className="text-muted text-sm mb-6">Loading guests…</p>
+      ) : null}
+
       <div className="md:hidden space-y-3">
-        {filteredGuests.length === 0 ? (
+        {!loading && filteredGuests.length === 0 ? (
           <div className="bg-white rounded-2xl p-8 card-shadow border border-border text-center">
             <p className="text-muted text-sm">No guests match your search.</p>
           </div>
@@ -168,22 +264,61 @@ export default function GuestsPage() {
             <GuestCard
               key={guest.id}
               {...guest}
+              guestCount={guest.invitedCount ?? guest.guestCount}
               onShare={() => handleShare(guest)}
             />
           ))
         )}
       </div>
 
-      {/* Desktop table */}
       <div className="hidden md:block">
-        <GuestTable guests={filteredGuests} onShare={handleShare} />
+        {!loading ? (
+          <GuestTable
+            guests={filteredGuests}
+            onViewGuest={(g) => setViewGuest(g)}
+            onEditGuest={(g) => setEditGuest(g)}
+            onDeleteGuest={(g) => setDeleteGuest(g)}
+          />
+        ) : null}
       </div>
 
       <AddGuestModal
         open={addOpen}
         onClose={() => setAddOpen(false)}
-        onAdd={handleAdd}
+        onSubmit={async (payload) => {
+          await handleAdd(payload);
+        }}
+        mode="add"
       />
+
+      <AddGuestModal
+        open={!!editGuest}
+        onClose={() => setEditGuest(null)}
+        onSubmit={async (payload) => {
+          await handleEdit(payload);
+        }}
+        mode="edit"
+        initialGuest={editGuest}
+      />
+
+      <GuestViewModal
+        open={!!viewGuest}
+        onClose={() => setViewGuest(null)}
+        guest={viewGuest}
+      />
+
+      <ConfirmDeleteModal
+        open={!!deleteGuest}
+        onClose={() => setDeleteGuest(null)}
+        guestName={deleteGuest?.name}
+        onConfirm={handleDelete}
+      />
+
+      {saving ? (
+        <p className="sr-only" aria-live="polite">
+          Saving…
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -34,8 +34,27 @@ export function ScheduleStatusBadge({ status }) {
   );
 }
 
-export default function ScheduleEventCard({ time, title, location, status }) {
+function formatTimeRange(startTime, endTime) {
+  if (!startTime) return "—";
+  if (!endTime) return startTime;
+  return `${startTime} - ${endTime}`;
+}
+
+export default function ScheduleEventCard({
+  startTime,
+  endTime,
+  time,
+  title,
+  specialNotes,
+  location,
+  status,
+}) {
   const isLive = status === "live";
+  const displayTime =
+    startTime || endTime
+      ? formatTimeRange(startTime, endTime)
+      : time || "—";
+  const notes = specialNotes || location || "";
 
   return (
     <div
@@ -46,8 +65,10 @@ export default function ScheduleEventCard({ time, title, location, status }) {
           : "border-border card-shadow"
       )}
     >
-      <div className="w-14 shrink-0 pt-0.5">
-        <p className="font-semibold text-navy text-sm tabular-nums">{time}</p>
+      <div className="w-20 shrink-0 pt-0.5">
+        <p className="font-semibold text-navy text-sm tabular-nums leading-snug">
+          {displayTime}
+        </p>
         <div
           className={clsx(
             "w-2.5 h-2.5 rounded-full mt-2",
@@ -62,7 +83,9 @@ export default function ScheduleEventCard({ time, title, location, status }) {
             <h3 className="font-semibold text-navy text-base leading-snug">
               {title}
             </h3>
-            <p className="text-muted text-sm mt-1">{location}</p>
+            {notes ? (
+              <p className="text-muted text-sm mt-1">{notes}</p>
+            ) : null}
           </div>
           <ScheduleStatusBadge status={status} />
         </div>
