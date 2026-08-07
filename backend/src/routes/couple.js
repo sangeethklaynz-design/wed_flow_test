@@ -3,6 +3,10 @@ const { requireAuth } = require("../middleware/auth");
 const { getDashboard } = require("../controllers/dashboardController");
 const { getInvite } = require("../controllers/inviteController");
 const {
+  getCoupleInvitationTemplate,
+  updateCoupleInvitationTemplate,
+} = require("../controllers/invitationTemplateController");
+const {
   listGuests,
   getGuest,
   createGuest,
@@ -22,6 +26,8 @@ const router = express.Router();
 
 router.get("/dashboard", requireAuth, getDashboard);
 router.get("/invite", requireAuth, getInvite);
+router.get("/invitation-template", requireAuth, getCoupleInvitationTemplate);
+router.put("/invitation-template", requireAuth, updateCoupleInvitationTemplate);
 
 router.get("/guests", requireAuth, listGuests);
 router.get("/guests/:id", requireAuth, getGuest);

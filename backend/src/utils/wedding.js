@@ -7,13 +7,13 @@ async function getWeddingForUser(userId, weddingIdFromToken) {
 
   const sql = weddingIdFromToken
     ? `
-      SELECT id, user_id, couple_names, wedding_date
+      SELECT id, user_id, couple_names, bride_name, groom_name, wedding_date
       FROM weddings
       WHERE user_id = ? AND id = ?
       LIMIT 1;
     `
     : `
-      SELECT id, user_id, couple_names, wedding_date
+      SELECT id, user_id, couple_names, bride_name, groom_name, wedding_date
       FROM weddings
       WHERE user_id = ?
       LIMIT 1;

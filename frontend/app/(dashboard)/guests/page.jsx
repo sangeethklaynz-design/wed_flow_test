@@ -1,5 +1,14 @@
 "use client";
 
+/**
+ * Guests list + CRUD (includes per-guest invitation_note).
+ * APIs:
+ * - GET    /api/couple/guests
+ * - POST   /api/couple/guests
+ * - PUT    /api/couple/guests/:id
+ * - DELETE /api/couple/guests/:id
+ */
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Search } from "lucide-react";

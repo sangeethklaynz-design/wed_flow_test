@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * Dashboard home — stats, RSVP breakdown, countdown.
+ * API: GET /api/couple/dashboard
+ */
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell } from "lucide-react";

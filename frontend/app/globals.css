@@ -10,7 +10,12 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter);
   --font-serif: var(--font-playfair);
-  
+  --font-script: var(--font-alex-brush);
+  --font-greatvibes: var(--font-great-vibes);
+  --font-quattrocento: var(--font-quattrocento);
+  --font-pinyon: var(--font-pinyon-script);
+  --font-cormorant-garamond: var(--font-cormorant);
+
   --color-cream: #fdfcf9;
   --color-navy: #1c2333;
   --color-gold: #fcecd4;
@@ -31,5 +36,20 @@ body {
 @layer utilities {
   .card-shadow {
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+  }
+  .font-script-custom {
+    font-family: var(--font-alex-brush), cursive !important;
+  }
+  .font-greatvibes-custom {
+    font-family: var(--font-great-vibes), cursive !important;
+  }
+  .font-quattrocento-custom {
+    font-family: var(--font-quattrocento), serif !important;
+  }
+  .font-pinyon-custom {
+    font-family: var(--font-pinyon-script), cursive !important;
+  }
+  .font-cormorant-custom {
+    font-family: var(--font-cormorant), serif !important;
   }
 }

@@ -148,12 +148,36 @@ async function ensureWeddingScheduleTemplateColumns() {
       ADD COLUMN schedule_style_json TEXT NULL AFTER schedule_venue;
     `);
   }
+
+  if (!(await columnExists("weddings", "bride_name"))) {
+    await sequelize.query(`
+      ALTER TABLE weddings
+      ADD COLUMN bride_name VARCHAR(100) NULL AFTER couple_names;
+    `);
+  }
+
+  if (!(await columnExists("weddings", "groom_name"))) {
+    await sequelize.query(`
+      ALTER TABLE weddings
+      ADD COLUMN groom_name VARCHAR(100) NULL AFTER bride_name;
+    `);
+  }
+}
+
+async function ensureInvitationTemplateColumns() {
+  if (!(await columnExists("invitations", "hotel_address"))) {
+    await sequelize.query(`
+      ALTER TABLE invitations
+      ADD COLUMN hotel_address VARCHAR(255) NULL AFTER hotel_name;
+    `);
+  }
 }
 
 async function ensureCoreSchema() {
   await ensureScheduleSchema();
   await ensureInvitationRelatedTables();
   await ensureWeddingScheduleTemplateColumns();
+  await ensureInvitationTemplateColumns();
 }
 
 module.exports = { ensureCoreSchema };

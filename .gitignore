@@ -70,6 +70,10 @@ web_modules/
 .env.*
 !.env.example
 
+# Nested clone for extracting template-page work (local only)
+template-page/
+template_page/
+
 # Couple registration files (may contain passwords) — keep the sample template
 backend/couple-registrations/*
 !backend/couple-registrations/example.txt

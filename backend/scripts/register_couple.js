@@ -140,9 +140,6 @@ function parseCoupleFile(filePath) {
 
   const hotelName = data.hotel_name;
   const hotelAddress = data.hotel_address || "";
-  const venueDisplay = hotelAddress
-    ? `${hotelName} · ${hotelAddress}`
-    : hotelName;
 
   return {
     brideName: data.bride_name,
@@ -150,14 +147,15 @@ function parseCoupleFile(filePath) {
     email,
     weddingDate: data.wedding_date,
     password: data.password || null,
-    hotelName: venueDisplay,
-    hotelOnly: hotelName,
+    hotelName,
     hotelAddress,
     googleMapsLink: data.google_maps_link || null,
     poruwaTime: parseTime(data.poruwa_time, "poruwa_time"),
     weatherNote: data.weather_note || null,
     parkingNote: data.parking_note || null,
-    specialText: data.special_text || null,
+    specialText: data.special_text
+      ? String(data.special_text).replace(/\\n/g, "\n")
+      : null,
     thankYouNote: data.thank_you_note || null,
     contacts,
     sourceFile: absolutePath,
@@ -182,9 +180,9 @@ async function insertInvitationBundle(transaction, weddingId, details) {
     `
     INSERT INTO invitations (
       id, wedding_id, opening_video_url, special_text, poruwa_time, hotel_name,
-      google_maps_link, weather_note, parking_note, thank_you_note
+      hotel_address, google_maps_link, weather_note, parking_note, thank_you_note
     )
-    VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?);
+    VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?);
     `,
     {
       replacements: [
@@ -193,6 +191,7 @@ async function insertInvitationBundle(transaction, weddingId, details) {
         details.specialText,
         details.poruwaTime,
         details.hotelName,
+        details.hotelAddress || null,
         details.googleMapsLink,
         details.weatherNote,
         details.parkingNote,
@@ -291,15 +290,18 @@ async function registerCoupleFromFile(filePath) {
     await sequelize.query(
       `
       INSERT INTO weddings (
-        id, user_id, couple_names, wedding_date, schedule_image_url, created_at, updated_at
+        id, user_id, couple_names, bride_name, groom_name, wedding_date,
+        schedule_image_url, created_at, updated_at
       )
-      VALUES (?, ?, ?, ?, NULL, NOW(), NOW());
+      VALUES (?, ?, ?, ?, ?, ?, NULL, NOW(), NOW());
       `,
       {
         replacements: [
           weddingId,
           userId,
           coupleNames,
+          details.brideName,
+          details.groomName,
           `${details.weddingDate} 00:00:00`,
         ],
         transaction,

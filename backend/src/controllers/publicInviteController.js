@@ -1,157 +1,10 @@
 const crypto = require("crypto");
 const { sequelize } = require("../models");
 const {
-  toDateOnly,
-  buildInitials,
-  formatTime,
-} = require("../utils/wedding");
-
-async function loadGuestByToken(token) {
-  const [rows] = await sequelize.query(
-    `
-    SELECT
-      g.id AS guest_id,
-      g.wedding_id,
-      g.full_name,
-      g.whatsapp_number,
-      g.invited_count,
-      g.invitation_note,
-      g.table_number,
-      g.unique_token,
-      g.rsvp_status,
-      r.id AS rsvp_id,
-      r.attending_status,
-      r.attending_count,
-      r.wishes,
-      r.submitted_at,
-      w.couple_names,
-      w.wedding_date
-    FROM guests g
-    JOIN weddings w ON w.id = g.wedding_id
-    LEFT JOIN rsvps r ON r.guest_id = g.id
-    WHERE g.unique_token = ?
-    LIMIT 1;
-    `,
-    { replacements: [token] }
-  );
-  return rows[0] || null;
-}
-
-async function loadInvitationBundle(weddingId) {
-  const [[invitationRows], [imageRows]] = await Promise.all([
-    sequelize.query(
-      `
-      SELECT
-        id,
-        opening_video_url,
-        special_text,
-        poruwa_time,
-        hotel_name,
-        google_maps_link,
-        weather_note,
-        parking_note,
-        thank_you_note
-      FROM invitations
-      WHERE wedding_id = ?
-      LIMIT 1;
-      `,
-      { replacements: [weddingId] }
-    ),
-    sequelize.query(
-      `
-      SELECT id, image_url, caption, display_order
-      FROM couple_images
-      WHERE wedding_id = ?
-      ORDER BY display_order ASC, created_at ASC;
-      `,
-      { replacements: [weddingId] }
-    ),
-  ]);
-
-  const invitation = invitationRows[0] || null;
-  let milestones = [];
-  let contacts = [];
-
-  if (invitation) {
-    const [[milestoneRows], [contactRows]] = await Promise.all([
-      sequelize.query(
-        `
-        SELECT id, year_or_date, title, description, display_order
-        FROM milestones
-        WHERE invitation_id = ?
-        ORDER BY display_order ASC;
-        `,
-        { replacements: [invitation.id] }
-      ),
-      sequelize.query(
-        `
-        SELECT
-          c.id,
-          c.contact_name,
-          c.contact_phone,
-          c.relation_type,
-          ic.display_order
-        FROM invitation_contacts ic
-        JOIN contacts c ON c.id = ic.contact_id
-        WHERE ic.invitation_id = ?
-        ORDER BY ic.display_order ASC;
-        `,
-        { replacements: [invitation.id] }
-      ),
-    ]);
-
-    milestones = milestoneRows.map((m) => ({
-      id: m.id,
-      yearOrDate: m.year_or_date,
-      title: m.title,
-      description: m.description,
-      displayOrder: m.display_order,
-    }));
-
-    contacts = contactRows.map((c) => ({
-      id: c.id,
-      name: c.contact_name,
-      phone: c.contact_phone,
-      relationType: c.relation_type,
-      displayOrder: c.display_order,
-    }));
-  }
-
-  return {
-    invitation,
-    images: imageRows.map((img) => ({
-      id: img.id,
-      url: img.image_url,
-      caption: img.caption,
-      displayOrder: img.display_order,
-    })),
-    milestones,
-    contacts,
-  };
-}
-
-function mapGuestPayload(row) {
-  const hasSubmitted = Boolean(row.submitted_at);
-  const attendingStatus = row.attending_status
-    ? String(row.attending_status).toUpperCase()
-    : "PENDING";
-
-  return {
-    id: row.guest_id,
-    fullName: row.full_name,
-    invitationNote: row.invitation_note || "",
-    maxGuests: Number(row.invited_count) || 1,
-    tableNumber: row.table_number,
-    rsvpStatus: String(row.rsvp_status || "PENDING").toLowerCase(),
-    rsvp: {
-      hasSubmitted,
-      attendingStatus: attendingStatus.toLowerCase(),
-      attendingCount: Number(row.attending_count) || 0,
-      wishes: row.wishes || "",
-      submittedAt: row.submitted_at,
-    },
-  };
-}
+  loadStaticInvitationBundle,
+  loadGuestByToken,
+  mapGuestTemplateBlock,
+} = require("../utils/invitationTemplate");
 
 async function getPublicInvite(req, res) {
   try {
@@ -171,36 +24,22 @@ async function getPublicInvite(req, res) {
       });
     }
 
-    const bundle = await loadInvitationBundle(row.wedding_id);
-    const openingVideoUrl = bundle.invitation?.opening_video_url || null;
+    const staticBundle = await loadStaticInvitationBundle(row.wedding_id);
+    if (!staticBundle) {
+      return res.status(404).json({
+        error: "Not Found",
+        message: "Wedding not found",
+      });
+    }
 
     return res.status(200).json({
-      wedding: {
-        id: row.wedding_id,
-        coupleNames: row.couple_names,
-        initials: buildInitials(row.couple_names),
-        weddingDate: toDateOnly(row.wedding_date),
-      },
-      video: {
-        url: openingVideoUrl,
-        hasVideo: Boolean(openingVideoUrl),
-      },
-      invitation: bundle.invitation
-        ? {
-            id: bundle.invitation.id,
-            specialText: bundle.invitation.special_text,
-            poruwaTime: formatTime(bundle.invitation.poruwa_time),
-            hotelName: bundle.invitation.hotel_name,
-            googleMapsLink: bundle.invitation.google_maps_link,
-            weatherNote: bundle.invitation.weather_note,
-            parkingNote: bundle.invitation.parking_note,
-            thankYouNote: bundle.invitation.thank_you_note,
-          }
-        : null,
-      images: bundle.images,
-      milestones: bundle.milestones,
-      contacts: bundle.contacts,
-      guest: mapGuestPayload(row),
+      wedding: staticBundle.wedding,
+      video: staticBundle.video,
+      invitation: staticBundle.invitation,
+      images: staticBundle.images,
+      milestones: staticBundle.milestones,
+      contacts: staticBundle.contacts,
+      guest: mapGuestTemplateBlock(row),
     });
   } catch (err) {
     console.error("public invite error:", err);
@@ -240,7 +79,11 @@ async function submitPublicRsvp(req, res) {
       .toUpperCase();
 
     let attendingStatus;
-    if (rawStatus === "ATTENDING" || rawStatus === "CONFIRMED" || req.body?.attending === true) {
+    if (
+      rawStatus === "ATTENDING" ||
+      rawStatus === "CONFIRMED" ||
+      req.body?.attending === true
+    ) {
       attendingStatus = "ATTENDING";
     } else if (rawStatus === "DECLINED" || req.body?.attending === false) {
       attendingStatus = "DECLINED";
@@ -262,7 +105,8 @@ async function submitPublicRsvp(req, res) {
         await transaction.rollback();
         return res.status(400).json({
           error: "Bad Request",
-          message: "attendingCount must be an integer of at least 1 when attending",
+          message:
+            "attendingCount must be an integer of at least 1 when attending",
         });
       }
       if (attendingCount > maxGuests) {
@@ -343,7 +187,7 @@ async function submitPublicRsvp(req, res) {
 
     return res.status(200).json({
       message: "RSVP saved",
-      guest: mapGuestPayload(updated),
+      guest: mapGuestTemplateBlock(updated),
     });
   } catch (err) {
     try {

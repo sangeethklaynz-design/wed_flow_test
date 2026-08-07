@@ -1,5 +1,15 @@
 "use client";
 
+/**
+ * Schedule list + CRUD + PDF download.
+ * APIs:
+ * - GET    /api/couple/schedule
+ * - POST   /api/couple/schedule
+ * - PUT    /api/couple/schedule/:id
+ * - DELETE /api/couple/schedule/:id
+ * - GET    /api/couple/schedule/download
+ */
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Download, Plus } from "lucide-react";
 import ScheduleEventCard from "@/components/schedule/ScheduleEventCard";

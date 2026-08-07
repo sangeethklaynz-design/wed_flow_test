@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Standalone RSVP card (legacy/alternate UI).
+ * API: POST /api/public/invite/:token/rsvp
+ * Note: Guest flow now uses InvitationPage built-in RSVP; this component is kept for reuse.
+ */
+
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { CheckCircle2 } from "lucide-react";

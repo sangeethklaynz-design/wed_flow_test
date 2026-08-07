@@ -51,6 +51,7 @@ async function updateCoupleInvitationFromFile(filePath) {
           special_text = ?,
           poruwa_time = ?,
           hotel_name = ?,
+          hotel_address = ?,
           google_maps_link = ?,
           weather_note = ?,
           parking_note = ?,
@@ -62,6 +63,7 @@ async function updateCoupleInvitationFromFile(filePath) {
             details.specialText,
             details.poruwaTime,
             details.hotelName,
+            details.hotelAddress || null,
             details.googleMapsLink,
             details.weatherNote,
             details.parkingNote,
@@ -77,9 +79,9 @@ async function updateCoupleInvitationFromFile(filePath) {
         `
         INSERT INTO invitations (
           id, wedding_id, opening_video_url, special_text, poruwa_time, hotel_name,
-          google_maps_link, weather_note, parking_note, thank_you_note
+          hotel_address, google_maps_link, weather_note, parking_note, thank_you_note
         )
-        VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?);
+        VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?);
         `,
         {
           replacements: [
@@ -88,6 +90,7 @@ async function updateCoupleInvitationFromFile(filePath) {
             details.specialText,
             details.poruwaTime,
             details.hotelName,
+            details.hotelAddress || null,
             details.googleMapsLink,
             details.weatherNote,
             details.parkingNote,
