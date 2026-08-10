@@ -10,8 +10,7 @@ import InvitationVideoIntro, {
 /**
  * Shared phone shell: video and invitation share the exact 390×844 frame.
  *
- * Seamless handoff: the video’s last frame becomes a permanent cover image
- * over page 1 (same pixels) — no fade onto a different HTML render.
+ * Crossfade handoff: video fades out and template fades in for a smooth transition.
  */
 export default function InvitationExperience({
   templateData,
@@ -21,49 +20,52 @@ export default function InvitationExperience({
   const hasVideo = Boolean(
     templateData?.static?.video?.hasVideo && templateData?.static?.video?.url
   );
-  const [playing, setPlaying] = useState(hasVideo);
-  const [coverDataUrl, setCoverDataUrl] = useState(null);
+  const [videoState, setVideoState] = useState(hasVideo ? "playing" : "done");
+  const [templateVisible, setTemplateVisible] = useState(!hasVideo);
 
-  const handleVideoComplete = useCallback((dataUrl) => {
-    // Same React tick: mount last-frame cover + unmount <video> (no fade gap)
-    if (dataUrl) setCoverDataUrl(dataUrl);
-    setPlaying(false);
+  const handleFadeStart = useCallback(() => {
+    setVideoState("fading");
+  }, []);
+
+  const handleVideoComplete = useCallback(() => {
+    setVideoState("done");
+    // Start fading in the template only AFTER the video has fully faded out and unmounted
+    setTemplateVisible(true);
   }, []);
 
   if (!templateData) return null;
 
+  const isVideoActive = videoState === "playing" || videoState === "fading";
+
   return (
     <main
-      className="relative bg-[#FAF6F0] card-shadow md:rounded-2xl overflow-hidden"
+      className="relative card-shadow md:rounded-2xl overflow-hidden"
       style={{
         width: INVITE_FRAME_W,
-        height: playing ? INVITE_FRAME_H : undefined,
+        height: isVideoActive ? INVITE_FRAME_H : undefined,
+        backgroundColor: "#FFFDF3",
+        backgroundImage: "radial-gradient(at 20% 20%, rgba(181, 74, 182, 0.12) 0%, transparent 60%), radial-gradient(at 80% 80%, rgba(119, 50, 164, 0.12) 0%, transparent 60%)"
       }}
     >
       <div className="relative w-[390px]">
-        <InvitationPage
-          data={templateData}
-          guestToken={guestToken}
-          interactive={interactive && !playing}
-          embedded
-        />
-
-        {/* Permanent cover = last video frame (pixel-identical to end of video) */}
-        {coverDataUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={coverDataUrl}
-            alt=""
-            width={INVITE_FRAME_W}
-            height={INVITE_FRAME_H}
-            draggable={false}
-            className="absolute top-0 left-0 z-20 w-[390px] h-[844px] object-cover object-center pointer-events-none select-none"
+        {/* Template Card - hidden while video fades out, then fades in smoothly */}
+        <div 
+          className={`relative w-full h-full transition-opacity duration-700 ${
+            templateVisible ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          <InvitationPage
+            data={templateData}
+            guestToken={guestToken}
+            interactive={interactive && !isVideoActive}
+            embedded
           />
-        ) : null}
+        </div>
 
-        {playing && hasVideo ? (
+        {isVideoActive ? (
           <InvitationVideoIntro
             videoUrl={templateData.static.video.url}
+            onFadeStart={handleFadeStart}
             onComplete={handleVideoComplete}
             autoPlay
           />

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { apiRequest, resolveMediaUrl } from "@/lib/api";
@@ -45,10 +45,22 @@ export default function InvitationPage({
   const router = useRouter();
 
   const [attendance, setAttendance] = useState("");
+  const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [guests, setGuests] = useState("");
   const [wishes, setWishes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [rsvpError, setRsvpError] = useState("");
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setAttendanceOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (!t.rsvp) return;
@@ -101,7 +113,7 @@ export default function InvitationPage({
           wishes: wishes.trim(),
         },
       });
-      router.push("/invitation/thank-you");
+      router.push(`/invitation/thank-you?token=${encodeURIComponent(guestToken)}`);
     } catch (err) {
       setRsvpError(err.message || "Could not save RSVP");
     } finally {
@@ -325,19 +337,50 @@ export default function InvitationPage({
       <form onSubmit={handleSubmit} className="absolute top-[2010px] left-[35px] w-[320px] z-10 flex flex-col gap-[18px] text-left">
         
         {/* Will You Attend */}
-        <div className="flex flex-col items-start">
+        <div className="flex flex-col items-start" ref={dropdownRef}>
           <label className="font-quattrocento-custom font-normal text-[15px] text-[#1B3601] tracking-normal uppercase mb-1.5 text-left w-full pl-2">
             Will you attend?
           </label>
-          <select 
-            value={attendance}
-            onChange={(e) => setAttendance(e.target.value)}
-            className="w-[320px] h-[36px] bg-white border border-[#D1D1D1] text-navy font-sans text-xs px-4 rounded-[20px] outline-none appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%231b3601%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:10px_10px] bg-[right_16px_center] bg-no-repeat pr-10 focus:border-[#7732A4]/50 transition-colors"
-          >
-            <option value="">Please Select</option>
-            <option value="yes">Yes, I will attend</option>
-            <option value="no">No, I cannot attend</option>
-          </select>
+          <div className="relative w-[320px]">
+            <div 
+              className="w-full h-[36px] bg-white border border-[#D1D1D1] text-navy font-sans text-xs px-4 rounded-[20px] outline-none flex items-center justify-between cursor-pointer focus:border-[#7732A4]/50 transition-colors"
+              onClick={() => setAttendanceOpen(!attendanceOpen)}
+            >
+              <span>
+                {attendance === "yes" 
+                  ? "Yes, I will attend" 
+                  : attendance === "no" 
+                    ? "No, I cannot attend" 
+                    : "Please Select"}
+              </span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 292.4 292.4" fill="#1b3601" className={`transition-transform duration-200 ${attendanceOpen ? 'rotate-180' : ''}`}>
+                <path d="M287 69.4a17.6 17.6 0 0 0-13-5.4H18.4c-5 0-9.3 1.8-12.9 5.4A17.6 17.6 0 0 0 0 82.2c0 5 1.8 9.3 5.4 12.9l128 127.9c3.6 3.6 7.8 5.4 12.8 5.4s9.2-1.8 12.8-5.4L287 95c3.5-3.5 5.4-7.8 5.4-12.8 0-5-1.9-9.2-5.5-12.8z"/>
+              </svg>
+            </div>
+
+            {attendanceOpen && (
+              <div className="absolute top-[42px] left-0 w-full bg-white border border-[#D1D1D1] rounded-[16px] shadow-lg z-[100] overflow-hidden font-sans text-xs divide-y divide-[#F0F0F0]">
+                <div 
+                  className={`px-4 py-3 cursor-pointer hover:bg-[#FAF6F0] transition-colors ${attendance === "" ? "font-bold text-[#7732A4] bg-[#FAF6F0]" : "text-navy"}`}
+                  onClick={() => { setAttendance(""); setAttendanceOpen(false); }}
+                >
+                  Please Select
+                </div>
+                <div 
+                  className={`px-4 py-3 cursor-pointer hover:bg-[#FAF6F0] transition-colors ${attendance === "yes" ? "font-bold text-[#7732A4] bg-[#FAF6F0]" : "text-navy"}`}
+                  onClick={() => { setAttendance("yes"); setAttendanceOpen(false); }}
+                >
+                  Yes, I will attend
+                </div>
+                <div 
+                  className={`px-4 py-3 cursor-pointer hover:bg-[#FAF6F0] transition-colors ${attendance === "no" ? "font-bold text-[#7732A4] bg-[#FAF6F0]" : "text-navy"}`}
+                  onClick={() => { setAttendance("no"); setAttendanceOpen(false); }}
+                >
+                  No, I cannot attend
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Number of Guests */}

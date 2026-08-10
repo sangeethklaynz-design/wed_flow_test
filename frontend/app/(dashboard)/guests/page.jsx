@@ -186,7 +186,7 @@ export default function GuestsPage() {
   };
 
   return (
-    <div className="p-6 md:p-8 lg:p-12 w-full">
+    <div className="p-6 md:p-8 lg:p-12 w-full min-w-0">
       <div className="md:hidden mb-6">
         <h1 className="font-serif font-bold text-3xl text-navy">Guests</h1>
       </div>
@@ -202,8 +202,8 @@ export default function GuestsPage() {
       ) : null}
 
       <div className="mb-6 md:mb-8 md:bg-white md:rounded-2xl md:border md:border-border md:p-5 md:card-shadow">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4">
-          <div className="relative w-full md:max-w-sm shrink-0">
+        <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+          <div className="relative w-full xl:max-w-sm shrink-0">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
             <input
               type="search"
@@ -214,8 +214,8 @@ export default function GuestsPage() {
             />
           </div>
 
-          <div className="flex items-center gap-2 md:ml-auto shrink-0">
-            <div className="flex-1 min-w-0 overflow-x-auto md:overflow-visible md:flex-none">
+          <div className="flex items-center gap-3 w-full xl:w-auto xl:ml-auto min-w-0">
+            <div className="flex-1 min-w-0 overflow-x-auto scrollbar-none pb-1 -mb-1">
               <div className="flex items-center gap-2 w-max">
                 {FILTERS.map((item) => {
                   const isActive = filter === item.id;
@@ -225,7 +225,7 @@ export default function GuestsPage() {
                       type="button"
                       onClick={() => setFilter(item.id)}
                       className={clsx(
-                        "px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap border transition-colors",
+                        "px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap border transition-colors focus:outline-none focus:ring-2 focus:ring-[#e69e46]",
                         isActive
                           ? "bg-navy text-white border-navy"
                           : "bg-white text-muted border-border hover:bg-cream"
@@ -238,23 +238,25 @@ export default function GuestsPage() {
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setAddOpen(true)}
-              aria-label="Add guest"
-              className="shrink-0 w-11 h-11 rounded-full bg-navy text-white flex items-center justify-center hover:bg-navy/90 transition-colors shadow-sm md:hidden"
-            >
-              <Plus className="w-5 h-5" strokeWidth={2.5} />
-            </button>
+            <div className="shrink-0 flex items-center">
+              <button
+                type="button"
+                onClick={() => setAddOpen(true)}
+                aria-label="Add guest"
+                className="w-11 h-11 rounded-full bg-navy text-white flex items-center justify-center hover:bg-navy/90 transition-colors shadow-sm md:hidden focus:outline-none focus:ring-2 focus:ring-[#e69e46]"
+              >
+                <Plus className="w-5 h-5" strokeWidth={2.5} />
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setAddOpen(true)}
-              className="hidden md:inline-flex items-center gap-2 bg-navy text-white font-medium px-4 py-2.5 rounded-xl hover:bg-navy/90 transition-colors whitespace-nowrap"
-            >
-              <Plus className="w-4 h-4" strokeWidth={2.5} />
-              Add guest
-            </button>
+              <button
+                type="button"
+                onClick={() => setAddOpen(true)}
+                className="hidden md:inline-flex items-center gap-2 bg-navy text-white font-medium px-4 py-2.5 rounded-xl hover:bg-navy/90 transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-[#e69e46]"
+              >
+                <Plus className="w-4 h-4" strokeWidth={2.5} />
+                Add guest
+              </button>
+            </div>
           </div>
         </div>
       </div>

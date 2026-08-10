@@ -376,6 +376,7 @@ export default function SchedulePage() {
         onClose={() => setAddOpen(false)}
         onSubmit={handleAdd}
         mode="add"
+        existingEvents={events}
       />
 
       <AddScheduleEventModal
@@ -401,6 +402,7 @@ export default function SchedulePage() {
         }}
         mode="edit"
         initialEvent={editEvent}
+        existingEvents={events}
       />
 
       <ScheduleViewModal

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import TimePicker from "@/components/ui/TimePicker";
 
@@ -10,7 +10,9 @@ export default function AddScheduleEventModal({
   onSubmit,
   initialEvent,
   mode = "add",
+  existingEvents = [],
 }) {
+  const [customError, setCustomError] = useState("");
   const {
     register,
     control,
@@ -29,6 +31,7 @@ export default function AddScheduleEventModal({
 
   useEffect(() => {
     if (!open) return;
+    setCustomError("");
     reset({
       title: initialEvent?.title ?? "",
       startTime: initialEvent?.startTime ?? "",
@@ -46,6 +49,23 @@ export default function AddScheduleEventModal({
   if (!open) return null;
 
   const handleFormSubmit = async (data) => {
+    setCustomError("");
+
+    if (data.startTime >= data.endTime) {
+      setCustomError("Starting time must be before ending time.");
+      return;
+    }
+
+    const isOverlap = existingEvents.some((event) => {
+      if (mode === "edit" && event.id === initialEvent?.id) return false;
+      return data.startTime < event.endTime && data.endTime > event.startTime;
+    });
+
+    if (isOverlap) {
+      setCustomError("This time period already has an event in the schedule.");
+      return;
+    }
+
     const payload = {
       id: initialEvent?.id,
       title: data.title.trim(),
@@ -59,8 +79,8 @@ export default function AddScheduleEventModal({
     try {
       await onSubmit?.(payload);
       onClose();
-    } catch {
-      // Parent handles errors; keep modal open for retry.
+    } catch (err) {
+      setCustomError(err.message || "Failed to save event. Please try again.");
     }
   };
 
@@ -94,6 +114,12 @@ export default function AddScheduleEventModal({
         </div>
 
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4 sm:space-y-5">
+          {customError && (
+            <div className="bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl px-4 py-3">
+              {customError}
+            </div>
+          )}
+
           <div className="space-y-2">
             <label className="text-sm font-medium text-muted block">
               Event name

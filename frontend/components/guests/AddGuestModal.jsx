@@ -120,11 +120,26 @@ export default function AddGuestModal({
             <input
               type="tel"
               placeholder="+94 77 123 4567"
-              {...register("phone", { required: true })}
+              {...register("phone", { 
+                required: "Mobile number is required",
+                validate: (value) => {
+                  const noSpaces = value.replace(/\s+/g, '');
+                  if (!/^[+0-9]+$/.test(noSpaces)) {
+                    return "Only numbers and '+' are allowed";
+                  }
+                  if (noSpaces.startsWith("0")) {
+                    return noSpaces.length === 10 || "Number starting with 0 must be exactly 10 digits";
+                  }
+                  if (noSpaces.startsWith("+94")) {
+                    return noSpaces.length === 12 || "Number starting with +94 must be exactly 12 characters";
+                  }
+                  return "Number must start with 0 or +94";
+                }
+              })}
               className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#e69e46]/50 transition-shadow placeholder:text-gray-300"
             />
             {errors.phone && (
-              <p className="text-xs text-red-500">Mobile number is required</p>
+              <p className="text-xs text-red-500">{errors.phone.message}</p>
             )}
           </div>
 

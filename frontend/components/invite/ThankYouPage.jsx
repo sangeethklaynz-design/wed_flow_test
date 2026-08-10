@@ -1,9 +1,57 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
+import { getAccessToken } from "@/lib/auth";
 
 export default function ThankYouPage() {
+  const searchParams = useSearchParams();
+  const guestToken = searchParams?.get("token");
+  const [downloading, setDownloading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    setError("");
+    try {
+      let url = "";
+      let headers = {};
+
+      if (guestToken) {
+        // Guest mode
+        url = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/public/invite/${encodeURIComponent(guestToken)}/schedule/download`;
+      } else {
+        // Couple preview mode
+        const token = getAccessToken();
+        if (!token) {
+          throw new Error("Unable to authenticate to download schedule.");
+        }
+        url = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/couple/schedule/download`;
+        headers = { Authorization: `Bearer ${token}` };
+      }
+
+      const res = await fetch(url, { headers });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Failed to download schedule");
+      }
+
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = "wedding-schedule.pdf";
+      a.click();
+      URL.revokeObjectURL(objectUrl);
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Failed to download schedule");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <div className="relative w-[390px] h-[841px] mx-auto bg-[#FAF6F0] overflow-hidden select-none">
       
@@ -51,10 +99,17 @@ export default function ThankYouPage() {
       </div>
 
       {/* Save Schedule Button */}
-      <div className="absolute top-[590px] w-full flex items-center justify-center z-20">
-        <button className="bg-[#4C2D88] hover:bg-[#623bab] transition-colors text-white font-sans text-[15px] font-medium w-[220px] h-[48px] rounded-[24px] flex items-center justify-center cursor-pointer shadow-md active:scale-95">
-          Save the Schedule
+      <div className="absolute top-[590px] w-full flex flex-col items-center justify-center z-20">
+        <button 
+          onClick={handleDownload}
+          disabled={downloading}
+          className="bg-[#4C2D88] hover:bg-[#623bab] disabled:opacity-70 transition-colors text-white font-sans text-[15px] font-medium w-[220px] h-[48px] rounded-[24px] flex items-center justify-center cursor-pointer shadow-md active:scale-95"
+        >
+          {downloading ? "Downloading..." : "Save the Schedule"}
         </button>
+        {error && (
+          <p className="text-red-500 text-xs mt-2 text-center w-full">{error}</p>
+        )}
       </div>
 
       {/* 9.5 Background Floral */}

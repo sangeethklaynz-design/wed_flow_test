@@ -203,4 +203,40 @@ async function submitPublicRsvp(req, res) {
   }
 }
 
-module.exports = { getPublicInvite, submitPublicRsvp };
+async function downloadPublicSchedule(req, res) {
+  try {
+    const token = String(req.params.token || "").trim();
+    if (!token) {
+      return res.status(400).json({
+        error: "Bad Request",
+        message: "Invitation token is required",
+      });
+    }
+
+    const row = await loadGuestByToken(token);
+    if (!row) {
+      return res.status(404).json({
+        error: "Not Found",
+        message: "Invitation not found",
+      });
+    }
+
+    const { buildSchedulePdfBuffer } = require("../utils/schedulePdf");
+    const pdfBuffer = await buildSchedulePdfBuffer(row.wedding_id);
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="wedding-schedule.pdf"`
+    );
+    return res.status(200).send(pdfBuffer);
+  } catch (err) {
+    console.error("downloadPublicSchedule error:", err);
+    return res.status(500).json({
+      error: "Internal Server Error",
+      message: "Failed to download schedule",
+    });
+  }
+}
+
+module.exports = { getPublicInvite, submitPublicRsvp, downloadPublicSchedule };

@@ -1,7 +1,7 @@
 require("dotenv").config();
 
 function requireEnv(keys) {
-  const missing = keys.filter((k) => !process.env[k]);
+  const missing = keys.filter((k) => process.env[k] === undefined);
   if (missing.length) {
     throw new Error(`Missing required env vars: ${missing.join(", ")}`);
   }

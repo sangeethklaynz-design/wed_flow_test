@@ -20,6 +20,7 @@ async function main() {
 
   await sequelize.authenticate();
   console.log("DB connection OK");
+  await sequelize.sync();
   await ensureCoreSchema();
   console.log("Schema sync OK");
 
