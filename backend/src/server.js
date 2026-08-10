@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const { env } = require("./config/env");
+const { createCorsOptions } = require("./config/cors");
 const { ASSETS_ROOT } = require("./utils/invitationMedia");
 const healthRoutes = require("./routes/health");
 const authRoutes = require("./routes/auth");
@@ -13,12 +14,7 @@ function createServer() {
   app.use(express.json());
 
   if (env.FRONTEND_ORIGIN) {
-    app.use(
-      cors({
-        origin: env.FRONTEND_ORIGIN,
-        credentials: true,
-      })
-    );
+    app.use(cors(createCorsOptions(env.FRONTEND_ORIGIN)));
   } else {
     app.use(cors());
   }
