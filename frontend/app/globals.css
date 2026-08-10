@@ -3,6 +3,18 @@
 :root {
   --background: #fdfcf9;
   --foreground: #1c2333;
+  /* UI was designed at 70% browser zoom; scale so 100% zoom matches that UX */
+  --ui-scale: 0.7;
+}
+
+html {
+  zoom: var(--ui-scale);
+}
+
+@supports not (zoom: 1) {
+  html {
+    font-size: calc(100% * var(--ui-scale));
+  }
 }
 
 @theme inline {
@@ -34,6 +46,22 @@ body {
 }
 
 @layer utilities {
+  /* Full viewport height after html { zoom: var(--ui-scale) } */
+  .h-screen-zoom {
+    height: 100vh;
+  }
+  .min-h-screen-zoom {
+    min-height: 100vh;
+  }
+  @supports (zoom: 1) {
+    .h-screen-zoom {
+      height: calc(100vh / var(--ui-scale));
+    }
+    .min-h-screen-zoom {
+      min-height: calc(100vh / var(--ui-scale));
+    }
+  }
+
   .card-shadow {
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
   }

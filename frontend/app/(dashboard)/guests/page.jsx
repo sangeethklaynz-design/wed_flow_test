@@ -18,8 +18,10 @@ import GuestTable from "@/components/guests/GuestTable";
 import AddGuestModal from "@/components/guests/AddGuestModal";
 import GuestViewModal from "@/components/guests/GuestViewModal";
 import ConfirmDeleteModal from "@/components/guests/ConfirmDeleteModal";
+import ShareInviteModal from "@/components/guests/ShareInviteModal";
 import { apiRequest } from "@/lib/api";
 import { clearAuthSession, getAccessToken } from "@/lib/auth";
+import { shareGuestInviteNative } from "@/lib/shareInvite";
 
 const FILTERS = [
   { id: "all", label: "All" },
@@ -27,13 +29,6 @@ const FILTERS = [
   { id: "pending", label: "Pending" },
   { id: "declined", label: "Declined" },
 ];
-
-function getInviteBaseUrl() {
-  if (typeof window !== "undefined" && window.location?.origin) {
-    return window.location.origin;
-  }
-  return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-}
 
 export default function GuestsPage() {
   const router = useRouter();
@@ -46,6 +41,7 @@ export default function GuestsPage() {
   const [viewGuest, setViewGuest] = useState(null);
   const [editGuest, setEditGuest] = useState(null);
   const [deleteGuest, setDeleteGuest] = useState(null);
+  const [shareGuest, setShareGuest] = useState(null);
   const [saving, setSaving] = useState(false);
 
   const loadGuests = useCallback(async () => {
@@ -166,23 +162,17 @@ export default function GuestsPage() {
     }
   };
 
-  const handleShare = (guest) => {
-    const inviteUrl = guest.uniqueToken
-      ? `${getInviteBaseUrl()}/i/${guest.uniqueToken}`
-      : "";
-    const text = inviteUrl
-      ? `You're invited to our wedding! Open your invitation and RSVP here:\n${inviteUrl}`
-      : `You're invited! Please RSVP — ${guest.name}`;
+  const handleShare = async (guest) => {
+    const prefersNativeShare =
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 767px)").matches;
 
-    if (typeof navigator !== "undefined" && navigator.share) {
-      navigator
-        .share({ title: "Wedding Invite", text, url: inviteUrl || undefined })
-        .catch(() => {});
-      return;
+    if (prefersNativeShare) {
+      const result = await shareGuestInviteNative(guest);
+      if (result.ok || result.reason === "cancelled") return;
     }
-    if (typeof navigator !== "undefined" && navigator.clipboard) {
-      navigator.clipboard.writeText(text).catch(() => {});
-    }
+
+    setShareGuest(guest);
   };
 
   return (
@@ -289,6 +279,7 @@ export default function GuestsPage() {
             onViewGuest={(g) => setViewGuest(g)}
             onEditGuest={(g) => setEditGuest(g)}
             onDeleteGuest={(g) => setDeleteGuest(g)}
+            onShareGuest={handleShare}
           />
         ) : null}
       </div>
@@ -323,6 +314,12 @@ export default function GuestsPage() {
         onClose={() => setDeleteGuest(null)}
         guestName={deleteGuest?.name}
         onConfirm={handleDelete}
+      />
+
+      <ShareInviteModal
+        open={!!shareGuest}
+        guest={shareGuest}
+        onClose={() => setShareGuest(null)}
       />
 
       {saving ? (

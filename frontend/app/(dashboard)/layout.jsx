@@ -45,9 +45,9 @@ export default function DashboardLayout({ children }) {
   const initials = buildInitials(coupleNames);
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-[#fdfcf9]">
+    <div className="min-h-screen-zoom flex flex-col md:flex-row bg-[#fdfcf9]">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex flex-col w-64 border-r border-[#eef0f3] bg-white sticky top-0 h-screen">
+      <aside className="hidden md:flex flex-col w-64 border-r border-[#eef0f3] bg-white sticky top-0 h-screen-zoom shrink-0">
         <div className="p-8 pb-4">
           <div className="flex flex-col items-center">
             <div className="w-12 h-12 rounded-full flex items-center justify-center mb-4 shadow-sm overflow-hidden bg-navy">
