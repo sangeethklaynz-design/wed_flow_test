@@ -51,6 +51,10 @@ export default function GuestRsvpForm({ token, guest, onSubmitted }) {
   }, [status, setValue, watch]);
 
   const onSubmit = async (data) => {
+    if (alreadySubmitted) {
+      setError("Your RSVP has already been submitted and cannot be changed.");
+      return;
+    }
     setError("");
     setSubmitting(true);
     try {
@@ -72,7 +76,7 @@ export default function GuestRsvpForm({ token, guest, onSubmitted }) {
     }
   };
 
-  if (done) {
+  if (done || alreadySubmitted) {
     return (
       <div className="bg-white rounded-[28px] border border-border card-shadow p-6 md:p-8 text-center">
         <div className="w-12 h-12 rounded-full bg-gold mx-auto mb-4 flex items-center justify-center">
@@ -81,32 +85,13 @@ export default function GuestRsvpForm({ token, guest, onSubmitted }) {
         <h3 className="font-serif font-bold text-2xl text-navy mb-2">
           Thank you
         </h3>
-        <p className="text-muted text-sm mb-4">
+        <p className="text-muted text-sm mb-2">
           Your RSVP has been recorded
           {guest?.fullName ? ` for ${guest.fullName}` : ""}.
         </p>
-        {!alreadySubmitted ? null : (
-          <p className="text-xs text-muted">
-            You can update your response below if plans change.
-          </p>
-        )}
-        {alreadySubmitted ? (
-          <button
-            type="button"
-            onClick={() => setDone(false)}
-            className="mt-4 text-sm font-medium text-[#e69e46] hover:underline"
-          >
-            Update RSVP
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setDone(false)}
-            className="mt-4 text-sm font-medium text-[#e69e46] hover:underline"
-          >
-            Edit response
-          </button>
-        )}
+        <p className="text-xs text-muted">
+          Your response is locked and can no longer be changed.
+        </p>
       </div>
     );
   }

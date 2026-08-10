@@ -32,15 +32,22 @@ function ResponsivePhone({ children, onClick }) {
 
   return (
     <div ref={containerRef} className="absolute inset-0 flex items-center justify-center overflow-hidden">
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onClick}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onClick?.(e);
+          }
+        }}
         style={{ transform: `scale(${scale})` }}
         className="group origin-center w-[418px] h-[872px] shrink-0 rounded-[48px] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] border-[14px] border-slate-900 bg-[#FAF6F0] overflow-hidden flex flex-col relative text-left cursor-pointer focus:outline-none focus-visible:ring-4 focus-visible:ring-[#e69e46] transition-transform"
         aria-label="Open full wedding invitation template"
       >
         {children}
-      </button>
+      </div>
     </div>
   );
 }

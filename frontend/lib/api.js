@@ -6,6 +6,7 @@ const API_BASE_URL =
  *
  * Connected endpoints (used by frontend):
  * - POST /api/auth/login                          → login page
+ * - POST /api/auth/refresh                        → silent session renew
  * - GET  /api/couple/dashboard                    → dashboard page
  * - GET  /api/couple/invitation-template          → invite tab, /invitation preview
  * - GET|POST|PUT|DELETE /api/couple/guests[...]   → guests page (note → invitation_note)
@@ -38,31 +39,100 @@ export function resolveMediaUrl(url) {
   return `${getApiBaseUrl()}${path}`;
 }
 
+let refreshPromise = null;
+
+async function refreshAccessToken() {
+  if (typeof window === "undefined") return null;
+
+  const { getRefreshToken, setAuthSession, clearAuthSession } = await import(
+    "@/lib/auth"
+  );
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return null;
+
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      try {
+        const res = await fetch(`${getApiBaseUrl()}/api/auth/refresh`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken }),
+        });
+
+        if (!res.ok) {
+          clearAuthSession();
+          return null;
+        }
+
+        const data = await res.json();
+        setAuthSession({
+          accessToken: data.accessToken,
+          refreshToken: data.refreshToken,
+          user: data.user,
+        });
+        return data.accessToken || null;
+      } catch {
+        clearAuthSession();
+        return null;
+      } finally {
+        refreshPromise = null;
+      }
+    })();
+  }
+
+  return refreshPromise;
+}
+
 export async function apiRequest(path, options = {}) {
   const {
     method = "GET",
     body,
     token,
     headers = {},
+    skipAuthRefresh = false,
   } = options;
 
-  const res = await fetch(`${getApiBaseUrl()}${path}`, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...headers,
-    },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  const doFetch = (authToken) =>
+    fetch(`${getApiBaseUrl()}${path}`, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        ...headers,
+      },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
 
+  let res = await doFetch(token);
   let data = null;
-  const text = await res.text();
+  let text = await res.text();
   if (text) {
     try {
       data = JSON.parse(text);
     } catch {
       data = { message: text };
+    }
+  }
+
+  // Access token expired — renew with refresh token and retry once
+  if (
+    res.status === 401 &&
+    token &&
+    !skipAuthRefresh &&
+    !path.includes("/api/auth/")
+  ) {
+    const newToken = await refreshAccessToken();
+    if (newToken) {
+      res = await doFetch(newToken);
+      text = await res.text();
+      data = null;
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch {
+          data = { message: text };
+        }
+      }
     }
   }
 

@@ -3,7 +3,7 @@ const { env } = require("../config/env");
 
 function signAccessToken(payload) {
   return jwt.sign(payload, env.JWT_ACCESS_SECRET, {
-    expiresIn: env.JWT_ACCESS_EXPIRES_IN || "15m",
+    expiresIn: env.JWT_ACCESS_EXPIRES_IN || "7d",
   });
 }
 

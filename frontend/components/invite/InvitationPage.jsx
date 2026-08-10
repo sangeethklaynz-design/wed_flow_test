@@ -51,6 +51,7 @@ export default function InvitationPage({
   const [submitting, setSubmitting] = useState(false);
   const [rsvpError, setRsvpError] = useState("");
   const dropdownRef = useRef(null);
+  const rsvpLocked = Boolean(guestToken && t.rsvp?.hasSubmitted);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -80,6 +81,11 @@ export default function InvitationPage({
 
     if (!interactive || !guestToken) {
       router.push("/invitation/thank-you");
+      return;
+    }
+
+    if (rsvpLocked) {
+      setRsvpError("Your RSVP has already been submitted.");
       return;
     }
 
@@ -343,8 +349,16 @@ export default function InvitationPage({
           </label>
           <div className="relative w-[320px]">
             <div 
-              className="w-full h-[36px] bg-white border border-[#D1D1D1] text-navy font-sans text-xs px-4 rounded-[20px] outline-none flex items-center justify-between cursor-pointer focus:border-[#7732A4]/50 transition-colors"
-              onClick={() => setAttendanceOpen(!attendanceOpen)}
+              className={`w-full h-[36px] bg-white border border-[#D1D1D1] text-navy font-sans text-xs px-4 rounded-[20px] outline-none flex items-center justify-between transition-colors ${
+                rsvpLocked
+                  ? "opacity-70 cursor-not-allowed bg-[#F7F4EF]"
+                  : "cursor-pointer focus:border-[#7732A4]/50"
+              }`}
+              onClick={() => {
+                if (rsvpLocked || !interactive) return;
+                setAttendanceOpen(!attendanceOpen);
+              }}
+              aria-disabled={rsvpLocked}
             >
               <span>
                 {attendance === "yes" 
@@ -358,7 +372,7 @@ export default function InvitationPage({
               </svg>
             </div>
 
-            {attendanceOpen && (
+            {attendanceOpen && !rsvpLocked && (
               <div className="absolute top-[42px] left-0 w-full bg-white border border-[#D1D1D1] rounded-[16px] shadow-lg z-[100] overflow-hidden font-sans text-xs divide-y divide-[#F0F0F0]">
                 <div 
                   className={`px-4 py-3 cursor-pointer hover:bg-[#FAF6F0] transition-colors ${attendance === "" ? "font-bold text-[#7732A4] bg-[#FAF6F0]" : "text-navy"}`}
@@ -393,7 +407,8 @@ export default function InvitationPage({
             placeholder="e.g. 2"
             value={guests}
             onChange={(e) => setGuests(e.target.value)}
-            className="w-[320px] h-[36px] bg-white border border-[#D1D1D1] text-navy font-sans text-xs px-4 rounded-[20px] outline-none focus:border-[#7732A4]/50 transition-colors"
+            disabled={rsvpLocked || !interactive}
+            className="w-[320px] h-[36px] bg-white border border-[#D1D1D1] text-navy font-sans text-xs px-4 rounded-[20px] outline-none focus:border-[#7732A4]/50 transition-colors disabled:opacity-70 disabled:cursor-not-allowed disabled:bg-[#F7F4EF]"
           />
         </div>
 
@@ -407,12 +422,18 @@ export default function InvitationPage({
             rows="3"
             value={wishes}
             onChange={(e) => setWishes(e.target.value)}
-            className="w-[320px] h-[126px] bg-white border border-[#D1D1D1] text-navy font-sans text-xs px-4 py-3 rounded-[20px] outline-none resize-none focus:border-[#7732A4]/50 transition-colors"
+            disabled={rsvpLocked || !interactive}
+            className="w-[320px] h-[126px] bg-white border border-[#D1D1D1] text-navy font-sans text-xs px-4 py-3 rounded-[20px] outline-none resize-none focus:border-[#7732A4]/50 transition-colors disabled:opacity-70 disabled:cursor-not-allowed disabled:bg-[#F7F4EF]"
           />
         </div>
 
         {/* Hidden submit trigger */}
-        <button type="submit" className="hidden" id="rsvp-submit-hidden-btn" />
+        <button type="submit" className="hidden" id="rsvp-submit-hidden-btn" disabled={rsvpLocked} />
+        {rsvpLocked ? (
+          <p className="text-xs text-[#7732A4] text-center w-full font-medium">
+            Your RSVP has been confirmed. Fields are locked.
+          </p>
+        ) : null}
         {rsvpError ? (
           <p className="text-xs text-red-600 text-center w-full">{rsvpError}</p>
         ) : null}
@@ -431,11 +452,11 @@ export default function InvitationPage({
       {/* RSVP Button (Width: 108px, Height: 48px, Y: 2379px, centered) */}
       <button 
         type="button"
-        disabled={submitting}
+        disabled={submitting || rsvpLocked || !interactive}
         onClick={() => document.getElementById("rsvp-submit-hidden-btn")?.click()}
-        className="absolute top-[2379px] left-[141px] w-[108px] h-[48px] bg-[#7732A4] hover:bg-[#5C2383] disabled:opacity-60 text-white font-serif font-bold text-xs uppercase tracking-wider rounded-[24px] z-10 transition-colors shadow-md flex items-center justify-center"
+        className="absolute top-[2379px] left-[141px] w-[108px] h-[48px] bg-[#7732A4] hover:bg-[#5C2383] disabled:opacity-60 disabled:cursor-not-allowed text-white font-serif font-bold text-xs uppercase tracking-wider rounded-[24px] z-10 transition-colors shadow-md flex items-center justify-center"
       >
-        {submitting ? "Sending…" : "Send RSVP"}
+        {rsvpLocked ? "Submitted" : submitting ? "Sending…" : "Send RSVP"}
       </button>
 
       {/* =========================================================

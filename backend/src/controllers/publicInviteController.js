@@ -72,6 +72,16 @@ async function submitPublicRsvp(req, res) {
       });
     }
 
+    if (row.submitted_at) {
+      await transaction.rollback();
+      return res.status(409).json({
+        error: "Conflict",
+        message:
+          "Your RSVP has already been submitted and can no longer be changed.",
+        guest: mapGuestTemplateBlock(row),
+      });
+    }
+
     const rawStatus = String(
       req.body?.status || req.body?.attendingStatus || ""
     )
