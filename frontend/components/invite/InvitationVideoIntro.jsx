@@ -122,9 +122,10 @@ export default function InvitationVideoIntro({
       <video
         ref={videoRef}
         src={resolvedUrl}
-        className={`absolute inset-0 w-full h-full object-cover object-center bg-[#FAF6F0] select-none transition-opacity duration-700 scale-[1.02] origin-center ${
+        className={`absolute inset-0 w-full h-full min-w-full min-h-full object-cover object-center bg-[#FAF6F0] select-none transition-opacity duration-700 ${
           fading ? "opacity-0" : "opacity-100"
         }`}
+        style={{ transform: "scale(1.04)" }}
         playsInline
         preload="auto"
         controls={false}
