@@ -7,6 +7,7 @@ import { apiRequest, resolveMediaUrl } from "@/lib/api";
 import {
   normalizeInvitationTemplate,
   splitSpecialText,
+  buildGoogleMapsUrl,
 } from "@/lib/inviteTemplate";
 
 const JOURNEY_FALLBACKS = [
@@ -34,6 +35,15 @@ export default function InvitationPage({
 }) {
   const t = useMemo(() => normalizeInvitationTemplate(data), [data]);
   const specialLines = useMemo(() => splitSpecialText(t.specialText), [t.specialText]);
+  const mapsUrl = useMemo(
+    () =>
+      buildGoogleMapsUrl({
+        googleMapsLink: t.googleMapsLink,
+        hotelName: t.hotelName,
+        hotelAddress: t.hotelAddress,
+      }),
+    [t.googleMapsLink, t.hotelName, t.hotelAddress]
+  );
   const journeyImages = useMemo(() => {
     const fromApi = (t.images || [])
       .map((img) => resolveMediaUrl(img.url))
@@ -684,23 +694,16 @@ export default function InvitationPage({
           </div>
         </div>
         <h3 className="relative z-10 font-cormorant-custom font-bold text-[14px] text-[#1B3601] tracking-widest uppercase leading-none mb-1.5 text-center px-2">{t.hotelName}</h3>
-        {t.googleMapsLink ? (
+        {mapsUrl ? (
           <a
-            href={t.googleMapsLink}
+            href={mapsUrl}
             target="_blank"
             rel="noreferrer"
             className="relative z-10 bg-[#473284] text-white font-quattrocento-custom text-[10px] font-bold py-2 px-8 rounded-full tracking-wider hover:bg-[#342461] transition-colors leading-none shadow-md"
           >
             VIEW MAP
           </a>
-        ) : (
-          <button
-            type="button"
-            className="relative z-10 bg-[#473284] text-white font-quattrocento-custom text-[10px] font-bold py-2 px-8 rounded-full tracking-wider leading-none shadow-md"
-          >
-            VIEW MAP
-          </button>
-        )}
+        ) : null}
       </div>
 
       {/* =========================================================

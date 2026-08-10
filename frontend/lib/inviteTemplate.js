@@ -116,6 +116,7 @@ export function normalizeInvitationTemplate(raw) {
     specialText: invitation?.specialText || DEFAULTS.specialText,
     poruwaTime: formatPoruwaDisplay(invitation?.poruwaTime),
     hotelName: (invitation?.hotelName || DEFAULTS.hotelName).toUpperCase(),
+    hotelAddress: invitation?.hotelAddress || null,
     googleMapsLink: invitation?.googleMapsLink || null,
     weatherNote: invitation?.weatherNote || DEFAULTS.weatherNote,
     parkingNote: invitation?.parkingNote || DEFAULTS.parkingNote,
@@ -141,4 +142,19 @@ export function splitSpecialText(text) {
     .split(/\n|<br\s*\/?>/i)
     .map((line) => line.trim())
     .filter(Boolean);
+}
+
+/** Prefer stored Maps URL; otherwise search by hotel name (+ address when available). */
+export function buildGoogleMapsUrl({ googleMapsLink, hotelName, hotelAddress } = {}) {
+  const stored = String(googleMapsLink || "").trim();
+  if (stored) return stored;
+
+  const query = [hotelName, hotelAddress]
+    .map((part) => String(part || "").trim())
+    .filter(Boolean)
+    .join(", ");
+
+  if (!query) return null;
+
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }

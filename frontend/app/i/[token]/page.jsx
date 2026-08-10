@@ -52,39 +52,35 @@ export default function PublicGuestInvitePage() {
 
   return (
     <div className="min-h-screen w-full relative flex flex-col items-center bg-gradient-to-br from-[#F5EFE6] via-[#E8DFD8] to-[#DCD3CB] overflow-x-hidden md:py-10">
-      <div className="w-full max-w-lg px-4 py-6 flex flex-col items-center space-y-6">
-        {error ? (
-          <div className="w-full bg-red-50 border border-red-100 text-red-600 text-sm rounded-2xl px-4 py-3 text-center">
-            {error}
-          </div>
-        ) : null}
+      {error ? (
+        <div className="mb-4 w-[390px] bg-red-50 border border-red-100 text-red-600 text-sm rounded-2xl px-4 py-3 text-center">
+          {error}
+        </div>
+      ) : null}
 
-        {loading ? (
-          <div className="w-[390px] min-h-[40vh] rounded-[32px] bg-white border border-border card-shadow flex items-center justify-center">
-            <p className="text-muted text-sm">Opening invitation…</p>
-          </div>
-        ) : null}
+      {loading ? (
+        <p className="text-muted text-sm py-20">Opening invitation…</p>
+      ) : null}
 
-        {templateData ? (
-          <InvitationExperience
-            templateData={templateData}
-            guestToken={token}
-            interactive
-          />
-        ) : null}
+      {templateData ? (
+        <InvitationExperience
+          templateData={templateData}
+          guestToken={token}
+          interactive
+        />
+      ) : null}
 
-        {!loading && !templateData && error ? (
-          <div className="w-[390px] min-h-[40vh] rounded-[32px] bg-white border border-border card-shadow flex flex-col items-center justify-center px-6 text-center">
-            <p className="font-serif font-bold text-2xl text-navy mb-2">
-              Invitation unavailable
-            </p>
-            <p className="text-muted text-sm">
-              This link may be invalid or expired. Please contact the couple for
-              a new invitation.
-            </p>
-          </div>
-        ) : null}
-      </div>
+      {!loading && !templateData && error ? (
+        <div className="w-[390px] min-h-[40vh] rounded-2xl bg-[#FAF6F0] flex flex-col items-center justify-center px-6 text-center">
+          <p className="font-serif font-bold text-2xl text-navy mb-2">
+            Invitation unavailable
+          </p>
+          <p className="text-muted text-sm">
+            This link may be invalid or expired. Please contact the couple for
+            a new invitation.
+          </p>
+        </div>
+      ) : null}
     </div>
   );
 }

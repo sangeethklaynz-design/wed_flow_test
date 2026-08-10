@@ -39,12 +39,19 @@ export default function InvitationExperience({
 
   return (
     <main
-      className="relative card-shadow md:rounded-2xl overflow-hidden"
+      className={`relative overflow-hidden border-0 outline-none ${
+        isVideoActive
+          ? "rounded-none md:rounded-2xl"
+          : "card-shadow md:rounded-2xl"
+      }`}
       style={{
         width: INVITE_FRAME_W,
         height: isVideoActive ? INVITE_FRAME_H : undefined,
-        backgroundColor: "#FFFDF3",
-        backgroundImage: "radial-gradient(at 20% 20%, rgba(181, 74, 182, 0.12) 0%, transparent 60%), radial-gradient(at 80% 80%, rgba(119, 50, 164, 0.12) 0%, transparent 60%)"
+        // Match invitation cream — #FFFDF3 read as a white border around the video
+        backgroundColor: "#FAF6F0",
+        backgroundImage: isVideoActive
+          ? "none"
+          : "radial-gradient(at 20% 20%, rgba(181, 74, 182, 0.12) 0%, transparent 60%), radial-gradient(at 80% 80%, rgba(119, 50, 164, 0.12) 0%, transparent 60%)",
       }}
     >
       <div className="relative w-[390px]">

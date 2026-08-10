@@ -114,7 +114,7 @@ export default function InvitationVideoIntro({
 
   return (
     <div
-      className={`absolute top-0 left-0 z-30 w-[390px] h-[844px] bg-transparent overflow-hidden ${
+      className={`absolute top-0 left-0 z-30 w-[390px] h-[844px] bg-[#FAF6F0] overflow-hidden ${
         needsTap ? "pointer-events-auto" : "pointer-events-none"
       }`}
       aria-hidden={!needsTap}
@@ -122,7 +122,7 @@ export default function InvitationVideoIntro({
       <video
         ref={videoRef}
         src={resolvedUrl}
-        className={`absolute inset-0 w-full h-full object-cover object-center bg-transparent select-none transition-opacity duration-700 ${
+        className={`absolute inset-0 w-full h-full object-cover object-center bg-[#FAF6F0] select-none transition-opacity duration-700 scale-[1.02] origin-center ${
           fading ? "opacity-0" : "opacity-100"
         }`}
         playsInline
