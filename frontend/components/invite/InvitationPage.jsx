@@ -588,8 +588,8 @@ export default function InvitationPage({
       </div>
 
       {/* 5.2 Small Lotus */}
-      <div className="absolute top-[3690px] left-1/2 -translate-x-1/2 w-[138px] h-[92px] z-0">
-        <Image src="/invitation/5.2.png" alt="Small lotus" fill className="object-contain" />
+      <div className="absolute top-[3720px] left-1/2 -translate-x-1/2 w-[80px] h-[53px] z-0">
+        <Image src="/invitation/0.2.png" alt="Small lotus" fill className="object-contain" />
       </div>
 
       {/* 5.7 Background Floral */}
@@ -671,7 +671,7 @@ export default function InvitationPage({
 
       {/* 6.2 Small Lotus */}
       <div className="absolute top-[4579px] left-1/2 -translate-x-1/2 w-[51px] h-[43px] z-0">
-        <Image src="/invitation/6.2.png" alt="Small lotus decoration" fill className="object-contain" />
+        <Image src="/invitation/0.2.png" alt="Small lotus decoration" fill className="object-contain" />
       </div>
 
       {/* 6.7 Background Floral */}
@@ -831,8 +831,8 @@ export default function InvitationPage({
         <p className="font-greatvibes-custom font-bold text-[30px] text-[#7732A4] text-center leading-none">
           Thank you!
         </p>
-        <div className="relative w-[138px] h-[92px]">
-          <Image src="/invitation/8.2.png" alt="Small lotus" fill className="object-contain" />
+        <div className="relative w-[80px] h-[53px]">
+          <Image src="/invitation/0.2.png" alt="Small lotus" fill className="object-contain" />
         </div>
       </div>
 

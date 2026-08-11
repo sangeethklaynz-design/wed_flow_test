@@ -32,7 +32,7 @@ export default function InvitationSchedule({ events = [] }) {
 
       <div className="relative w-[53px] h-[48px] my-3">
         <Image
-          src="/invitation/page3-small-lotus.png"
+          src="/invitation/0.2.png"
           alt="Small lotus"
           fill
           className="object-contain"
@@ -78,7 +78,7 @@ export default function InvitationSchedule({ events = [] }) {
 
       <div className="relative w-[138px] h-[92px] mt-6">
         <Image
-          src="/invitation/page3-small-lotus.png"
+          src="/invitation/0.1.png"
           alt="Lotus"
           fill
           className="object-contain"

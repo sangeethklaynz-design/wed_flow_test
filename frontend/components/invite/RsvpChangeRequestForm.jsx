@@ -98,7 +98,7 @@ export default function RsvpChangeRequestForm({ guestToken, rsvp, maxGuests }) {
         <div className="w-full flex flex-col items-center gap-3 py-4 mb-2">
           <div className="relative w-[53px] h-[48px]">
             <Image
-              src="/invitation/page3-small-lotus.png"
+              src="/invitation/0.2.png"
               alt="Lotus"
               fill
               className="object-contain"
