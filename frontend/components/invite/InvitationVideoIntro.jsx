@@ -73,7 +73,7 @@ export default function InvitationVideoIntro({
       setNeedsTap(false);
       setLoadError(false);
     } catch {
-      // Never skip the intro when autoplay is blocked — require a tap instead.
+      // Never skip the intro when autoplay is blocked - require a tap instead.
       setNeedsTap(true);
       try {
         await tryPlay(false);
