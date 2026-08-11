@@ -13,7 +13,7 @@ function formatTime12(time24) {
   return `${hours}:${minutes} ${period}`;
 }
 
-export default function InvitationSchedule({ events = [], onContinue }) {
+export default function InvitationSchedule({ events = [] }) {
   return (
     <div className="w-[390px] min-h-[844px] mx-auto bg-[#FAF6F0] flex flex-col items-center px-6 py-10 select-none">
       {/* Header */}
@@ -75,17 +75,6 @@ export default function InvitationSchedule({ events = [], onContinue }) {
           </div>
         ))}
       </div>
-
-      {/* Continue button */}
-      {onContinue && (
-        <button
-          type="button"
-          onClick={onContinue}
-          className="mt-8 w-[180px] h-[44px] bg-[#473284] hover:bg-[#342461] text-white font-quattrocento-custom font-bold text-[12px] uppercase tracking-wider rounded-[22px] transition-colors shadow-md flex items-center justify-center"
-        >
-          Continue
-        </button>
-      )}
 
       <div className="relative w-[138px] h-[92px] mt-6">
         <Image

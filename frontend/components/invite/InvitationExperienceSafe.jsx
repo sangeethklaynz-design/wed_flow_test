@@ -12,11 +12,12 @@ import InvitationThankYou from "@/components/invite/InvitationThankYou";
 /**
  * Safe replacement for InvitationExperience.jsx.
  *
- * Flow for confirmed guests (revisit after RSVP):
- *   video -> schedule -> thank you -> full invitation
+ * Flow for confirmed guests (after RSVP / revisit):
+ *   video -> continuous scroll: schedule → thank you → full invitation
  *
  * Flow for first-time / unconfirmed guests:
  *   video -> full invitation (with live RSVP form)
+ *   after RSVP submit -> continuous scroll: schedule → thank you → invitation
  */
 export default function InvitationExperienceSafe({
   templateData,
@@ -28,19 +29,24 @@ export default function InvitationExperienceSafe({
   );
 
   const isGuestView = Boolean(guestToken);
-  const hasSubmittedRsvp = Boolean(templateData?.guest?.rsvp?.hasSubmitted);
   const scheduleEvents = templateData?.static?.scheduleEvents || [];
   const hasSchedule = scheduleEvents.length > 0;
 
-  // Possible steps for confirmed guests: "video" | "schedule" | "thankyou" | "invitation"
-  // For unconfirmed: "video" | "invitation"
+  const [liveTemplateData, setLiveTemplateData] = useState(templateData);
+  const [justSubmitted, setJustSubmitted] = useState(false);
+
+  useEffect(() => {
+    setLiveTemplateData(templateData);
+  }, [templateData]);
+
+  const hasSubmittedRsvp =
+    Boolean(liveTemplateData?.guest?.rsvp?.hasSubmitted) || justSubmitted;
+
+  // "video" | "invitation" | "postRsvp"
   const getInitialStep = () => {
-    if (!hasVideo) {
-      if (isGuestView && hasSubmittedRsvp && hasSchedule) return "schedule";
-      if (isGuestView && hasSubmittedRsvp) return "thankyou";
-      return "invitation";
-    }
-    return "video";
+    if (hasVideo) return "video";
+    if (isGuestView && hasSubmittedRsvp) return "postRsvp";
+    return "invitation";
   };
 
   const [step, setStep] = useState(getInitialStep);
@@ -73,60 +79,73 @@ export default function InvitationExperienceSafe({
   const handleVideoComplete = useCallback(() => {
     setVideoState("done");
     setTemplateVisible(true);
-    // After video, decide next step
-    if (isGuestView && hasSubmittedRsvp && hasSchedule) {
-      setStep("schedule");
-    } else if (isGuestView && hasSubmittedRsvp) {
-      setStep("thankyou");
+    if (isGuestView && hasSubmittedRsvp) {
+      setStep("postRsvp");
     } else {
       setStep("invitation");
     }
-  }, [isGuestView, hasSubmittedRsvp, hasSchedule]);
+  }, [isGuestView, hasSubmittedRsvp]);
 
-  const handleScheduleContinue = useCallback(() => {
-    setStep("thankyou");
+  const handleRsvpSuccess = useCallback((rsvpPayload) => {
+    setJustSubmitted(true);
+    setLiveTemplateData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        guest: {
+          ...(prev.guest || {}),
+          rsvp: {
+            ...(prev.guest?.rsvp || {}),
+            hasSubmitted: true,
+            attendingStatus: rsvpPayload?.attendingStatus || prev.guest?.rsvp?.attendingStatus,
+            attendingCount:
+              rsvpPayload?.attendingCount ?? prev.guest?.rsvp?.attendingCount,
+            wishes: rsvpPayload?.wishes ?? prev.guest?.rsvp?.wishes,
+          },
+        },
+      };
+    });
+    setStep("postRsvp");
+    setVideoState("done");
+    setTemplateVisible(true);
+    if (typeof window !== "undefined") {
+      window.requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    }
   }, []);
 
-  const handleThankYouContinue = useCallback(() => {
-    setStep("invitation");
-  }, []);
-
-  if (!templateData) return null;
+  if (!liveTemplateData) return null;
 
   const isVideoActive = step === "video" && (videoState === "playing" || videoState === "fading");
   const showSkipButton = hasVideo && step === "video" && (!isGuestView || guestCanSkip);
+  const showPostRsvpFlow = step === "postRsvp";
 
-  // Schedule step
-  if (step === "schedule") {
+  // Continuous post-RSVP scroll: schedule → thank you → invitation
+  if (showPostRsvpFlow) {
     return (
       <main
         className="relative overflow-hidden border-0 outline-none isolate card-shadow md:rounded-2xl"
         style={{ width: INVITE_FRAME_W, backgroundColor: "#FAF6F0" }}
       >
-        <InvitationSchedule
-          events={scheduleEvents}
-          onContinue={handleScheduleContinue}
-        />
+        <div className="relative w-[390px] flex flex-col">
+          {hasSchedule ? (
+            <InvitationSchedule events={scheduleEvents} />
+          ) : null}
+          <InvitationThankYou guestToken={guestToken} />
+          <InvitationPage
+            data={liveTemplateData}
+            guestToken={guestToken}
+            interactive={interactive}
+            embedded
+            onRsvpSuccess={handleRsvpSuccess}
+          />
+        </div>
       </main>
     );
   }
 
-  // Thank you step
-  if (step === "thankyou") {
-    return (
-      <main
-        className="relative overflow-hidden border-0 outline-none isolate card-shadow md:rounded-2xl"
-        style={{ width: INVITE_FRAME_W, backgroundColor: "#FAF6F0" }}
-      >
-        <InvitationThankYou
-          guestToken={guestToken}
-          onContinue={handleThankYouContinue}
-        />
-      </main>
-    );
-  }
-
-  // Video or invitation step
+  // Video or first-visit invitation
   return (
     <main
       className={`relative overflow-hidden border-0 outline-none isolate ${
@@ -155,17 +174,18 @@ export default function InvitationExperienceSafe({
             } ${isVideoActive ? "pointer-events-none" : ""}`}
           >
             <InvitationPage
-              data={templateData}
+              data={liveTemplateData}
               guestToken={guestToken}
               interactive={interactive && !isVideoActive}
               embedded
+              onRsvpSuccess={handleRsvpSuccess}
             />
           </div>
         ) : null}
 
         {isVideoActive ? (
           <InvitationVideoIntro
-            videoUrl={templateData.static.video.url}
+            videoUrl={liveTemplateData.static.video.url}
             onFadeStart={handleFadeStart}
             onComplete={handleVideoComplete}
             onSkip={handleVideoComplete}

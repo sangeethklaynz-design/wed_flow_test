@@ -33,8 +33,11 @@ export default function InvitationPage({
   interactive = true,
   /** When true, omit outer border/shadow — parent phone shell owns chrome */
   embedded = false,
+  /** Guest RSVP success — parent can show schedule → thank you → invitation */
+  onRsvpSuccess = null,
 }) {
   const t = useMemo(() => normalizeInvitationTemplate(data), [data]);
+  const maxGuests = Math.max(1, Number(t.maxGuests) || 1);
   const specialLines = useMemo(() => splitSpecialText(t.specialText), [t.specialText]);
   const mapsUrl = useMemo(
     () =>
@@ -109,12 +112,8 @@ export default function InvitationPage({
     let attendingCount = status === "DECLINED" ? 0 : Number(guests);
 
     if (status === "ATTENDING") {
-      if (!Number.isInteger(attendingCount) || attendingCount < 1) {
-        setRsvpError("Enter a valid number of guests.");
-        return;
-      }
-      if (attendingCount > t.maxGuests) {
-        setRsvpError(`You may RSVP for up to ${t.maxGuests} guests.`);
+      if (!Number.isInteger(attendingCount) || attendingCount < 1 || attendingCount > maxGuests) {
+        setRsvpError(`Enter a number of guests between 1 and ${maxGuests}.`);
         return;
       }
     }
@@ -130,12 +129,32 @@ export default function InvitationPage({
           wishes: wishes.trim(),
         },
       });
-      router.push(`/invitation/thank-you?token=${encodeURIComponent(guestToken)}`);
+      if (typeof onRsvpSuccess === "function") {
+        onRsvpSuccess({
+          attendingStatus: status === "ATTENDING" ? "attending" : "declined",
+          attendingCount,
+          wishes: wishes.trim(),
+        });
+      } else {
+        router.push(`/invitation/thank-you?token=${encodeURIComponent(guestToken)}`);
+      }
     } catch (err) {
       setRsvpError(err.message || "Could not save RSVP");
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleGuestsChange = (e) => {
+    const digits = e.target.value.replace(/\D/g, "");
+    if (digits === "") {
+      setGuests("");
+      return;
+    }
+    let n = Number(digits);
+    if (n > maxGuests) n = maxGuests;
+    if (n < 1) n = 1;
+    setGuests(String(n));
   };
 
   return (
@@ -403,7 +422,7 @@ export default function InvitationPage({
                   </div>
                   <div 
                     className={`px-4 py-3 cursor-pointer hover:bg-[#FAF6F0] transition-colors ${attendance === "no" ? "font-bold text-[#7732A4] bg-[#FAF6F0]" : "text-navy"}`}
-                    onClick={() => { setAttendance("no"); setAttendanceOpen(false); }}
+                    onClick={() => { setAttendance("no"); setGuests(""); setAttendanceOpen(false); }}
                   >
                     No, I cannot attend
                   </div>
@@ -418,11 +437,13 @@ export default function InvitationPage({
               Number of guests
             </label>
             <input 
-              type="text" 
-              placeholder="e.g. 2"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              placeholder={String(maxGuests)}
               value={guests}
-              onChange={(e) => setGuests(e.target.value)}
-              disabled={!interactive}
+              onChange={handleGuestsChange}
+              disabled={!interactive || attendance === "no"}
               className="w-[320px] h-[36px] bg-white border border-[#D1D1D1] text-navy font-sans text-xs px-4 rounded-[20px] outline-none focus:border-[#7732A4]/50 transition-colors disabled:opacity-70 disabled:cursor-not-allowed disabled:bg-[#F7F4EF]"
             />
           </div>

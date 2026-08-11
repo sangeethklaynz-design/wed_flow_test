@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { getAccessToken } from "@/lib/auth";
 
-export default function InvitationThankYou({ guestToken, onContinue }) {
+export default function InvitationThankYou({ guestToken }) {
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState("");
 
@@ -45,7 +45,7 @@ export default function InvitationThankYou({ guestToken, onContinue }) {
   };
 
   return (
-    <div className="relative w-[390px] h-[841px] mx-auto bg-[#FAF6F0] overflow-hidden select-none">
+    <div className="relative w-[390px] h-[841px] mx-auto bg-[#FAF6F0] overflow-hidden select-none shrink-0">
       <div className="absolute top-[0px] left-[0px] w-[79px] h-[294px] z-10 pointer-events-none">
         <Image src="/invitation/9.1.png" alt="" fill className="object-contain" />
       </div>
@@ -91,15 +91,6 @@ export default function InvitationThankYou({ guestToken, onContinue }) {
         </button>
         {error && (
           <p className="text-red-500 text-xs text-center w-full">{error}</p>
-        )}
-        {onContinue && (
-          <button
-            type="button"
-            onClick={onContinue}
-            className="text-[#7732A4] font-quattrocento-custom font-bold text-[13px] underline underline-offset-2 mt-2"
-          >
-            View Full Invitation
-          </button>
         )}
       </div>
 
