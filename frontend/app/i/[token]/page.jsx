@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import InvitationExperience from "@/components/invite/InvitationExperience";
+import InvitationExperienceSafe from "@/components/invite/InvitationExperienceSafe";
 import { apiRequest } from "@/lib/api";
 
 /**
@@ -63,7 +63,7 @@ export default function PublicGuestInvitePage() {
       ) : null}
 
       {templateData ? (
-        <InvitationExperience
+        <InvitationExperienceSafe
           templateData={templateData}
           guestToken={token}
           interactive

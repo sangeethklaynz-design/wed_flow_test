@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Eye, Pencil, Trash2 } from "lucide-react";
 import { ScheduleStatusBadge } from "@/components/schedule/ScheduleEventCard";
 import RowActionsMenu from "@/components/ui/RowActionsMenu";
 import clsx from "clsx";
@@ -92,14 +93,17 @@ export default function ScheduleTable({
                         items={[
                           {
                             label: "View details",
+                            icon: Eye,
                             onClick: () => onViewEvent?.(event),
                           },
                           {
                             label: "Edit details",
+                            icon: Pencil,
                             onClick: () => onEditEvent?.(event),
                           },
                           {
                             label: "Delete event",
+                            icon: Trash2,
                             destructive: true,
                             onClick: () => onDeleteEvent?.(event),
                           },

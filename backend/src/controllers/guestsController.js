@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 const { sequelize } = require("../models");
 const { getWeddingForUser } = require("../utils/wedding");
+const { createNotification } = require("./notificationsController");
 
 function mapGuestRow(row) {
   const status = String(row.rsvp_status || "PENDING").toLowerCase();
@@ -22,6 +23,8 @@ function mapGuestRow(row) {
     note: row.invitation_note || "",
     guestNotes: row.wishes || "",
     uniqueToken: row.unique_token,
+    hasChangeRequest: Boolean(Number(row.has_change_request)),
+    changeRequestReason: row.change_request_reason || "",
     rsvp: {
       hasSubmitted: Boolean(row.submitted_at),
       attendingStatus,
@@ -47,13 +50,22 @@ async function fetchGuestsForWedding(weddingId, guestId = null) {
       g.table_number,
       g.unique_token,
       g.rsvp_status,
+      g.has_change_request,
       r.id AS rsvp_id,
       r.attending_status,
       r.attending_count,
       r.wishes,
-      r.submitted_at
+      r.submitted_at,
+      rcr.reason AS change_request_reason
     FROM guests g
     LEFT JOIN rsvps r ON r.guest_id = g.id
+    LEFT JOIN rsvp_change_requests rcr
+      ON rcr.guest_id = g.id
+      AND rcr.created_at = (
+        SELECT MAX(rcr2.created_at)
+        FROM rsvp_change_requests rcr2
+        WHERE rcr2.guest_id = g.id
+      )
     WHERE g.wedding_id = ?
     ${whereGuest}
     ORDER BY g.full_name ASC;
@@ -216,6 +228,7 @@ async function createGuest(req, res) {
     await transaction.commit();
 
     const rows = await fetchGuestsForWedding(wedding.id, guestId);
+    await createNotification(wedding.id, "guest_added", "New guest added", `${name} has been added to the guest list.`);
     return res.status(201).json({
       guest: mapGuestRow(rows[0]),
     });
@@ -300,6 +313,7 @@ async function updateGuest(req, res) {
     );
 
     const rows = await fetchGuestsForWedding(wedding.id, guestId);
+    await createNotification(wedding.id, "guest_updated", "Guest updated", `${nextName}'s details have been updated.`);
     return res.status(200).json({
       guest: mapGuestRow(rows[0]),
     });
@@ -350,6 +364,8 @@ async function deleteGuest(req, res) {
 
     await transaction.commit();
 
+    const deletedName = existing[0].full_name;
+    await createNotification(wedding.id, "guest_deleted", "Guest removed", `${deletedName} has been removed from the guest list.`);
     return res.status(200).json({
       message: "Guest deleted",
       id: guestId,
@@ -368,10 +384,61 @@ async function deleteGuest(req, res) {
   }
 }
 
+async function cancelRsvp(req, res) {
+  try {
+    const { wedding, error } = await assertWedding(req);
+    if (error) return res.status(error.status).json({ error: "Not Found", message: error.message });
+
+    const guestId = String(req.params.id || "").trim();
+    const existing = await fetchGuestsForWedding(wedding.id, guestId);
+    if (!existing.length) return res.status(404).json({ error: "Not Found", message: "Guest not found" });
+
+    await sequelize.query(`UPDATE guests SET rsvp_status = 'DECLINED' WHERE id = ?;`, { replacements: [guestId] });
+    await sequelize.query(
+      `UPDATE rsvps SET attending_status = 'DECLINED', attending_count = 0 WHERE guest_id = ?;`,
+      { replacements: [guestId] }
+    );
+    await sequelize.query(`UPDATE guests SET has_change_request = 0 WHERE id = ?;`, { replacements: [guestId] });
+
+    const rows = await fetchGuestsForWedding(wedding.id, guestId);
+    await createNotification(wedding.id, "rsvp_cancelled", "RSVP cancelled", `${existing[0].full_name}'s RSVP has been cancelled by the couple.`);
+    return res.status(200).json({ guest: mapGuestRow(rows[0]) });
+  } catch (err) {
+    console.error("cancelRsvp error:", err);
+    return res.status(500).json({ error: "Internal Server Error", message: "Failed to cancel RSVP" });
+  }
+}
+
+async function resendInvite(req, res) {
+  try {
+    const { wedding, error } = await assertWedding(req);
+    if (error) return res.status(error.status).json({ error: "Not Found", message: error.message });
+
+    const guestId = String(req.params.id || "").trim();
+    const existing = await fetchGuestsForWedding(wedding.id, guestId);
+    if (!existing.length) return res.status(404).json({ error: "Not Found", message: "Guest not found" });
+
+    await sequelize.query(`UPDATE guests SET rsvp_status = 'PENDING', has_change_request = 0 WHERE id = ?;`, { replacements: [guestId] });
+    await sequelize.query(
+      `UPDATE rsvps SET attending_status = 'PENDING', attending_count = 0, wishes = NULL, submitted_at = NULL WHERE guest_id = ?;`,
+      { replacements: [guestId] }
+    );
+
+    const rows = await fetchGuestsForWedding(wedding.id, guestId);
+    await createNotification(wedding.id, "invite_resent", "Invitation resent", `${existing[0].full_name}'s invitation has been reset. They can now RSVP again.`);
+    return res.status(200).json({ guest: mapGuestRow(rows[0]) });
+  } catch (err) {
+    console.error("resendInvite error:", err);
+    return res.status(500).json({ error: "Internal Server Error", message: "Failed to resend invite" });
+  }
+}
+
 module.exports = {
   listGuests,
   getGuest,
   createGuest,
   updateGuest,
   deleteGuest,
+  cancelRsvp,
+  resendInvite,
 };

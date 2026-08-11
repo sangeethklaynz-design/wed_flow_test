@@ -173,11 +173,55 @@ async function ensureInvitationTemplateColumns() {
   }
 }
 
+async function ensureRsvpChangeRequestsTable() {
+  if (!(await tableExists("rsvp_change_requests"))) {
+    await sequelize.query(`
+      CREATE TABLE rsvp_change_requests (
+        id VARCHAR(36) PRIMARY KEY,
+        guest_id VARCHAR(36) NOT NULL,
+        wedding_id VARCHAR(36) NOT NULL,
+        reason TEXT NOT NULL,
+        status ENUM('PENDING','APPROVED','REJECTED') DEFAULT 'PENDING',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_rcr_guest (guest_id),
+        INDEX idx_rcr_wedding (wedding_id)
+      );
+    `);
+  }
+
+  if (!(await columnExists("guests", "has_change_request"))) {
+    await sequelize.query(`
+      ALTER TABLE guests
+      ADD COLUMN has_change_request TINYINT(1) NOT NULL DEFAULT 0;
+    `);
+  }
+}
+
+async function ensureNotificationsTable() {
+  if (!(await tableExists("notifications"))) {
+    await sequelize.query(`
+      CREATE TABLE notifications (
+        id VARCHAR(36) PRIMARY KEY,
+        wedding_id VARCHAR(36) NOT NULL,
+        type VARCHAR(50) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        message TEXT,
+        is_read TINYINT(1) NOT NULL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_notif_wedding (wedding_id),
+        INDEX idx_notif_read (wedding_id, is_read)
+      );
+    `);
+  }
+}
+
 async function ensureCoreSchema() {
   await ensureScheduleSchema();
   await ensureInvitationRelatedTables();
   await ensureWeddingScheduleTemplateColumns();
   await ensureInvitationTemplateColumns();
+  await ensureRsvpChangeRequestsTable();
+  await ensureNotificationsTable();
 }
 
 module.exports = { ensureCoreSchema };

@@ -1,18 +1,24 @@
 /**
- * Admin script: register a couple from a text file.
+ * Admin script: register or update a couple from a text file.
  *
  * Usage (from wedflow/backend):
  *   node scripts/register_couple.js couple-registrations/example.txt
  *   npm run register-couple -- couple-registrations/example.txt
  *
- * Required fields:
- *   bride_name, groom_name, email, wedding_date, hotel_name
+ * Required fields (for new registration):
+ *   bride_name, groom_name, email, wedding_date
  *
  * Optional:
- *   password, hotel_address, google_maps_link, poruwa_time,
+ *   password, hotel_name, hotel_address, google_maps_link, poruwa_time,
  *   weather_note, parking_note, special_text, thank_you_note,
  *   contact1_name, contact1_phone, contact1_relation,
- *   contact2_name, contact2_phone, contact2_relation
+ *   contact2_name, contact2_phone, contact2_relation,
+ *   milestone1_year, milestone1_title, milestone1_description,
+ *   milestone2_year, milestone2_title, milestone2_description,
+ *   milestone3_year, milestone3_title, milestone3_description,
+ *   milestone4_year, milestone4_title, milestone4_description
+ *
+ * If the email already exists, the script will UPDATE the existing records.
  */
 
 const fs = require("fs");
@@ -22,13 +28,7 @@ const bcrypt = require("bcrypt");
 const { sequelize } = require("../src/models");
 const { env } = require("../src/config/env");
 
-const REQUIRED_FIELDS = [
-  "bride_name",
-  "groom_name",
-  "email",
-  "wedding_date",
-  "hotel_name",
-];
+const REQUIRED_FIELDS = ["bride_name", "groom_name", "email", "wedding_date", "password"];
 
 function printUsage() {
   console.log(`
@@ -46,15 +46,11 @@ Text file format (key=value, one per line):
   hotel_name=Galle Face Hotel
   hotel_address=2 Galle Road, Colombo 03
   poruwa_time=16:00
-  weather_note=Light outdoor breeze expected — bring a wrap
-  parking_note=Valet available at the main lobby entrance
-  contact1_name=Kasun
-  contact1_phone=+94771234567
-  contact1_relation=Groom
-  contact2_name=Hiruni
-  contact2_phone=+94772345678
-  contact2_relation=Bride
+  milestone1_year=2019
+  milestone1_title=The day we met
   password=TempPass123!   # optional
+
+If the email already exists, the script updates the existing couple data.
 `);
 }
 
@@ -134,12 +130,20 @@ function parseCoupleFile(filePath) {
     }
   }
 
-  if (contacts.length > 2) {
-    throw new Error("Maximum of 2 invitation contacts allowed");
+  const milestones = [];
+  for (const index of [1, 2, 3, 4]) {
+    const year = data[`milestone${index}_year`];
+    const title = data[`milestone${index}_title`];
+    const description = data[`milestone${index}_description`] || null;
+    if (year || title) {
+      if (!year || !title) {
+        throw new Error(
+          `milestone${index}_year and milestone${index}_title must both be provided`
+        );
+      }
+      milestones.push({ yearOrDate: year, title, description, displayOrder: index });
+    }
   }
-
-  const hotelName = data.hotel_name;
-  const hotelAddress = data.hotel_address || "";
 
   return {
     brideName: data.bride_name,
@@ -147,8 +151,8 @@ function parseCoupleFile(filePath) {
     email,
     weddingDate: data.wedding_date,
     password: data.password || null,
-    hotelName,
-    hotelAddress,
+    hotelName: data.hotel_name || null,
+    hotelAddress: data.hotel_address || null,
     googleMapsLink: data.google_maps_link || null,
     poruwaTime: parseTime(data.poruwa_time, "poruwa_time"),
     weatherNote: data.weather_note || null,
@@ -158,6 +162,7 @@ function parseCoupleFile(filePath) {
       : null,
     thankYouNote: data.thank_you_note || null,
     contacts,
+    milestones,
     sourceFile: absolutePath,
   };
 }
@@ -173,162 +178,215 @@ function generatePassword(length = 14) {
   return out;
 }
 
-async function insertInvitationBundle(transaction, weddingId, details) {
-  const invitationId = crypto.randomUUID();
+async function upsertInvitation(transaction, weddingId, invitationId, details) {
+  if (invitationId) {
+    // Update existing invitation
+    await sequelize.query(
+      `UPDATE invitations SET
+        special_text = COALESCE(?, special_text),
+        poruwa_time = COALESCE(?, poruwa_time),
+        hotel_name = COALESCE(?, hotel_name),
+        hotel_address = COALESCE(?, hotel_address),
+        google_maps_link = COALESCE(?, google_maps_link),
+        weather_note = COALESCE(?, weather_note),
+        parking_note = COALESCE(?, parking_note),
+        thank_you_note = COALESCE(?, thank_you_note)
+      WHERE id = ?;`,
+      {
+        replacements: [
+          details.specialText,
+          details.poruwaTime,
+          details.hotelName,
+          details.hotelAddress,
+          details.googleMapsLink,
+          details.weatherNote,
+          details.parkingNote,
+          details.thankYouNote,
+          invitationId,
+        ],
+        transaction,
+      }
+    );
+    return invitationId;
+  }
 
+  // Create new invitation
+  const newId = crypto.randomUUID();
   await sequelize.query(
-    `
-    INSERT INTO invitations (
+    `INSERT INTO invitations (
       id, wedding_id, opening_video_url, special_text, poruwa_time, hotel_name,
       hotel_address, google_maps_link, weather_note, parking_note, thank_you_note
-    )
-    VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?);
-    `,
+    ) VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?);`,
     {
       replacements: [
-        invitationId,
-        weddingId,
-        details.specialText,
-        details.poruwaTime,
-        details.hotelName,
-        details.hotelAddress || null,
-        details.googleMapsLink,
-        details.weatherNote,
-        details.parkingNote,
-        details.thankYouNote,
+        newId, weddingId,
+        details.specialText, details.poruwaTime, details.hotelName,
+        details.hotelAddress, details.googleMapsLink,
+        details.weatherNote, details.parkingNote, details.thankYouNote,
       ],
       transaction,
     }
   );
+  return newId;
+}
 
-  const createdContacts = [];
+async function upsertContacts(transaction, weddingId, invitationId, contacts) {
+  if (contacts.length === 0) return;
 
-  for (let i = 0; i < details.contacts.length; i += 1) {
-    const contact = details.contacts[i];
+  // Remove old contacts for this invitation
+  const [existingMappings] = await sequelize.query(
+    `SELECT contact_id FROM invitation_contacts WHERE invitation_id = ?;`,
+    { replacements: [invitationId], transaction }
+  );
+  for (const mapping of existingMappings) {
+    await sequelize.query(`DELETE FROM invitation_contacts WHERE invitation_id = ? AND contact_id = ?;`,
+      { replacements: [invitationId, mapping.contact_id], transaction });
+    await sequelize.query(`DELETE FROM contacts WHERE id = ?;`,
+      { replacements: [mapping.contact_id], transaction });
+  }
+
+  // Insert new contacts
+  for (let i = 0; i < contacts.length; i++) {
+    const contact = contacts[i];
     const contactId = crypto.randomUUID();
     const mappingId = crypto.randomUUID();
 
     await sequelize.query(
-      `
-      INSERT INTO contacts (
-        id, wedding_id, contact_name, contact_phone, relation_type, created_at
-      )
-      VALUES (?, ?, ?, ?, ?, NOW());
-      `,
-      {
-        replacements: [
-          contactId,
-          weddingId,
-          contact.name,
-          contact.phone,
-          contact.relation,
-        ],
-        transaction,
-      }
+      `INSERT INTO contacts (id, wedding_id, contact_name, contact_phone, relation_type, created_at)
+       VALUES (?, ?, ?, ?, ?, NOW());`,
+      { replacements: [contactId, weddingId, contact.name, contact.phone, contact.relation], transaction }
     );
 
     await sequelize.query(
-      `
-      INSERT INTO invitation_contacts (
-        id, invitation_id, contact_id, display_order
-      )
-      VALUES (?, ?, ?, ?);
-      `,
-      {
-        replacements: [mappingId, invitationId, contactId, i + 1],
-        transaction,
-      }
+      `INSERT INTO invitation_contacts (id, invitation_id, contact_id, display_order)
+       VALUES (?, ?, ?, ?);`,
+      { replacements: [mappingId, invitationId, contactId, i + 1], transaction }
     );
-
-    createdContacts.push({
-      id: contactId,
-      name: contact.name,
-      phone: contact.phone,
-      relation: contact.relation,
-    });
   }
-
-  return { invitationId, contacts: createdContacts };
 }
 
-async function registerCoupleFromFile(filePath) {
-  const details = parseCoupleFile(filePath);
-  const plainPassword = details.password || generatePassword();
-  const saltRounds = Number(env.SALT_ROUNDS || 10);
-  const passwordHash = await bcrypt.hash(plainPassword, saltRounds);
-  const coupleNames = `${details.groomName} & ${details.brideName}`;
+async function upsertMilestones(transaction, invitationId, milestones) {
+  if (milestones.length === 0) return;
 
-  const userId = crypto.randomUUID();
-  const weddingId = crypto.randomUUID();
+  // Remove old milestones
+  await sequelize.query(`DELETE FROM milestones WHERE invitation_id = ?;`,
+    { replacements: [invitationId], transaction });
+
+  // Insert new milestones
+  for (const m of milestones) {
+    await sequelize.query(
+      `INSERT INTO milestones (id, invitation_id, year_or_date, title, description, display_order)
+       VALUES (?, ?, ?, ?, ?, ?);`,
+      { replacements: [crypto.randomUUID(), invitationId, m.yearOrDate, m.title, m.description, m.displayOrder], transaction }
+    );
+  }
+}
+
+async function registerOrUpdateCouple(filePath) {
+  const details = parseCoupleFile(filePath);
+  const coupleNames = `${details.groomName} & ${details.brideName}`;
 
   const transaction = await sequelize.transaction();
 
   try {
+    // Check if user already exists
     const [existing] = await sequelize.query(
-      `SELECT id FROM users WHERE email = ? LIMIT 1;`,
-      {
-        replacements: [details.email],
-        transaction,
-      }
+      `SELECT u.id AS user_id, w.id AS wedding_id
+       FROM users u
+       LEFT JOIN weddings w ON w.user_id = u.id
+       WHERE u.email = ? LIMIT 1;`,
+      { replacements: [details.email], transaction }
     );
+
+    let userId, weddingId, isUpdate = false, plainPassword = null;
 
     if (existing.length > 0) {
-      throw new Error(`A user with email "${details.email}" already exists.`);
+      // UPDATE existing couple
+      isUpdate = true;
+      userId = existing[0].user_id;
+      weddingId = existing[0].wedding_id;
+
+      // Update password if provided
+      if (details.password) {
+        const saltRounds = Number(env.SALT_ROUNDS || 10);
+        const passwordHash = await bcrypt.hash(details.password, saltRounds);
+        await sequelize.query(`UPDATE users SET password_hash = ?, updated_at = NOW() WHERE id = ?;`,
+          { replacements: [passwordHash, userId], transaction });
+        plainPassword = details.password;
+      }
+
+      // Update wedding details
+      await sequelize.query(
+        `UPDATE weddings SET
+          couple_names = ?,
+          bride_name = ?,
+          groom_name = ?,
+          wedding_date = ?,
+          updated_at = NOW()
+        WHERE id = ?;`,
+        { replacements: [coupleNames, details.brideName, details.groomName, `${details.weddingDate} 00:00:00`, weddingId], transaction }
+      );
+
+      // Get or create invitation
+      const [invRows] = await sequelize.query(
+        `SELECT id FROM invitations WHERE wedding_id = ? LIMIT 1;`,
+        { replacements: [weddingId], transaction }
+      );
+      const existingInvId = invRows.length > 0 ? invRows[0].id : null;
+
+      const invitationId = await upsertInvitation(transaction, weddingId, existingInvId, details);
+      await upsertContacts(transaction, weddingId, invitationId, details.contacts);
+      await upsertMilestones(transaction, invitationId, details.milestones);
+
+      await transaction.commit();
+
+      return {
+        mode: "updated",
+        userId, weddingId, invitationId, coupleNames,
+        email: details.email, weddingDate: details.weddingDate,
+        hotelName: details.hotelName, poruwaTime: details.poruwaTime,
+        password: plainPassword, sourceFile: details.sourceFile,
+        milestoneCount: details.milestones.length,
+        contactCount: details.contacts.length,
+      };
     }
 
+    // NEW registration
+    plainPassword = details.password;
+    const saltRounds = Number(env.SALT_ROUNDS || 10);
+    const passwordHash = await bcrypt.hash(plainPassword, saltRounds);
+
+    userId = crypto.randomUUID();
+    weddingId = crypto.randomUUID();
+
     await sequelize.query(
-      `
-      INSERT INTO users (id, email, password_hash, role, created_at, updated_at)
-      VALUES (?, ?, ?, 'COUPLE', NOW(), NOW());
-      `,
-      {
-        replacements: [userId, details.email, passwordHash],
-        transaction,
-      }
+      `INSERT INTO users (id, email, password_hash, role, created_at, updated_at)
+       VALUES (?, ?, ?, 'COUPLE', NOW(), NOW());`,
+      { replacements: [userId, details.email, passwordHash], transaction }
     );
 
     await sequelize.query(
-      `
-      INSERT INTO weddings (
-        id, user_id, couple_names, bride_name, groom_name, wedding_date,
-        schedule_image_url, created_at, updated_at
-      )
-      VALUES (?, ?, ?, ?, ?, ?, NULL, NOW(), NOW());
-      `,
-      {
-        replacements: [
-          weddingId,
-          userId,
-          coupleNames,
-          details.brideName,
-          details.groomName,
-          `${details.weddingDate} 00:00:00`,
-        ],
-        transaction,
-      }
+      `INSERT INTO weddings (id, user_id, couple_names, bride_name, groom_name, wedding_date, schedule_image_url, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, NULL, NOW(), NOW());`,
+      { replacements: [weddingId, userId, coupleNames, details.brideName, details.groomName, `${details.weddingDate} 00:00:00`], transaction }
     );
 
-    const invitation = await insertInvitationBundle(
-      transaction,
-      weddingId,
-      details
-    );
+    const invitationId = await upsertInvitation(transaction, weddingId, null, details);
+    await upsertContacts(transaction, weddingId, invitationId, details.contacts);
+    await upsertMilestones(transaction, invitationId, details.milestones);
 
     await transaction.commit();
 
     return {
-      userId,
-      weddingId,
-      invitationId: invitation.invitationId,
-      contacts: invitation.contacts,
-      coupleNames,
-      email: details.email,
-      weddingDate: details.weddingDate,
-      hotelName: details.hotelName,
-      poruwaTime: details.poruwaTime,
+      mode: "created",
+      userId, weddingId, invitationId, coupleNames,
+      email: details.email, weddingDate: details.weddingDate,
+      hotelName: details.hotelName, poruwaTime: details.poruwaTime,
       password: plainPassword,
       passwordWasGenerated: !details.password,
       sourceFile: details.sourceFile,
+      milestoneCount: details.milestones.length,
+      contactCount: details.contacts.length,
     };
   } catch (err) {
     await transaction.rollback();
@@ -344,34 +402,42 @@ async function main() {
     process.exit(fileArg ? 0 : 1);
   }
 
-  const result = await registerCoupleFromFile(fileArg);
+  const result = await registerOrUpdateCouple(fileArg);
 
-  console.log("\nCouple registered successfully.\n");
+  if (result.mode === "updated") {
+    console.log("\nCouple UPDATED successfully.\n");
+  } else {
+    console.log("\nCouple REGISTERED successfully.\n");
+  }
+
   console.log(`  Couple:       ${result.coupleNames}`);
   console.log(`  Wedding date: ${result.weddingDate}`);
-  console.log(`  Venue:        ${result.hotelName}`);
+  console.log(`  Venue:        ${result.hotelName || "—"}`);
   console.log(`  Poruwa time:  ${result.poruwaTime || "—"}`);
   console.log(`  Login email:  ${result.email}`);
-  console.log(
-    `  Password:     ${result.password}${
-      result.passwordWasGenerated ? "  (auto-generated — copy now)" : ""
-    }`
-  );
+  if (result.password) {
+    console.log(
+      `  Password:     ${result.password}${
+        result.passwordWasGenerated ? "  (auto-generated — copy now)" : ""
+      }`
+    );
+  } else {
+    console.log(`  Password:     (unchanged)`);
+  }
   console.log(`  User ID:      ${result.userId}`);
   console.log(`  Wedding ID:   ${result.weddingId}`);
   console.log(`  Invitation:   ${result.invitationId}`);
-  if (result.contacts?.length) {
-    console.log("  Contacts:");
-    result.contacts.forEach((c, i) => {
-      console.log(
-        `    ${i + 1}. ${c.name} (${c.relation || "—"}) · ${c.phone}`
-      );
-    });
-  }
+  console.log(`  Contacts:     ${result.contactCount}`);
+  console.log(`  Milestones:   ${result.milestoneCount}`);
   console.log(`  Source file:  ${result.sourceFile}\n`);
-  console.log(
-    "Share the email and password with the couple securely. The password is not stored in plain text.\n"
-  );
+
+  if (result.mode === "created") {
+    console.log(
+      "Share the email and password with the couple securely. The password is not stored in plain text.\n"
+    );
+  } else {
+    console.log("Existing couple data has been updated with the new values from the file.\n");
+  }
 }
 
 if (require.main === module) {
@@ -392,7 +458,6 @@ if (require.main === module) {
 }
 
 module.exports = {
-  registerCoupleFromFile,
+  registerOrUpdateCouple,
   parseCoupleFile,
-  insertInvitationBundle,
 };

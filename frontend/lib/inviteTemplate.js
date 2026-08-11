@@ -7,9 +7,9 @@
  */
 
 const DEFAULTS = {
-  groomName: "Kasun",
-  brideName: "Hiruni",
-  coupleNames: "Kasun & Hiruni",
+  groomName: "Groom",
+  brideName: "Bride",
+  coupleNames: "Groom & Bride",
   formattedDate: "22 . 07 . 2026",
   weekday: "WEDNESDAY",
   longDate: "22 JULY 2026",
@@ -26,8 +26,8 @@ const DEFAULTS = {
   tableNumber: "Table 12",
   maxGuests: 1,
   contacts: [
-    { name: "Hiruni", phone: "077 123 4567" },
-    { name: "Kasun", phone: "071 987 4561" },
+    { name: "Bride", phone: "000 000 0000" },
+    { name: "Groom", phone: "000 000 0000" },
   ],
   images: [],
 };

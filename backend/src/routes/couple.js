@@ -12,6 +12,8 @@ const {
   createGuest,
   updateGuest,
   deleteGuest,
+  cancelRsvp,
+  resendInvite,
 } = require("../controllers/guestsController");
 const {
   listSchedule,
@@ -21,6 +23,10 @@ const {
   deleteScheduleEvent,
   downloadSchedule,
 } = require("../controllers/scheduleController");
+const {
+  listNotifications,
+  markAllRead,
+} = require("../controllers/notificationsController");
 
 const router = express.Router();
 
@@ -34,6 +40,8 @@ router.get("/guests/:id", requireAuth, getGuest);
 router.post("/guests", requireAuth, createGuest);
 router.put("/guests/:id", requireAuth, updateGuest);
 router.delete("/guests/:id", requireAuth, deleteGuest);
+router.post("/guests/:id/cancel-rsvp", requireAuth, cancelRsvp);
+router.post("/guests/:id/resend-invite", requireAuth, resendInvite);
 
 router.get("/schedule", requireAuth, listSchedule);
 router.get("/schedule/download", requireAuth, downloadSchedule);
@@ -41,5 +49,8 @@ router.get("/schedule/:id", requireAuth, getScheduleEvent);
 router.post("/schedule", requireAuth, createScheduleEvent);
 router.put("/schedule/:id", requireAuth, updateScheduleEvent);
 router.delete("/schedule/:id", requireAuth, deleteScheduleEvent);
+
+router.get("/notifications", requireAuth, listNotifications);
+router.post("/notifications/mark-read", requireAuth, markAllRead);
 
 module.exports = router;

@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ExternalLink } from "lucide-react";
+import { NotificationBell } from "@/components/ui/NotificationPanel";
 import InvitationPage from "@/components/invite/InvitationPage";
 import { apiRequest } from "@/lib/api";
 import { getAccessToken, clearAuthSession } from "@/lib/auth";
@@ -104,21 +105,26 @@ export default function InvitePage() {
 
   return (
     <div className="p-6 md:p-8 lg:p-12 w-full flex flex-col h-full min-h-[calc(100vh-80px)] md:min-h-screen">
-      <div className="mb-6 md:mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-        <div>
-          <h1 className="font-serif font-bold text-3xl md:text-4xl text-navy mb-2">
-            Invitation Preview
-          </h1>
-          <p className="text-muted text-sm md:text-base">
-            Preview the cover section of your wedding invite, then open the full
-            template
-          </p>
-        </div>
+      {/* Mobile header */}
+      <div className="md:hidden mb-6">
+        <h1 className="font-serif font-bold text-3xl text-navy">Invitation</h1>
+      </div>
 
+      {/* Desktop header — matches Dashboard/Guests/Schedule style */}
+      <div className="hidden md:flex justify-between items-center mb-8 bg-white p-5 rounded-2xl border border-border">
+        <h1 className="font-serif font-bold text-2xl text-navy">Invitation</h1>
+        <NotificationBell />
+      </div>
+
+      {/* Sub-heading + View full invitation button */}
+      <div className="mb-6 md:mb-8 bg-white rounded-2xl border border-border p-5 card-shadow flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <p className="text-muted text-sm md:text-base">
+          Preview the cover section of your wedding invite, then open the full template
+        </p>
         <button
           type="button"
           onClick={openFullInvitation}
-          className="inline-flex items-center gap-2 self-start sm:self-auto bg-navy text-white font-medium px-4 py-2.5 rounded-xl hover:bg-navy/90 transition-colors"
+          className="inline-flex items-center gap-2 self-start sm:self-auto bg-navy text-white font-medium px-4 py-2.5 rounded-xl hover:bg-navy/90 transition-colors whitespace-nowrap"
         >
           <ExternalLink className="w-4 h-4" strokeWidth={2.25} />
           View full invitation

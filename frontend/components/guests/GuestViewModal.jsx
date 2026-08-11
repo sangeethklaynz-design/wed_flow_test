@@ -115,6 +115,15 @@ export default function GuestViewModal({ open, onClose, guest }) {
               {guest.guestNotes ? guest.guestNotes : "—"}
             </p>
           </div>
+
+          <div className="bg-white rounded-2xl border border-border p-4 sm:p-5">
+            <p className="text-sm font-medium text-muted block mb-1">
+              RSVP Change Request Note
+            </p>
+            <p className="text-muted text-base leading-relaxed whitespace-pre-wrap break-words">
+              {guest.changeRequestReason ? guest.changeRequestReason : "—"}
+            </p>
+          </div>
         </div>
 
         <div className="pt-6">

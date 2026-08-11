@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Search } from "lucide-react";
+import { NotificationBell } from "@/components/ui/NotificationPanel";
 import clsx from "clsx";
 import GuestCard from "@/components/guests/GuestCard";
 import GuestTable from "@/components/guests/GuestTable";
@@ -162,6 +163,32 @@ export default function GuestsPage() {
     }
   };
 
+  const handleCancelRsvp = async (guest) => {
+    if (!confirm(`Cancel RSVP for ${guest.name}? Their status will be set to Declined.`)) return;
+    try {
+      await apiRequest(`/api/couple/guests/${guest.id}/cancel-rsvp`, {
+        method: "POST",
+        token: getAccessToken(),
+      });
+      await loadGuests();
+    } catch (err) {
+      alert(err.message || "Failed to cancel RSVP");
+    }
+  };
+
+  const handleResendInvite = async (guest) => {
+    if (!confirm(`Resend invitation to ${guest.name}? This will reset their RSVP so they can respond again.`)) return;
+    try {
+      await apiRequest(`/api/couple/guests/${guest.id}/resend-invite`, {
+        method: "POST",
+        token: getAccessToken(),
+      });
+      await loadGuests();
+    } catch (err) {
+      alert(err.message || "Failed to resend invite");
+    }
+  };
+
   const handleShare = async (guest) => {
     const prefersNativeShare =
       typeof window !== "undefined" &&
@@ -181,8 +208,9 @@ export default function GuestsPage() {
         <h1 className="font-serif font-bold text-3xl text-navy">Guests</h1>
       </div>
 
-      <div className="hidden md:flex items-center mb-8 bg-white p-5 rounded-2xl border border-border">
+      <div className="hidden md:flex justify-between items-center mb-8 bg-white p-5 rounded-2xl border border-border">
         <h1 className="font-serif font-bold text-2xl text-navy">Guests</h1>
+        <NotificationBell />
       </div>
 
       {error ? (
@@ -280,6 +308,8 @@ export default function GuestsPage() {
             onEditGuest={(g) => setEditGuest(g)}
             onDeleteGuest={(g) => setDeleteGuest(g)}
             onShareGuest={handleShare}
+            onCancelRsvp={handleCancelRsvp}
+            onResendInvite={handleResendInvite}
           />
         ) : null}
       </div>

@@ -5,6 +5,7 @@ const {
   loadGuestByToken,
   mapGuestTemplateBlock,
 } = require("../utils/invitationTemplate");
+const { createNotification } = require("./notificationsController");
 
 async function getPublicInvite(req, res) {
   try {
@@ -194,6 +195,9 @@ async function submitPublicRsvp(req, res) {
     await transaction.commit();
 
     const updated = await loadGuestByToken(token);
+    const guestName = updated.full_name || "A guest";
+    const rsvpLabel = attendingStatus === "ATTENDING" ? "confirmed attendance" : "declined";
+    await createNotification(row.wedding_id, "rsvp_submitted", "New RSVP received", `${guestName} has ${rsvpLabel}.`);
 
     return res.status(200).json({
       message: "RSVP saved",
@@ -249,4 +253,46 @@ async function downloadPublicSchedule(req, res) {
   }
 }
 
-module.exports = { getPublicInvite, submitPublicRsvp, downloadPublicSchedule };
+async function submitChangeRequest(req, res) {
+  try {
+    const token = String(req.params.token || "").trim();
+    if (!token) {
+      return res.status(400).json({ error: "Bad Request", message: "Token is required" });
+    }
+
+    const row = await loadGuestByToken(token);
+    if (!row) {
+      return res.status(404).json({ error: "Not Found", message: "Invitation not found" });
+    }
+
+    if (!row.submitted_at) {
+      return res.status(400).json({ error: "Bad Request", message: "No RSVP has been submitted yet" });
+    }
+
+    const reason = String(req.body?.reason || "").trim();
+    if (!reason) {
+      return res.status(400).json({ error: "Bad Request", message: "Reason is required" });
+    }
+
+    const id = crypto.randomUUID();
+    await sequelize.query(
+      `INSERT INTO rsvp_change_requests (id, guest_id, wedding_id, reason) VALUES (?, ?, ?, ?);`,
+      { replacements: [id, row.guest_id, row.wedding_id, reason] }
+    );
+
+    await sequelize.query(
+      `UPDATE guests SET has_change_request = 1 WHERE id = ?;`,
+      { replacements: [row.guest_id] }
+    );
+
+    const guestName = row.full_name || "A guest";
+    await createNotification(row.wedding_id, "change_request", "RSVP change requested", `${guestName} has requested to change their RSVP.`);
+
+    return res.status(201).json({ message: "Change request submitted", id });
+  } catch (err) {
+    console.error("submitChangeRequest error:", err);
+    return res.status(500).json({ error: "Internal Server Error", message: "Failed to submit change request" });
+  }
+}
+
+module.exports = { getPublicInvite, submitPublicRsvp, downloadPublicSchedule, submitChangeRequest };

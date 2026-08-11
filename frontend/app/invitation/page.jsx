@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import InvitationExperience from "@/components/invite/InvitationExperience";
+import InvitationExperienceSafe from "@/components/invite/InvitationExperienceSafe";
+import InvitationPreviewBackButton from "@/components/invite/InvitationPreviewBackButton";
 import { apiRequest } from "@/lib/api";
 import { getAccessToken, clearAuthSession } from "@/lib/auth";
 
@@ -53,6 +54,8 @@ export default function PublicInvitationPage() {
 
   return (
     <div className="min-h-screen-zoom w-full relative flex flex-col items-center bg-gradient-to-br from-[#F5EFE6] via-[#E8DFD8] to-[#DCD3CB] overflow-x-hidden md:py-10">
+      <InvitationPreviewBackButton />
+
       {error ? (
         <div className="mb-4 w-[390px] bg-red-50 border border-red-100 text-red-600 text-sm rounded-2xl px-4 py-3">
           {error}
@@ -64,7 +67,10 @@ export default function PublicInvitationPage() {
       ) : null}
 
       {templateData ? (
-        <InvitationExperience templateData={templateData} interactive={false} />
+        <InvitationExperienceSafe
+          templateData={templateData}
+          interactive={false}
+        />
       ) : null}
     </div>
   );

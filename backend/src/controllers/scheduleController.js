@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 const { sequelize } = require("../models");
 const { getWeddingForUser, toDateOnly } = require("../utils/wedding");
+const { createNotification } = require("./notificationsController");
 
 function timeToMinutes(value) {
   if (!value || !/^\d{2}:\d{2}$/.test(String(value))) return null;
@@ -269,6 +270,7 @@ async function createScheduleEvent(req, res) {
     );
 
     const rows = await fetchScheduleRows(wedding.id, eventId);
+    await createNotification(wedding.id, "schedule_added", "Event added", `"${payload.title}" has been added to the schedule.`);
     return res.status(201).json({
       event: mapEventRow(rows[0], wedding.wedding_date),
     });
@@ -362,6 +364,7 @@ async function updateScheduleEvent(req, res) {
     );
 
     const rows = await fetchScheduleRows(wedding.id, eventId);
+    await createNotification(wedding.id, "schedule_updated", "Event updated", `"${rows[0].title}" has been updated.`);
     return res.status(200).json({
       event: mapEventRow(rows[0], wedding.wedding_date),
     });
@@ -393,6 +396,7 @@ async function deleteScheduleEvent(req, res) {
       });
     }
 
+    const deletedTitle = rows[0].title;
     await sequelize.query(
       `DELETE FROM schedule_events WHERE id = ? AND wedding_id = ?;`,
       {
@@ -400,6 +404,7 @@ async function deleteScheduleEvent(req, res) {
       }
     );
 
+    await createNotification(wedding.id, "schedule_deleted", "Event removed", `"${deletedTitle}" has been removed from the schedule.`);
     return res.status(200).json({
       message: "Schedule event deleted",
       id: eventId,

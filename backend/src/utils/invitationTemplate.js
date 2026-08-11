@@ -121,6 +121,27 @@ async function syncInvitationMediaToDb(weddingId, invitationId, diskVideo, diskI
   }
 }
 
+async function loadScheduleEventsForWedding(weddingId) {
+  const [rows] = await sequelize.query(
+    `
+    SELECT id, event_time, end_time, title, location, special_notes, display_order
+    FROM schedule_events
+    WHERE wedding_id = ?
+    ORDER BY event_time ASC, display_order ASC;
+    `,
+    { replacements: [weddingId] }
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    startTime: r.event_time ? String(r.event_time).slice(0, 5) : null,
+    endTime: r.end_time ? String(r.end_time).slice(0, 5) : null,
+    location: r.location || "",
+    specialNotes: r.special_notes || "",
+    displayOrder: Number(r.display_order) || 1,
+  }));
+}
+
 async function loadStaticInvitationBundle(weddingId) {
   const wedding = await loadWeddingRow(weddingId);
   if (!wedding) return null;
@@ -298,6 +319,7 @@ async function loadStaticInvitationBundle(weddingId) {
       displayOrder: img.display_order,
     })),
     milestones,
+    scheduleEvents: await loadScheduleEventsForWedding(weddingId),
     contacts,
   };
 }
@@ -365,6 +387,7 @@ function buildTemplateResponse(staticBundle, guestRow = null) {
       invitation: staticBundle.invitation,
       images: staticBundle.images,
       milestones: staticBundle.milestones,
+      scheduleEvents: staticBundle.scheduleEvents || [],
       contacts: staticBundle.contacts,
     },
     guest: guestRow ? mapGuestTemplateBlock(guestRow) : null,

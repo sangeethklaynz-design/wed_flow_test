@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell } from "lucide-react";
+import { NotificationBell } from "@/components/ui/NotificationPanel";
 import StatCard from "@/components/dashboard/StatCard";
 import RsvpBreakdown from "@/components/dashboard/RsvpBreakdown";
 import Countdown from "@/components/dashboard/Countdown";
@@ -129,9 +129,7 @@ export default function DashboardPage() {
 
       <div className="hidden md:flex justify-between items-center mb-8 bg-white p-5 rounded-2xl border border-border">
         <h1 className="font-serif font-bold text-2xl text-navy">Dashboard</h1>
-        <button className="text-navy p-2 hover:bg-gray-100 rounded-full transition-colors">
-          <Bell className="w-5 h-5" />
-        </button>
+        <NotificationBell />
       </div>
 
       <h2 className="md:hidden font-serif font-bold text-3xl text-navy mb-6">

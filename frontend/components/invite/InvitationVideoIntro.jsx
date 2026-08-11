@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { FastForward } from "lucide-react";
 import { resolveMediaUrl } from "@/lib/api";
 
 /** Match invitation cover frame */
@@ -8,7 +9,7 @@ export const INVITE_FRAME_W = 390;
 export const INVITE_FRAME_H = 844;
 
 /**
- * Intro video locked to invitation cover size (390×844).
+ * Intro video locked to invitation cover size (390x844).
  * Music stays synced with the video: we never fade/unmount early.
  * On end: mute + pause, then fade out and hand off to the template.
  */
@@ -16,7 +17,9 @@ export default function InvitationVideoIntro({
   videoUrl,
   onFadeStart,
   onComplete,
+  onSkip,
   autoPlay = true,
+  showSkipButton = false,
 }) {
   const resolvedUrl = resolveMediaUrl(videoUrl);
   const videoRef = useRef(null);
@@ -79,7 +82,7 @@ export default function InvitationVideoIntro({
         if (!cancelled) setNeedsTap(false);
       } catch {
         if (cancelled) return;
-        // Browser blocked autoplay with sound — require a tap so music plays with video
+        // Browser blocked autoplay with sound - require a tap so music plays with video
         setNeedsTap(true);
         try {
           await tryPlay(false);
@@ -95,6 +98,11 @@ export default function InvitationVideoIntro({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resolvedUrl, autoPlay]);
+
+  const handleSkip = () => {
+    stopPlayback();
+    onSkip?.();
+  };
 
   const handleTapToPlay = async () => {
     try {
@@ -149,6 +157,19 @@ export default function InvitationVideoIntro({
           </span>
         </button>
       ) : null}
+
+      {showSkipButton && !fading ? (
+        <button
+          type="button"
+          onClick={handleSkip}
+          className="absolute right-4 bottom-4 z-50 inline-flex items-center justify-center w-11 h-11 rounded-xl bg-white/95 backdrop-blur-sm border border-border card-shadow hover:bg-cream transition-colors pointer-events-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e69e46]/60"
+          aria-label="Skip invitation video"
+        >
+          <FastForward className="w-5 h-5 text-gold-text" strokeWidth={2.4} />
+        </button>
+      ) : null}
     </div>
   );
 }
+
+

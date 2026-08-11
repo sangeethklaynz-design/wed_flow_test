@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Share } from "lucide-react";
+import { Share, XCircle, RotateCcw, Eye, Pencil, Trash2 } from "lucide-react";
 import { StatusBadge } from "@/components/guests/GuestCard";
 import RowActionsMenu from "@/components/ui/RowActionsMenu";
 
@@ -24,6 +24,8 @@ export default function GuestTable({
   onEditGuest,
   onDeleteGuest,
   onShareGuest,
+  onCancelRsvp,
+  onResendInvite,
 }) {
   const [openMenuId, setOpenMenuId] = useState(null);
 
@@ -49,6 +51,9 @@ export default function GuestTable({
               </th>
               <th className="px-6 py-4 text-xs font-medium text-muted uppercase tracking-wide">
                 Status
+              </th>
+              <th className="px-6 py-4 text-xs font-medium text-muted uppercase tracking-wide">
+                Request for Change
               </th>
               <th className="px-6 py-4 text-xs font-medium text-muted uppercase tracking-wide">
                 Guest Notes
@@ -84,6 +89,18 @@ export default function GuestTable({
                   </div>
                 </td>
 
+                <td className="px-6 py-4">
+                  <div className="flex justify-center">
+                    {guest.hasChangeRequest ? (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                        Yes
+                      </span>
+                    ) : (
+                      <span className="text-sm text-muted">No</span>
+                    )}
+                  </div>
+                </td>
+
                 <td className="px-6 py-4 max-w-[260px]">
                   <span className="block text-sm text-muted truncate">
                     {guestNotesPreview(guest.guestNotes)}
@@ -113,14 +130,28 @@ export default function GuestTable({
                         },
                         {
                           label: "View details",
+                          icon: Eye,
                           onClick: () => onViewGuest?.(guest),
                         },
                         {
                           label: "Edit details",
+                          icon: Pencil,
                           onClick: () => onEditGuest?.(guest),
                         },
                         {
+                          label: "Cancel RSVP",
+                          icon: XCircle,
+                          destructive: true,
+                          onClick: () => onCancelRsvp?.(guest),
+                        },
+                        {
+                          label: "Resend E-Invite",
+                          icon: RotateCcw,
+                          onClick: () => onResendInvite?.(guest),
+                        },
+                        {
                           label: "Delete guest",
+                          icon: Trash2,
                           destructive: true,
                           onClick: () => onDeleteGuest?.(guest),
                         },

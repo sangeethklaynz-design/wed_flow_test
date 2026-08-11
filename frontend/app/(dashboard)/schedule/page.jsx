@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Download, Plus } from "lucide-react";
+import { NotificationBell } from "@/components/ui/NotificationPanel";
 import ScheduleEventCard from "@/components/schedule/ScheduleEventCard";
 import ScheduleTable from "@/components/schedule/ScheduleTable";
 import AddScheduleEventModal from "@/components/schedule/AddScheduleEventModal";
@@ -259,8 +260,9 @@ export default function SchedulePage() {
       </div>
 
       {/* Desktop header */}
-      <div className="hidden md:flex items-center mb-8 bg-white p-5 rounded-2xl border border-border">
+      <div className="hidden md:flex justify-between items-center mb-8 bg-white p-5 rounded-2xl border border-border">
         <h1 className="font-serif font-bold text-2xl text-navy">Schedule</h1>
+        <NotificationBell />
       </div>
 
       {/* Desktop controls */}
@@ -301,22 +303,7 @@ export default function SchedulePage() {
         <p className="text-muted text-sm mb-6">Loading schedule…</p>
       ) : null}
 
-      {!loading && notificationPermission !== "granted" ? (
-        <div className="mb-6 bg-white border border-border rounded-2xl px-4 py-3 card-shadow flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <p className="text-sm text-muted">
-            Turn on browser notifications to get reminders when your events start.
-          </p>
-          {notificationSupported ? (
-            <button
-              type="button"
-              onClick={requestNotifications}
-              className="inline-flex items-center justify-center bg-navy text-white text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-navy/90 transition-colors whitespace-nowrap"
-            >
-              Enable notifications
-            </button>
-          ) : null}
-        </div>
-      ) : null}
+      {/* Notification container hidden for this version */}
 
       {/* Mobile cards */}
       <div className="md:hidden space-y-3 mt-6">

@@ -9,6 +9,7 @@ import {
   splitSpecialText,
   buildGoogleMapsUrl,
 } from "@/lib/inviteTemplate";
+import RsvpChangeRequestForm from "@/components/invite/RsvpChangeRequestForm";
 
 const JOURNEY_FALLBACKS = [
   "/invitation/7.2.png",
@@ -350,104 +351,104 @@ export default function InvitationPage({
       </div>
 
       {/* RSVP Form Inputs container (Y: 2010px -> Y: 2240px, centered at left-[35px] with W: 320px) */}
-      <form onSubmit={handleSubmit} className="absolute top-[2010px] left-[35px] w-[320px] z-10 flex flex-col gap-[18px] text-left">
-        
-        {/* Will You Attend */}
-        <div className="flex flex-col items-start" ref={dropdownRef}>
-          <label className="font-quattrocento-custom font-normal text-[15px] text-[#1B3601] tracking-normal uppercase mb-1.5 text-left w-full pl-2">
-            Will you attend?
-          </label>
-          <div className="relative w-[320px]">
-            <div 
-              className={`w-full h-[36px] bg-white border border-[#D1D1D1] text-navy font-sans text-xs px-4 rounded-[20px] outline-none flex items-center justify-between transition-colors ${
-                rsvpLocked
-                  ? "opacity-70 cursor-not-allowed bg-[#F7F4EF]"
-                  : "cursor-pointer focus:border-[#7732A4]/50"
-              }`}
-              onClick={() => {
-                if (rsvpLocked || !interactive) return;
-                setAttendanceOpen(!attendanceOpen);
-              }}
-              aria-disabled={rsvpLocked}
-            >
-              <span>
-                {attendance === "yes" 
-                  ? "Yes, I will attend" 
-                  : attendance === "no" 
-                    ? "No, I cannot attend" 
-                    : "Please Select"}
-              </span>
-              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 292.4 292.4" fill="#1b3601" className={`transition-transform duration-200 ${attendanceOpen ? 'rotate-180' : ''}`}>
-                <path d="M287 69.4a17.6 17.6 0 0 0-13-5.4H18.4c-5 0-9.3 1.8-12.9 5.4A17.6 17.6 0 0 0 0 82.2c0 5 1.8 9.3 5.4 12.9l128 127.9c3.6 3.6 7.8 5.4 12.8 5.4s9.2-1.8 12.8-5.4L287 95c3.5-3.5 5.4-7.8 5.4-12.8 0-5-1.9-9.2-5.5-12.8z"/>
-              </svg>
-            </div>
-
-            {attendanceOpen && !rsvpLocked && (
-              <div className="absolute top-[42px] left-0 w-full bg-white border border-[#D1D1D1] rounded-[16px] shadow-lg z-[100] overflow-hidden font-sans text-xs divide-y divide-[#F0F0F0]">
-                <div 
-                  className={`px-4 py-3 cursor-pointer hover:bg-[#FAF6F0] transition-colors ${attendance === "" ? "font-bold text-[#7732A4] bg-[#FAF6F0]" : "text-navy"}`}
-                  onClick={() => { setAttendance(""); setAttendanceOpen(false); }}
-                >
-                  Please Select
-                </div>
-                <div 
-                  className={`px-4 py-3 cursor-pointer hover:bg-[#FAF6F0] transition-colors ${attendance === "yes" ? "font-bold text-[#7732A4] bg-[#FAF6F0]" : "text-navy"}`}
-                  onClick={() => { setAttendance("yes"); setAttendanceOpen(false); }}
-                >
-                  Yes, I will attend
-                </div>
-                <div 
-                  className={`px-4 py-3 cursor-pointer hover:bg-[#FAF6F0] transition-colors ${attendance === "no" ? "font-bold text-[#7732A4] bg-[#FAF6F0]" : "text-navy"}`}
-                  onClick={() => { setAttendance("no"); setAttendanceOpen(false); }}
-                >
-                  No, I cannot attend
-                </div>
+      {rsvpLocked && guestToken ? (
+        <div className="absolute top-[2010px] left-[35px] w-[320px] z-10">
+          <RsvpChangeRequestForm
+            guestToken={guestToken}
+            rsvp={t.rsvp}
+            maxGuests={t.maxGuests}
+          />
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="absolute top-[2010px] left-[35px] w-[320px] z-10 flex flex-col gap-[18px] text-left">
+          
+          {/* Will You Attend */}
+          <div className="flex flex-col items-start" ref={dropdownRef}>
+            <label className="font-quattrocento-custom font-normal text-[15px] text-[#1B3601] tracking-normal uppercase mb-1.5 text-left w-full pl-2">
+              Will you attend?
+            </label>
+            <div className="relative w-[320px]">
+              <div 
+                className="w-full h-[36px] bg-white border border-[#D1D1D1] text-navy font-sans text-xs px-4 rounded-[20px] outline-none flex items-center justify-between transition-colors cursor-pointer focus:border-[#7732A4]/50"
+                onClick={() => {
+                  if (!interactive) return;
+                  setAttendanceOpen(!attendanceOpen);
+                }}
+              >
+                <span>
+                  {attendance === "yes" 
+                    ? "Yes, I will attend" 
+                    : attendance === "no" 
+                      ? "No, I cannot attend" 
+                      : "Please Select"}
+                </span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 292.4 292.4" fill="#1b3601" className={`transition-transform duration-200 ${attendanceOpen ? 'rotate-180' : ''}`}>
+                  <path d="M287 69.4a17.6 17.6 0 0 0-13-5.4H18.4c-5 0-9.3 1.8-12.9 5.4A17.6 17.6 0 0 0 0 82.2c0 5 1.8 9.3 5.4 12.9l128 127.9c3.6 3.6 7.8 5.4 12.8 5.4s9.2-1.8 12.8-5.4L287 95c3.5-3.5 5.4-7.8 5.4-12.8 0-5-1.9-9.2-5.5-12.8z"/>
+                </svg>
               </div>
-            )}
+
+              {attendanceOpen && (
+                <div className="absolute top-[42px] left-0 w-full bg-white border border-[#D1D1D1] rounded-[16px] shadow-lg z-[100] overflow-hidden font-sans text-xs divide-y divide-[#F0F0F0]">
+                  <div 
+                    className={`px-4 py-3 cursor-pointer hover:bg-[#FAF6F0] transition-colors ${attendance === "" ? "font-bold text-[#7732A4] bg-[#FAF6F0]" : "text-navy"}`}
+                    onClick={() => { setAttendance(""); setAttendanceOpen(false); }}
+                  >
+                    Please Select
+                  </div>
+                  <div 
+                    className={`px-4 py-3 cursor-pointer hover:bg-[#FAF6F0] transition-colors ${attendance === "yes" ? "font-bold text-[#7732A4] bg-[#FAF6F0]" : "text-navy"}`}
+                    onClick={() => { setAttendance("yes"); setAttendanceOpen(false); }}
+                  >
+                    Yes, I will attend
+                  </div>
+                  <div 
+                    className={`px-4 py-3 cursor-pointer hover:bg-[#FAF6F0] transition-colors ${attendance === "no" ? "font-bold text-[#7732A4] bg-[#FAF6F0]" : "text-navy"}`}
+                    onClick={() => { setAttendance("no"); setAttendanceOpen(false); }}
+                  >
+                    No, I cannot attend
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Number of Guests */}
-        <div className="flex flex-col items-start">
-          <label className="font-quattrocento-custom font-normal text-[15px] text-[#1B3601] tracking-normal uppercase mb-1.5 text-left w-full pl-2">
-            Number of guests
-          </label>
-          <input 
-            type="text" 
-            placeholder="e.g. 2"
-            value={guests}
-            onChange={(e) => setGuests(e.target.value)}
-            disabled={rsvpLocked || !interactive}
-            className="w-[320px] h-[36px] bg-white border border-[#D1D1D1] text-navy font-sans text-xs px-4 rounded-[20px] outline-none focus:border-[#7732A4]/50 transition-colors disabled:opacity-70 disabled:cursor-not-allowed disabled:bg-[#F7F4EF]"
-          />
-        </div>
+          {/* Number of Guests */}
+          <div className="flex flex-col items-start">
+            <label className="font-quattrocento-custom font-normal text-[15px] text-[#1B3601] tracking-normal uppercase mb-1.5 text-left w-full pl-2">
+              Number of guests
+            </label>
+            <input 
+              type="text" 
+              placeholder="e.g. 2"
+              value={guests}
+              onChange={(e) => setGuests(e.target.value)}
+              disabled={!interactive}
+              className="w-[320px] h-[36px] bg-white border border-[#D1D1D1] text-navy font-sans text-xs px-4 rounded-[20px] outline-none focus:border-[#7732A4]/50 transition-colors disabled:opacity-70 disabled:cursor-not-allowed disabled:bg-[#F7F4EF]"
+            />
+          </div>
 
-        {/* Your Wishes For Us */}
-        <div className="flex flex-col items-start">
-          <label className="font-quattrocento-custom font-normal text-[15px] text-[#1B3601] tracking-normal uppercase mb-1.5 text-left w-full pl-2">
-            Your wishes for us
-          </label>
-          <textarea 
-            placeholder="Write your wishes....."
-            rows="3"
-            value={wishes}
-            onChange={(e) => setWishes(e.target.value)}
-            disabled={rsvpLocked || !interactive}
-            className="w-[320px] h-[126px] bg-white border border-[#D1D1D1] text-navy font-sans text-xs px-4 py-3 rounded-[20px] outline-none resize-none focus:border-[#7732A4]/50 transition-colors disabled:opacity-70 disabled:cursor-not-allowed disabled:bg-[#F7F4EF]"
-          />
-        </div>
+          {/* Your Wishes For Us */}
+          <div className="flex flex-col items-start">
+            <label className="font-quattrocento-custom font-normal text-[15px] text-[#1B3601] tracking-normal uppercase mb-1.5 text-left w-full pl-2">
+              Your wishes for us
+            </label>
+            <textarea 
+              placeholder="Write your wishes....."
+              rows="3"
+              value={wishes}
+              onChange={(e) => setWishes(e.target.value)}
+              disabled={!interactive}
+              className="w-[320px] h-[126px] bg-white border border-[#D1D1D1] text-navy font-sans text-xs px-4 py-3 rounded-[20px] outline-none resize-none focus:border-[#7732A4]/50 transition-colors disabled:opacity-70 disabled:cursor-not-allowed disabled:bg-[#F7F4EF]"
+            />
+          </div>
 
-        {/* Hidden submit trigger */}
-        <button type="submit" className="hidden" id="rsvp-submit-hidden-btn" disabled={rsvpLocked} />
-        {rsvpLocked ? (
-          <p className="text-xs text-[#7732A4] text-center w-full font-medium">
-            Your RSVP has been confirmed. Fields are locked.
-          </p>
-        ) : null}
-        {rsvpError ? (
-          <p className="text-xs text-red-600 text-center w-full">{rsvpError}</p>
-        ) : null}
-      </form>
+          {/* Hidden submit trigger */}
+          <button type="submit" className="hidden" id="rsvp-submit-hidden-btn" />
+          {rsvpError ? (
+            <p className="text-xs text-red-600 text-center w-full">{rsvpError}</p>
+          ) : null}
+        </form>
+      )}
 
       {/* Decorative Bottom Frame (Width: 390px, Height: 287px, Y: 2254px) */}
       <div className="absolute top-[2254px] left-0 w-[390px] h-[287px] z-0">
@@ -460,14 +461,16 @@ export default function InvitationPage({
       </div>
 
       {/* RSVP Button (Width: 108px, Height: 48px, Y: 2379px, centered) */}
-      <button 
-        type="button"
-        disabled={submitting || rsvpLocked || !interactive}
-        onClick={() => document.getElementById("rsvp-submit-hidden-btn")?.click()}
-        className="absolute top-[2379px] left-[141px] w-[108px] h-[48px] bg-[#7732A4] hover:bg-[#5C2383] disabled:opacity-60 disabled:cursor-not-allowed text-white font-serif font-bold text-xs uppercase tracking-wider rounded-[24px] z-10 transition-colors shadow-md flex items-center justify-center"
-      >
-        {rsvpLocked ? "Submitted" : submitting ? "Sending…" : "Send RSVP"}
-      </button>
+      {!rsvpLocked && (
+        <button 
+          type="button"
+          disabled={submitting || !interactive}
+          onClick={() => document.getElementById("rsvp-submit-hidden-btn")?.click()}
+          className="absolute top-[2379px] left-[141px] w-[108px] h-[48px] bg-[#7732A4] hover:bg-[#5C2383] disabled:opacity-60 disabled:cursor-not-allowed text-white font-serif font-bold text-xs uppercase tracking-wider rounded-[24px] z-10 transition-colors shadow-md flex items-center justify-center"
+        >
+          {submitting ? "Sending..." : "Send RSVP"}
+        </button>
+      )}
 
       {/* =========================================================
           PAGE 4 (Y: 2750 -> Y: 3459)
