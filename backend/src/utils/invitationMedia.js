@@ -35,25 +35,55 @@ function listFiles(dir, allowedExts) {
     .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
 }
 
-/**
- * Resolve invitation intro video from assets/invitation_video/<slug>/
- * Falls back to first video file in that folder.
- */
-function resolveInvitationVideoFromDisk(coupleNames) {
-  const slug = coupleSlugFromNames(coupleNames);
-  if (!slug) return null;
+function pickNewestVideoFile(dir, files) {
+  if (!files.length) return null;
+  if (files.length === 1) return files[0];
+  return files
+    .map((fileName) => ({
+      fileName,
+      mtimeMs: fs.statSync(path.join(dir, fileName)).mtimeMs,
+    }))
+    .sort((a, b) => b.mtimeMs - a.mtimeMs)[0].fileName;
+}
 
+function videoFromFolder(slug) {
   const dir = path.join(VIDEO_DIR, slug);
   const files = listFiles(dir, VIDEO_EXTS);
   if (!files.length) return null;
 
-  const fileName = files[0];
+  const fileName = pickNewestVideoFile(dir, files);
   return {
     slug,
     fileName,
     absolutePath: path.join(dir, fileName),
     url: toPublicAssetUrl("invitation_video", slug, fileName),
   };
+}
+
+/**
+ * Resolve invitation intro video from assets/invitation_video/<slug>/
+ * Falls back to the newest video in that folder, then to the only folder
+ * on disk when the couple slug changed (e.g. after a rename).
+ */
+function resolveInvitationVideoFromDisk(coupleNames) {
+  const slug = coupleSlugFromNames(coupleNames);
+  if (slug) {
+    const match = videoFromFolder(slug);
+    if (match) return match;
+  }
+
+  if (!fs.existsSync(VIDEO_DIR)) return null;
+
+  const subdirs = fs
+    .readdirSync(VIDEO_DIR, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
+
+  if (subdirs.length === 1) {
+    return videoFromFolder(subdirs[0]);
+  }
+
+  return null;
 }
 
 /**

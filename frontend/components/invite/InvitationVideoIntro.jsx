@@ -27,6 +27,7 @@ export default function InvitationVideoIntro({
   const fadingRef = useRef(false);
   const [fading, setFading] = useState(false);
   const [needsTap, setNeedsTap] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   const finish = () => {
     if (completedRef.current) return;
@@ -48,7 +49,6 @@ export default function InvitationVideoIntro({
   const startFade = () => {
     if (fadingRef.current) return;
     fadingRef.current = true;
-    // Stop audio immediately so music does not continue after visuals leave
     stopPlayback();
     setFading(true);
     onFadeStart?.();
@@ -65,6 +65,24 @@ export default function InvitationVideoIntro({
     return true;
   };
 
+  const beginAutoplay = async () => {
+    if (!resolvedUrl || !autoPlay) return;
+
+    try {
+      await tryPlay(true);
+      setNeedsTap(false);
+      setLoadError(false);
+    } catch {
+      // Never skip the intro when autoplay is blocked — require a tap instead.
+      setNeedsTap(true);
+      try {
+        await tryPlay(false);
+      } catch {
+        // Keep the tap overlay; user can still start playback manually.
+      }
+    }
+  };
+
   useEffect(() => {
     if (!resolvedUrl) {
       finish();
@@ -73,23 +91,10 @@ export default function InvitationVideoIntro({
     if (!autoPlay) return;
 
     let cancelled = false;
-    const el = videoRef.current;
-    if (!el) return;
 
     (async () => {
-      try {
-        await tryPlay(true);
-        if (!cancelled) setNeedsTap(false);
-      } catch {
-        if (cancelled) return;
-        // Browser blocked autoplay with sound - require a tap so music plays with video
-        setNeedsTap(true);
-        try {
-          await tryPlay(false);
-        } catch {
-          if (!cancelled) finish();
-        }
-      }
+      if (cancelled) return;
+      await beginAutoplay();
     })();
 
     return () => {
@@ -105,6 +110,7 @@ export default function InvitationVideoIntro({
   };
 
   const handleTapToPlay = async () => {
+    setLoadError(false);
     try {
       await tryPlay(true);
       setNeedsTap(false);
@@ -113,7 +119,7 @@ export default function InvitationVideoIntro({
         await tryPlay(false);
         setNeedsTap(false);
       } catch {
-        finish();
+        setLoadError(true);
       }
     }
   };
@@ -129,6 +135,7 @@ export default function InvitationVideoIntro({
     >
       <video
         ref={videoRef}
+        key={resolvedUrl}
         src={resolvedUrl}
         className={`absolute inset-0 w-full h-full min-w-full min-h-full object-cover object-center bg-[#FAF6F0] select-none transition-opacity duration-700 ${
           fading ? "opacity-0" : "opacity-100"
@@ -141,6 +148,11 @@ export default function InvitationVideoIntro({
         controlsList="nodownload nofullscreen noremoteplayback"
         onContextMenu={(e) => e.preventDefault()}
         onEnded={startFade}
+        onError={() => {
+          setNeedsTap(true);
+          setLoadError(true);
+        }}
+        onLoadedData={() => setLoadError(false)}
       />
 
       {needsTap && !fading ? (
@@ -150,10 +162,10 @@ export default function InvitationVideoIntro({
           className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-[#1c2333]/35 pointer-events-auto"
         >
           <span className="bg-white/95 text-navy font-serif font-bold text-base px-6 py-3 rounded-full shadow-md">
-            Tap to open invitation
+            {loadError ? "Tap to play invitation video" : "Tap to open invitation"}
           </span>
           <span className="mt-3 text-white/90 text-xs font-sans">
-            Sound on
+            {loadError ? "Video could not start automatically" : "Sound on"}
           </span>
         </button>
       ) : null}
@@ -171,5 +183,3 @@ export default function InvitationVideoIntro({
     </div>
   );
 }
-
-
