@@ -40,7 +40,7 @@ export default function RsvpChangeRequestForm({ guestToken, rsvp, maxGuests }) {
 
   if (submitted) {
     return (
-      <div className="flex flex-col items-center gap-4 py-6">
+      <div className="absolute top-0 -left-[35px] w-[390px] h-[599px] bg-[#FAF6F0] z-50 flex flex-col items-center justify-center gap-4">
         <div className="relative w-[53px] h-[48px]">
           <Image
             src="/invitation/page3-small-lotus.png"
@@ -57,21 +57,21 @@ export default function RsvpChangeRequestForm({ guestToken, rsvp, maxGuests }) {
   }
 
   return (
-    <div className="flex flex-col items-center gap-0 w-[320px]">
-      <h2 className="font-cormorant-custom font-semibold text-[32px] text-[#7732A4] tracking-normal leading-tight text-center mb-1">
+    <div className="absolute -top-[350px] -left-[35px] w-[390px] h-[949px] bg-[#FAF6F0] z-50 flex flex-col items-center justify-start px-[35px] pt-[70px]">
+      <h2 className="font-cormorant-custom font-semibold text-[34px] text-[#7732A4] tracking-normal leading-none text-center mb-2">
         NEED TO MAKE A<br />CHANGE?
       </h2>
 
-      <div className="relative w-[53px] h-[48px] my-2">
+      <div className="relative w-[150px] h-[28px] mb-4">
         <Image
-          src="/invitation/page3-small-lotus.png"
+          src="/invitation/page3-lotus-divider.png"
           alt="Lotus divider"
           fill
           className="object-contain"
         />
       </div>
 
-      <p className="font-quattrocento-custom font-bold text-[13px] text-[#1B3601] text-center leading-[20px] mb-5">
+      <p className="font-quattrocento-custom font-bold text-[14px] text-[#1B3601] text-center leading-[20px] mb-6">
         If you've made a mistake or need<br />
         to update your RSVP, you can<br />
         request to enable changes<br />
@@ -79,38 +79,35 @@ export default function RsvpChangeRequestForm({ guestToken, rsvp, maxGuests }) {
       </p>
 
       {/* Read-only RSVP fields */}
-      <div className="w-full flex flex-col gap-[14px] text-left mb-4">
+      <div className="w-full flex flex-col gap-4 text-left mb-6">
         <div className="flex flex-col items-start">
-          <label className="font-quattrocento-custom font-normal text-[13px] text-[#1B3601] tracking-normal uppercase mb-1 pl-2">
+          <label className="font-quattrocento-custom font-normal text-[13px] text-[#1B3601] tracking-wider uppercase mb-1 pl-2">
             Will you attend?
           </label>
-          <div className="w-full h-[36px] bg-[#F7F4EF] border border-[#D1D1D1] text-navy font-sans text-xs px-4 rounded-[20px] flex items-center opacity-70 cursor-not-allowed">
-            {attendanceLabel}
+          <div className="w-full h-[40px] bg-white border border-[#D1D1D1] text-[#7A7A7A] font-sans text-[13px] px-4 rounded-[20px] flex items-center justify-between opacity-80 cursor-not-allowed">
+            <span>{attendanceLabel}</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 292.4 292.4" fill="#7A7A7A">
+              <path d="M287 69.4a17.6 17.6 0 0 0-13-5.4H18.4c-5 0-9.3 1.8-12.9 5.4A17.6 17.6 0 0 0 0 82.2c0 5 1.8 9.3 5.4 12.9l128 127.9c3.6 3.6 7.8 5.4 12.8 5.4s9.2-1.8 12.8-5.4L287 95c3.5-3.5 5.4-7.8 5.4-12.8 0-5-1.9-9.2-5.5-12.8z"/>
+            </svg>
           </div>
         </div>
 
         <div className="flex flex-col items-start">
-          <label className="font-quattrocento-custom font-normal text-[13px] text-[#1B3601] tracking-normal uppercase mb-1 pl-2">
+          <label className="font-quattrocento-custom font-normal text-[13px] text-[#1B3601] tracking-wider uppercase mb-1 pl-2">
             Number of guests
           </label>
-          <input
-            type="text"
-            value={rsvp?.attendingCount ?? ""}
-            readOnly
-            className="w-full h-[36px] bg-[#F7F4EF] border border-[#D1D1D1] text-navy font-sans text-xs px-4 rounded-[20px] outline-none opacity-70 cursor-not-allowed"
-          />
+          <div className="w-full h-[40px] bg-white border border-[#D1D1D1] text-[#7A7A7A] font-sans text-[13px] px-4 flex items-center rounded-[20px] opacity-80 cursor-not-allowed">
+            {rsvp?.attendingCount ?? "e.g. 2"}
+          </div>
         </div>
 
         <div className="flex flex-col items-start">
-          <label className="font-quattrocento-custom font-normal text-[13px] text-[#1B3601] tracking-normal uppercase mb-1 pl-2">
+          <label className="font-quattrocento-custom font-normal text-[13px] text-[#1B3601] tracking-wider uppercase mb-1 pl-2">
             Your wishes for us
           </label>
-          <textarea
-            value={rsvp?.wishes ?? ""}
-            readOnly
-            rows="2"
-            className="w-full h-[80px] bg-[#F7F4EF] border border-[#D1D1D1] text-navy font-sans text-xs px-4 py-3 rounded-[20px] outline-none resize-none opacity-70 cursor-not-allowed"
-          />
+          <div className="w-full h-[66px] bg-white border border-[#D1D1D1] text-[#7A7A7A] font-sans text-[13px] px-4 py-3 rounded-[20px] opacity-80 cursor-not-allowed overflow-hidden">
+            {rsvp?.wishes || "Write your wishes....."}
+          </div>
         </div>
       </div>
 
@@ -118,32 +115,32 @@ export default function RsvpChangeRequestForm({ guestToken, rsvp, maxGuests }) {
       <button
         type="button"
         disabled
-        className="w-full h-[44px] rounded-[22px] border-2 border-[#C6A15B] bg-transparent flex items-center justify-center gap-2 mb-5 cursor-default"
+        className="w-full h-[44px] rounded-[22px] border border-[#C6A15B] bg-transparent flex items-center justify-center gap-2 mb-6 cursor-default shadow-sm"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C6A15B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7732A4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
         </svg>
-        <span className="font-quattrocento-custom font-bold text-[12px] text-[#C6A15B] uppercase tracking-wider">
+        <span className="font-quattrocento-custom font-bold text-[12px] text-[#7732A4] uppercase tracking-wider">
           Request for RSVP Change
         </span>
       </button>
 
       {/* Reason textarea */}
-      <div className="w-full flex flex-col items-start mb-4">
-        <label className="font-quattrocento-custom font-normal text-[13px] text-[#1B3601] tracking-normal uppercase mb-1 pl-2">
+      <div className="w-full flex flex-col items-start mb-5">
+        <label className="font-quattrocento-custom font-normal text-[13px] text-[#1B3601] tracking-wider uppercase mb-1 pl-2">
           Tell us the reason
         </label>
         <textarea
           placeholder="Write the reason....."
-          rows="3"
+          rows="2"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          className="w-full h-[100px] bg-white border border-[#D1D1D1] text-navy font-sans text-xs px-4 py-3 rounded-[20px] outline-none resize-none focus:border-[#7732A4]/50 transition-colors"
+          className="w-full h-[70px] bg-white border border-[#D1D1D1] text-[#7A7A7A] font-sans text-[13px] px-4 py-3 rounded-[20px] outline-none resize-none focus:border-[#7732A4]/50 transition-colors"
         />
       </div>
 
       {error && (
-        <p className="text-xs text-red-600 text-center w-full mb-2">{error}</p>
+        <p className="text-[11px] text-red-600 text-center w-full mb-2">{error}</p>
       )}
 
       {/* Submit button */}
@@ -151,22 +148,22 @@ export default function RsvpChangeRequestForm({ guestToken, rsvp, maxGuests }) {
         type="button"
         onClick={handleSubmit}
         disabled={submitting}
-        className="w-[200px] h-[44px] bg-[#1B3601] hover:bg-[#1B3601]/90 disabled:opacity-60 text-white font-quattrocento-custom font-bold text-[12px] uppercase tracking-wider rounded-[22px] transition-colors shadow-md flex items-center justify-center mb-4"
+        className="w-[200px] h-[44px] bg-[#473284] hover:bg-[#3B286E] disabled:opacity-60 text-white font-quattrocento-custom font-bold text-[12px] uppercase tracking-widest rounded-[22px] transition-colors shadow-md flex items-center justify-center mb-5"
       >
         {submitting ? "Submitting..." : "Submit Request"}
       </button>
 
       {/* Disclaimer */}
-      <div className="flex items-start gap-2 px-2">
-        <Lock className="w-3.5 h-3.5 text-[#1B3601] shrink-0 mt-0.5" strokeWidth={2} />
-        <p className="font-quattrocento-custom text-[11px] text-[#1B3601] leading-[16px]">
-          Your request will be reviewed, and RSVP access will be enabled once approved.
+      <div className="flex items-start gap-2 px-2 mb-4">
+        <Lock className="w-3.5 h-3.5 text-[#473284] shrink-0 mt-0.5" strokeWidth={2} />
+        <p className="font-quattrocento-custom text-[11px] text-[#473284] leading-[15px]">
+          Your request will be reviewed, and RSVP access will be enabled again once approved.
         </p>
       </div>
 
-      <div className="relative w-[138px] h-[50px] mt-4">
+      <div className="relative w-[150px] h-[30px] mt-2">
         <Image
-          src="/invitation/page3-small-lotus.png"
+          src="/invitation/page2-gold-divider.png"
           alt="Lotus"
           fill
           className="object-contain"

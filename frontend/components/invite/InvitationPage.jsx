@@ -139,7 +139,7 @@ export default function InvitationPage({
   };
 
   return (
-    <div className={`relative w-[390px] h-[7020px] mx-auto bg-[#FAF6F0] overflow-hidden select-none ${
+    <div className={`relative w-[390px] h-[7100px] mx-auto bg-[#FAF6F0] overflow-hidden select-none ${
       embedded ? "" : "shadow-2xl border border-gray-200"
     }`}>
       
@@ -818,6 +818,39 @@ export default function InvitationPage({
       {/* 8.3 Background Floral */}
       <div className="absolute top-[6760px] left-[0px] w-[390px] h-[260px] z-0 pointer-events-none origin-bottom scale-[1.15]">
         <Image src="/invitation/8.3.png" alt="Page 8 floral background" fill className="object-contain object-bottom" />
+      </div>
+
+      {/* Footer */}
+      <div className="absolute top-[7020px] left-0 w-full h-[80px] bg-[#FAF6F0] z-20 flex items-center justify-center gap-5">
+        
+        {/* Left Side: Wed Flow */}
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="relative w-[36px] h-[36px]">
+            <Image src="/footer/app-logo.png" alt="Wed Flow logo" fill className="object-contain" />
+          </div>
+          <div className="flex flex-col items-start">
+            <span className="font-serif font-bold text-[18px] text-[#1B1B1B] leading-none mb-0.5 tracking-wide">Wed Flow</span>
+            <span className="font-sans text-[7px] text-[#49454F] leading-tight text-left">Your love story, Beautifully celebrated</span>
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="h-[28px] w-px bg-[#1B1B1B] shrink-0"></div>
+
+        {/* Right Side: Powered by KLAYNZ */}
+        <a 
+          href="https://klaynz.com/" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+        >
+          <span className="font-sans text-[8px] text-[#49454F]">Powered by</span>
+          <div className="relative w-[32px] h-[32px]">
+            <Image src="/footer/KLAYNZ logo.png" alt="KLAYNZ logo" fill className="object-contain" />
+          </div>
+          <span className="font-sans font-bold text-[12px] tracking-[0.15em] text-[#1B1B1B]">KLAYNZ</span>
+        </a>
+
       </div>
 
     </div>
