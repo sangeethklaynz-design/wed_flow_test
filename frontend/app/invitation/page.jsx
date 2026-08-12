@@ -53,7 +53,7 @@ export default function PublicInvitationPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen-zoom w-full relative flex flex-col items-center bg-gradient-to-br from-[#F5EFE6] via-[#E8DFD8] to-[#DCD3CB] overflow-x-hidden md:py-10">
+    <div className="min-h-screen-zoom w-full relative flex flex-col items-stretch md:items-center bg-[#FAF6F0] md:bg-gradient-to-br md:from-[#F5EFE6] md:via-[#E8DFD8] md:to-[#DCD3CB] overflow-x-hidden md:py-10">
       <InvitationPreviewBackButton />
 
       {error ? (

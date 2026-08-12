@@ -14,6 +14,11 @@ html {
   min-height: 100%;
 }
 
+/* Guest invitation pages render at 1:1 scale so 390px fills the mobile webview */
+html.invite-no-ui-scale {
+  --ui-scale: 1;
+}
+
 @supports not (zoom: 1) {
   html {
     font-size: calc(100% * var(--ui-scale));

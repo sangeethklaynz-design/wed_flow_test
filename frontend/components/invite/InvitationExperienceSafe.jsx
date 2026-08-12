@@ -8,6 +8,7 @@ import InvitationVideoIntro, {
 } from "@/components/invite/InvitationVideoIntro";
 import InvitationSchedule from "@/components/invite/InvitationSchedule";
 import InvitationThankYou from "@/components/invite/InvitationThankYou";
+import InviteMobileScaler from "@/components/invite/InviteMobileScaler";
 
 /**
  * Safe replacement for InvitationExperience.jsx.
@@ -124,29 +125,36 @@ export default function InvitationExperienceSafe({
   // Continuous post-RSVP scroll: schedule → thank you → invitation
   if (showPostRsvpFlow) {
     return (
-      <main
-        className="relative overflow-hidden border-0 outline-none isolate card-shadow md:rounded-2xl"
-        style={{ width: INVITE_FRAME_W, backgroundColor: "#FAF6F0" }}
-      >
-        <div className="relative w-[390px] flex flex-col">
-          {hasSchedule ? (
-            <InvitationSchedule events={scheduleEvents} guestToken={guestToken} />
-          ) : null}
-          <InvitationThankYou guestToken={guestToken} />
-          <InvitationPage
-            data={liveTemplateData}
-            guestToken={guestToken}
-            interactive={interactive}
-            embedded
-            onRsvpSuccess={handleRsvpSuccess}
-          />
-        </div>
-      </main>
+      <InviteMobileScaler className="md:mx-auto">
+        <main
+          className="relative overflow-hidden border-0 outline-none isolate card-shadow md:rounded-2xl"
+          style={{ width: INVITE_FRAME_W, backgroundColor: "#FAF6F0" }}
+        >
+          <div className="relative w-[390px] flex flex-col">
+            {hasSchedule ? (
+              <InvitationSchedule events={scheduleEvents} guestToken={guestToken} />
+            ) : null}
+            <InvitationThankYou guestToken={guestToken} />
+            <InvitationPage
+              data={liveTemplateData}
+              guestToken={guestToken}
+              interactive={interactive}
+              embedded
+              onRsvpSuccess={handleRsvpSuccess}
+            />
+          </div>
+        </main>
+      </InviteMobileScaler>
     );
   }
 
   // Video or first-visit invitation
   return (
+    <InviteMobileScaler
+      mode={isVideoActive ? "cover" : "width"}
+      fixedHeight={isVideoActive ? INVITE_FRAME_H : undefined}
+      className="md:mx-auto"
+    >
     <main
       className={`relative overflow-hidden border-0 outline-none isolate ${
         isVideoActive ? "" : "card-shadow md:rounded-2xl"
@@ -195,5 +203,6 @@ export default function InvitationExperienceSafe({
         ) : null}
       </div>
     </main>
+    </InviteMobileScaler>
   );
 }
