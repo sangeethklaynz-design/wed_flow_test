@@ -61,7 +61,7 @@ function ShareChannel({ label, onClick, children }) {
   );
 }
 
-export default function ShareInviteModal({ open, guest, onClose }) {
+export default function ShareInviteModal({ open, guest, onClose, onShareAction }) {
   const [copied, setCopied] = useState(false);
 
   const share = useMemo(
@@ -80,8 +80,14 @@ export default function ShareInviteModal({ open, guest, onClose }) {
     const ok = await copyInviteText(value);
     if (ok) {
       setCopied(true);
+      onShareAction?.(guest);
       window.setTimeout(() => setCopied(false), 2000);
     }
+  };
+
+  const handleChannelShare = (openChannel) => {
+    openChannel();
+    onShareAction?.(guest);
   };
 
   const openShareWindow = (url) => {
@@ -145,7 +151,9 @@ export default function ShareInviteModal({ open, guest, onClose }) {
                 <ShareChannel
                   label="WhatsApp"
                   onClick={() =>
-                    openShareWindow(getWhatsAppShareUrl(share.text))
+                    handleChannelShare(() =>
+                      openShareWindow(getWhatsAppShareUrl(share.text))
+                    )
                   }
                 >
                   <WhatsAppIcon className="w-6 h-6 text-[#25D366]" />
@@ -154,7 +162,9 @@ export default function ShareInviteModal({ open, guest, onClose }) {
                 <ShareChannel
                   label="Messenger"
                   onClick={() =>
-                    openShareWindow(getMessengerShareUrl(share.inviteUrl))
+                    handleChannelShare(() =>
+                      openShareWindow(getMessengerShareUrl(share.inviteUrl))
+                    )
                   }
                 >
                   <MessengerIcon className="w-6 h-6 text-[#0084FF]" />
@@ -163,7 +173,9 @@ export default function ShareInviteModal({ open, guest, onClose }) {
                 <ShareChannel
                   label="Facebook"
                   onClick={() =>
-                    openShareWindow(getFacebookShareUrl(share.inviteUrl))
+                    handleChannelShare(() =>
+                      openShareWindow(getFacebookShareUrl(share.inviteUrl))
+                    )
                   }
                 >
                   <FacebookIcon className="w-6 h-6 text-[#1877F2]" />
@@ -171,12 +183,14 @@ export default function ShareInviteModal({ open, guest, onClose }) {
 
                 <ShareChannel
                   label="Email"
-                  onClick={() => {
-                    window.location.href = getEmailShareUrl(
-                      share.subject,
-                      share.text
-                    );
-                  }}
+                  onClick={() =>
+                    handleChannelShare(() => {
+                      window.location.href = getEmailShareUrl(
+                        share.subject,
+                        share.text
+                      );
+                    })
+                  }
                 >
                   <Mail className="w-5 h-5 text-navy" strokeWidth={2} />
                 </ShareChannel>

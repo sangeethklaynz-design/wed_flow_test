@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { Home, Mail, Users, Calendar, LogOut, Bell } from "lucide-react";
 import clsx from "clsx";
 import Image from "next/image";
-import { logout, getStoredUser } from "@/lib/auth";
+import { logout, getStoredUser, getAccessToken, clearAuthSession } from "@/lib/auth";
 
 const navItems = [
   { name: "Home", href: "/dashboard", icon: Home },
@@ -32,15 +32,31 @@ export default function DashboardLayout({ children }) {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
+    const token = getAccessToken();
+    if (!token) {
+      clearAuthSession();
+      router.replace("/login");
+      setIsAuthorized(false);
+      setAuthChecked(true);
+      return;
+    }
+
     setUser(getStoredUser());
-  }, [pathname]);
+    setIsAuthorized(true);
+    setAuthChecked(true);
+  }, []);
 
   const handleLogout = () => {
     logout();
     router.push("/login");
   };
+
+  // Prevent dashboard “glimpse” for unauthenticated users.
+  if (!authChecked || !isAuthorized) return null;
 
   const coupleNames = user?.coupleNames || "Couple";
   const initials = buildInitials(coupleNames);

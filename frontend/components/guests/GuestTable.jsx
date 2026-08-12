@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Share, XCircle, RotateCcw, Eye, Pencil, Trash2 } from "lucide-react";
+import { Share, XCircle, RotateCcw, Eye, Pencil, Trash2, Pin } from "lucide-react";
+import clsx from "clsx";
 import { StatusBadge } from "@/components/guests/GuestCard";
 import RowActionsMenu from "@/components/ui/RowActionsMenu";
 
@@ -18,6 +19,8 @@ function guestNotesPreview(notes) {
   return `${words.slice(0, 4).join(" ")}...`;
 }
 
+const SHARED_ROW_BG = "bg-neutral-100 hover:bg-neutral-200";
+
 export default function GuestTable({
   guests,
   onViewGuest,
@@ -26,6 +29,7 @@ export default function GuestTable({
   onShareGuest,
   onCancelRsvp,
   onResendInvite,
+  onTogglePin,
 }) {
   const [openMenuId, setOpenMenuId] = useState(null);
 
@@ -43,7 +47,8 @@ export default function GuestTable({
         <table className="w-full min-w-[980px] text-center">
           <thead>
             <tr className="border-b border-border bg-cream/60">
-              <th className="px-6 py-4 text-xs font-medium text-muted uppercase tracking-wide">
+              <th className="w-11 px-5 py-4" aria-hidden />
+              <th className="px-6 py-4 text-xs font-medium text-muted uppercase tracking-wide text-left">
                 Guest
               </th>
               <th className="px-6 py-4 text-xs font-medium text-muted uppercase tracking-wide">
@@ -71,9 +76,22 @@ export default function GuestTable({
             {guests.map((guest) => (
               <tr
                 key={guest.id}
-                className="border-b border-border last:border-b-0 hover:bg-cream/40 transition-colors"
+                className={clsx(
+                  "border-b border-border last:border-b-0 transition-colors",
+                  guest.inviteSharedAt ? SHARED_ROW_BG : "hover:bg-cream/40"
+                )}
               >
-                <td className="px-6 py-4">
+                <td className="w-11 pl-5 pr-2 py-4 align-middle">
+                  {guest.isPinned ? (
+                    <Pin
+                      className="w-4 h-4 text-navy rotate-45"
+                      strokeWidth={2.25}
+                      fill="currentColor"
+                      aria-label="Pinned guest"
+                    />
+                  ) : null}
+                </td>
+                <td className="px-4 py-4 text-left">
                   <span className="font-semibold text-navy truncate block">
                     {guest.name}
                   </span>
@@ -127,6 +145,11 @@ export default function GuestTable({
                           label: "Share",
                           icon: Share,
                           onClick: () => onShareGuest?.(guest),
+                        },
+                        {
+                          label: guest.isPinned ? "Unpin guest" : "Pin guest",
+                          icon: Pin,
+                          onClick: () => onTogglePin?.(guest),
                         },
                         {
                           label: "View details",

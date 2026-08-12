@@ -14,6 +14,8 @@ const {
   deleteGuest,
   cancelRsvp,
   resendInvite,
+  markInviteShared,
+  togglePin,
 } = require("../controllers/guestsController");
 const {
   listSchedule,
@@ -26,6 +28,7 @@ const {
 const {
   listNotifications,
   markAllRead,
+  markOneRead,
   updateNotification,
   deleteNotification
 } = require("../controllers/notificationsController");
@@ -44,6 +47,8 @@ router.put("/guests/:id", requireAuth, updateGuest);
 router.delete("/guests/:id", requireAuth, deleteGuest);
 router.post("/guests/:id/cancel-rsvp", requireAuth, cancelRsvp);
 router.post("/guests/:id/resend-invite", requireAuth, resendInvite);
+router.post("/guests/:id/mark-invite-shared", requireAuth, markInviteShared);
+router.post("/guests/:id/toggle-pin", requireAuth, togglePin);
 
 router.get("/schedule", requireAuth, listSchedule);
 router.get("/schedule/download", requireAuth, downloadSchedule);
@@ -54,6 +59,7 @@ router.delete("/schedule/:id", requireAuth, deleteScheduleEvent);
 
 router.get("/notifications", requireAuth, listNotifications);
 router.post("/notifications/mark-read", requireAuth, markAllRead);
+router.post("/notifications/:id/mark-read", requireAuth, markOneRead);
 router.put("/notifications/:id", requireAuth, updateNotification);
 router.delete("/notifications/:id", requireAuth, deleteNotification);
 

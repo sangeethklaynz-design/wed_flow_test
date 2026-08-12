@@ -195,6 +195,20 @@ async function ensureRsvpChangeRequestsTable() {
       ADD COLUMN has_change_request TINYINT(1) NOT NULL DEFAULT 0;
     `);
   }
+
+  if (!(await columnExists("guests", "invite_shared_at"))) {
+    await sequelize.query(`
+      ALTER TABLE guests
+      ADD COLUMN invite_shared_at TIMESTAMP NULL DEFAULT NULL;
+    `);
+  }
+
+  if (!(await columnExists("guests", "is_pinned"))) {
+    await sequelize.query(`
+      ALTER TABLE guests
+      ADD COLUMN is_pinned TINYINT(1) NOT NULL DEFAULT 0;
+    `);
+  }
 }
 
 async function ensureNotificationsTable() {

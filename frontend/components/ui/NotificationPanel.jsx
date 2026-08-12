@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Bell, X, UserPlus, UserMinus, RefreshCw, CalendarPlus, CalendarX, Pencil, AlertCircle } from "lucide-react";
+import { Bell, X, UserPlus, UserMinus, RefreshCw, CalendarPlus, CalendarX, Pencil, AlertCircle, CheckCheck } from "lucide-react";
 import { apiRequest } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 
@@ -37,7 +37,7 @@ export default function NotificationPanel({ open, onClose }) {
   return null;
 }
 
-function NotificationDropdown({ open, onClose }) {
+function NotificationDropdown({ open, onClose, onUnreadCountChange }) {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -50,18 +50,40 @@ function NotificationDropdown({ open, onClose }) {
       const data = await apiRequest("/api/couple/notifications", { token });
       setNotifications(data.notifications || []);
       setUnreadCount(data.unreadCount || 0);
+      onUnreadCountChange?.(data.unreadCount || 0);
     } catch {
       // silently fail
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [onUnreadCountChange]);
 
   useEffect(() => {
     if (open) {
       fetchNotifications();
     }
   }, [open, fetchNotifications]);
+
+  const handleMarkOneRead = async (id) => {
+    const token = getAccessToken();
+    if (!token) return;
+    try {
+      await apiRequest(`/api/couple/notifications/${id}/mark-read`, {
+        method: "POST",
+        token,
+      });
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+      );
+      setUnreadCount((prev) => {
+        const next = Math.max(0, prev - 1);
+        onUnreadCountChange?.(next);
+        return next;
+      });
+    } catch {
+      // silently fail
+    }
+  };
 
   const handleMarkAllRead = async () => {
     const token = getAccessToken();
@@ -70,6 +92,7 @@ function NotificationDropdown({ open, onClose }) {
       await apiRequest("/api/couple/notifications/mark-read", { method: "POST", token });
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       setUnreadCount(0);
+      onUnreadCountChange?.(0);
     } catch {
       // silently fail
     }
@@ -83,7 +106,7 @@ function NotificationDropdown({ open, onClose }) {
       <div className="fixed inset-0 z-[69]" onClick={onClose} />
 
       {/* Dropdown - right-aligned to bell, below header */}
-      <div className="absolute top-full right-0 mt-3 z-[70] w-[420px] bg-cream rounded-2xl card-shadow border border-border max-h-[80vh] flex flex-col overflow-hidden">
+      <div className="absolute top-full right-0 mt-3 z-[70] w-[500px] bg-cream rounded-2xl card-shadow border border-border max-h-[80vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <h2 className="font-serif font-bold text-lg text-navy">Notifications</h2>
@@ -109,7 +132,7 @@ function NotificationDropdown({ open, onClose }) {
         </div>
 
         {/* List */}
-        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+        <div className="flex-1 overflow-y-auto px-4 pt-4 pb-5 space-y-2">
           {loading && notifications.length === 0 ? (
             <p className="text-sm text-muted text-center py-8">Loading...</p>
           ) : notifications.length === 0 ? (
@@ -121,14 +144,14 @@ function NotificationDropdown({ open, onClose }) {
               return (
                 <div
                   key={notif.id}
-                  className={`flex items-start gap-4 p-4 rounded-xl border ${config.border} ${config.bg} ${
+                  className={`relative flex items-start gap-4 p-4 pb-8 rounded-xl border ${config.border} ${config.bg} ${
                     !notif.isRead ? "ring-1 ring-[#e69e46]/30" : ""
                   }`}
                 >
                   <div className={`shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${config.bg}`}>
                     <Icon className={`w-5 h-5 ${config.iconColor}`} strokeWidth={2} />
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 pr-8">
                     <p className="text-base font-medium text-navy leading-tight">{notif.title}</p>
                     {notif.message && (
                       <p className="text-sm text-muted mt-1 leading-snug">{notif.message}</p>
@@ -136,7 +159,30 @@ function NotificationDropdown({ open, onClose }) {
                     <p className="text-xs text-muted/70 mt-1.5">{timeAgo(notif.createdAt)}</p>
                   </div>
                   {!notif.isRead && (
-                    <div className="shrink-0 w-2.5 h-2.5 rounded-full bg-[#e69e46] mt-1.5" />
+                    <span
+                      className="absolute top-3 right-3 w-2.5 h-2.5 rounded-full bg-[#e69e46] unread-blink"
+                      aria-label="Unread"
+                      title="Unread"
+                    />
+                  )}
+                  {notif.isRead ? (
+                    <span
+                      className="absolute bottom-2.5 right-3 text-[#53bdeb]"
+                      aria-label="Read"
+                      title="Read"
+                    >
+                      <CheckCheck className="w-4 h-4" strokeWidth={2.25} />
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleMarkOneRead(notif.id)}
+                      className="absolute bottom-2.5 right-3 text-muted hover:text-[#53bdeb] transition-colors"
+                      aria-label="Mark as read"
+                      title="Mark as read"
+                    >
+                      <CheckCheck className="w-4 h-4" strokeWidth={2.25} />
+                    </button>
                   )}
                 </div>
               );
@@ -174,7 +220,11 @@ export function NotificationBell() {
           </span>
         )}
       </button>
-      <NotificationDropdown open={open} onClose={() => setOpen(false)} />
+      <NotificationDropdown
+        open={open}
+        onClose={() => setOpen(false)}
+        onUnreadCountChange={setUnreadCount}
+      />
     </div>
   );
 }

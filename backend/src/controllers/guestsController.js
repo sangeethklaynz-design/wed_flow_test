@@ -25,6 +25,8 @@ function mapGuestRow(row) {
     uniqueToken: row.unique_token,
     hasChangeRequest: Boolean(Number(row.has_change_request)),
     changeRequestReason: row.change_request_reason || "",
+    inviteSharedAt: row.invite_shared_at || null,
+    isPinned: Boolean(Number(row.is_pinned)),
     rsvp: {
       hasSubmitted: Boolean(row.submitted_at),
       attendingStatus,
@@ -51,6 +53,8 @@ async function fetchGuestsForWedding(weddingId, guestId = null) {
       g.unique_token,
       g.rsvp_status,
       g.has_change_request,
+      g.invite_shared_at,
+      g.is_pinned,
       r.id AS rsvp_id,
       r.attending_status,
       r.attending_count,
@@ -68,7 +72,7 @@ async function fetchGuestsForWedding(weddingId, guestId = null) {
       )
     WHERE g.wedding_id = ?
     ${whereGuest}
-    ORDER BY g.full_name ASC;
+    ORDER BY g.is_pinned DESC, g.full_name ASC;
     `,
     { replacements }
   );
@@ -418,7 +422,10 @@ async function resendInvite(req, res) {
     const existing = await fetchGuestsForWedding(wedding.id, guestId);
     if (!existing.length) return res.status(404).json({ error: "Not Found", message: "Guest not found" });
 
-    await sequelize.query(`UPDATE guests SET rsvp_status = 'PENDING', has_change_request = 0 WHERE id = ?;`, { replacements: [guestId] });
+    await sequelize.query(
+      `UPDATE guests SET rsvp_status = 'PENDING', has_change_request = 0, invite_shared_at = NULL WHERE id = ?;`,
+      { replacements: [guestId] }
+    );
     await sequelize.query(
       `UPDATE rsvps SET attending_status = 'PENDING', attending_count = 0, wishes = NULL, submitted_at = NULL WHERE guest_id = ?;`,
       { replacements: [guestId] }
@@ -433,6 +440,77 @@ async function resendInvite(req, res) {
   }
 }
 
+async function markInviteShared(req, res) {
+  try {
+    const { wedding, error } = await assertWedding(req);
+    if (error) {
+      return res.status(error.status).json({
+        error: "Not Found",
+        message: error.message,
+      });
+    }
+
+    const guestId = String(req.params.id || "").trim();
+    const existing = await fetchGuestsForWedding(wedding.id, guestId);
+    if (!existing.length) {
+      return res.status(404).json({
+        error: "Not Found",
+        message: "Guest not found",
+      });
+    }
+
+    await sequelize.query(
+      `UPDATE guests SET invite_shared_at = COALESCE(invite_shared_at, NOW()) WHERE id = ? AND wedding_id = ?;`,
+      { replacements: [guestId, wedding.id] }
+    );
+
+    const rows = await fetchGuestsForWedding(wedding.id, guestId);
+    return res.status(200).json({ guest: mapGuestRow(rows[0]) });
+  } catch (err) {
+    console.error("markInviteShared error:", err);
+    return res.status(500).json({
+      error: "Internal Server Error",
+      message: "Failed to mark invitation as shared",
+    });
+  }
+}
+
+async function togglePin(req, res) {
+  try {
+    const { wedding, error } = await assertWedding(req);
+    if (error) {
+      return res.status(error.status).json({
+        error: "Not Found",
+        message: error.message,
+      });
+    }
+
+    const guestId = String(req.params.id || "").trim();
+    const existing = await fetchGuestsForWedding(wedding.id, guestId);
+    if (!existing.length) {
+      return res.status(404).json({
+        error: "Not Found",
+        message: "Guest not found",
+      });
+    }
+
+    const nextPinned = Number(existing[0].is_pinned) ? 0 : 1;
+    await sequelize.query(
+      `UPDATE guests SET is_pinned = ? WHERE id = ? AND wedding_id = ?;`,
+      { replacements: [nextPinned, guestId, wedding.id] }
+    );
+
+    const rows = await fetchGuestsForWedding(wedding.id, guestId);
+    return res.status(200).json({ guest: mapGuestRow(rows[0]) });
+  } catch (err) {
+    console.error("togglePin error:", err);
+    return res.status(500).json({
+      error: "Internal Server Error",
+      message: "Failed to update pin",
+    });
+  }
+}
+
 module.exports = {
   listGuests,
   getGuest,
@@ -441,4 +519,6 @@ module.exports = {
   deleteGuest,
   cancelRsvp,
   resendInvite,
+  markInviteShared,
+  togglePin,
 };

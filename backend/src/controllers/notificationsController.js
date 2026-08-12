@@ -20,7 +20,7 @@ async function listNotifications(req, res) {
 
     const [rows] = await sequelize.query(
       `SELECT n.id, n.type, n.title, n.message, n.is_read, n.created_at,
-              g.id as guest_id, g.full_name as guest_name, g.mobile_number as guest_phone, g.status as guest_status, g.request_for_change as guest_request_for_change
+              g.id as guest_id, g.full_name as guest_name, g.whatsapp_number as guest_phone, g.rsvp_status as guest_status, g.has_change_request as guest_request_for_change
        FROM notifications n
        LEFT JOIN guests g ON n.guest_id = g.id
        WHERE n.wedding_id = ?
@@ -73,6 +73,26 @@ async function markAllRead(req, res) {
   }
 }
 
+async function markOneRead(req, res) {
+  try {
+    const { id } = req.params;
+    const wedding = await getWeddingForUser(req.user.id, req.user.weddingId);
+    if (!wedding) {
+      return res.status(404).json({ error: "Not Found", message: "No wedding found" });
+    }
+
+    await sequelize.query(
+      `UPDATE notifications SET is_read = 1 WHERE id = ? AND wedding_id = ?;`,
+      { replacements: [id, wedding.id] }
+    );
+
+    return res.status(200).json({ message: "Notification marked as read" });
+  } catch (err) {
+    console.error("markOneRead error:", err);
+    return res.status(500).json({ error: "Internal Server Error", message: "Failed to mark notification" });
+  }
+}
+
 async function updateNotification(req, res) {
   try {
     const { id } = req.params;
@@ -114,4 +134,4 @@ async function deleteNotification(req, res) {
   }
 }
 
-module.exports = { createNotification, listNotifications, markAllRead, updateNotification, deleteNotification };
+module.exports = { createNotification, listNotifications, markAllRead, markOneRead, updateNotification, deleteNotification };

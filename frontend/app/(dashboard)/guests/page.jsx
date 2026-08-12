@@ -9,11 +9,11 @@
  * - DELETE /api/couple/guests/:id
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Search } from "lucide-react";
-import { NotificationBell } from "@/components/ui/NotificationPanel";
 import clsx from "clsx";
+import { NotificationBell } from "@/components/ui/NotificationPanel";
 import GuestCard from "@/components/guests/GuestCard";
 import GuestTable from "@/components/guests/GuestTable";
 import AddGuestModal from "@/components/guests/AddGuestModal";
@@ -31,6 +31,13 @@ const FILTERS = [
   { id: "declined", label: "Declined" },
 ];
 
+function sortGuestsByPinAndName(guestList) {
+  return [...guestList].sort((a, b) => {
+    if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+    return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+  });
+}
+
 export default function GuestsPage() {
   const router = useRouter();
   const [guests, setGuests] = useState([]);
@@ -44,6 +51,7 @@ export default function GuestsPage() {
   const [deleteGuest, setDeleteGuest] = useState(null);
   const [shareGuest, setShareGuest] = useState(null);
   const [saving, setSaving] = useState(false);
+  const fetchInProgressRef = useRef(false);
 
   const loadGuests = useCallback(async () => {
     const token = getAccessToken();
@@ -52,9 +60,12 @@ export default function GuestsPage() {
       return;
     }
 
+    if (fetchInProgressRef.current) return;
+    fetchInProgressRef.current = true;
+
     try {
       const data = await apiRequest("/api/couple/guests", { token });
-      setGuests(data.guests || []);
+      setGuests(sortGuestsByPinAndName(data.guests || []));
       setError("");
     } catch (err) {
       if (err.status === 401) {
@@ -65,6 +76,7 @@ export default function GuestsPage() {
       setError(err.message || "Failed to load guests");
     } finally {
       setLoading(false);
+      fetchInProgressRef.current = false;
     }
   }, [router]);
 
@@ -72,9 +84,38 @@ export default function GuestsPage() {
     loadGuests();
   }, [loadGuests]);
 
+  // Real-time-ish updates: keep the guests table fresh without requiring
+  // a manual page reload (e.g. immediately after a guest submits RSVP).
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const POLL_MS = 2500;
+
+    const maybePoll = () => {
+      if (document.visibilityState !== "visible") return;
+      loadGuests();
+    };
+
+    maybePoll();
+    const intervalId = window.setInterval(maybePoll, POLL_MS);
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        maybePoll();
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [loadGuests]);
+
   const filteredGuests = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return guests.filter((guest) => {
+    const filtered = guests.filter((guest) => {
       const matchesFilter = filter === "all" || guest.status === filter;
       const matchesQuery =
         !q ||
@@ -82,6 +123,7 @@ export default function GuestsPage() {
         guest.phone.toLowerCase().includes(q);
       return matchesFilter && matchesQuery;
     });
+    return sortGuestsByPinAndName(filtered);
   }, [guests, query, filter]);
 
   const handleAdd = async (payload) => {
@@ -100,7 +142,7 @@ export default function GuestsPage() {
           tableNumber: payload.tableNumber,
         },
       });
-      setGuests((prev) => [data.guest, ...prev]);
+      setGuests((prev) => sortGuestsByPinAndName([data.guest, ...prev]));
       setFilter("all");
       setError("");
     } catch (err) {
@@ -189,6 +231,46 @@ export default function GuestsPage() {
     }
   };
 
+  const markInviteShared = useCallback(async (guestId) => {
+    const token = getAccessToken();
+    if (!token || !guestId) return;
+
+    try {
+      const data = await apiRequest(
+        `/api/couple/guests/${guestId}/mark-invite-shared`,
+        { method: "POST", token }
+      );
+      if (data?.guest) {
+        setGuests((prev) =>
+          prev.map((g) => (g.id === guestId ? data.guest : g))
+        );
+      }
+    } catch {
+      // Keep UI usable even if marking fails silently.
+    }
+  }, []);
+
+  const handleTogglePin = async (guest) => {
+    const token = getAccessToken();
+    if (!token) return;
+
+    try {
+      const data = await apiRequest(`/api/couple/guests/${guest.id}/toggle-pin`, {
+        method: "POST",
+        token,
+      });
+      if (data?.guest) {
+        setGuests((prev) =>
+          sortGuestsByPinAndName(
+            prev.map((g) => (g.id === guest.id ? data.guest : g))
+          )
+        );
+      }
+    } catch (err) {
+      setError(err.message || "Failed to update pin");
+    }
+  };
+
   const handleShare = async (guest) => {
     const prefersNativeShare =
       typeof window !== "undefined" &&
@@ -196,7 +278,11 @@ export default function GuestsPage() {
 
     if (prefersNativeShare) {
       const result = await shareGuestInviteNative(guest);
-      if (result.ok || result.reason === "cancelled") return;
+      if (result.ok) {
+        await markInviteShared(guest.id);
+        return;
+      }
+      if (result.reason === "cancelled") return;
     }
 
     setShareGuest(guest);
@@ -292,9 +378,19 @@ export default function GuestsPage() {
           filteredGuests.map((guest) => (
             <GuestCard
               key={guest.id}
-              {...guest}
+              guest={guest}
+              name={guest.name}
+              phone={guest.phone}
+              status={guest.status}
+              inviteShared={Boolean(guest.inviteSharedAt)}
               guestCount={guest.invitedCount ?? guest.guestCount}
               onShare={() => handleShare(guest)}
+              onTogglePin={() => handleTogglePin(guest)}
+              onViewGuest={(g) => setViewGuest(g)}
+              onEditGuest={(g) => setEditGuest(g)}
+              onDeleteGuest={(g) => setDeleteGuest(g)}
+              onCancelRsvp={handleCancelRsvp}
+              onResendInvite={handleResendInvite}
             />
           ))
         )}
@@ -310,6 +406,7 @@ export default function GuestsPage() {
             onShareGuest={handleShare}
             onCancelRsvp={handleCancelRsvp}
             onResendInvite={handleResendInvite}
+            onTogglePin={handleTogglePin}
           />
         ) : null}
       </div>
@@ -350,6 +447,7 @@ export default function GuestsPage() {
         open={!!shareGuest}
         guest={shareGuest}
         onClose={() => setShareGuest(null)}
+        onShareAction={(guest) => markInviteShared(guest.id)}
       />
 
       {saving ? (

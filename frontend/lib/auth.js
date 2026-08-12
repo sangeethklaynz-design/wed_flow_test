@@ -4,17 +4,17 @@ const USER_KEY = "wedflow_user";
 
 export function getAccessToken() {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem(ACCESS_TOKEN_KEY);
+  return sessionStorage.getItem(ACCESS_TOKEN_KEY);
 }
 
 export function getRefreshToken() {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem(REFRESH_TOKEN_KEY);
+  return sessionStorage.getItem(REFRESH_TOKEN_KEY);
 }
 
 export function getStoredUser() {
   if (typeof window === "undefined") return null;
-  const raw = localStorage.getItem(USER_KEY);
+  const raw = sessionStorage.getItem(USER_KEY);
   if (!raw) return null;
   try {
     return JSON.parse(raw);
@@ -25,16 +25,18 @@ export function getStoredUser() {
 
 export function setAuthSession({ accessToken, refreshToken, user } = {}) {
   if (typeof window === "undefined") return;
-  if (accessToken) localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-  if (refreshToken) localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-  if (user) localStorage.setItem(USER_KEY, JSON.stringify(user));
+  if (accessToken)
+    sessionStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+  if (refreshToken)
+    sessionStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  if (user) sessionStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
 export function clearAuthSession() {
   if (typeof window === "undefined") return;
-  localStorage.removeItem(ACCESS_TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
-  localStorage.removeItem(USER_KEY);
+  sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+  sessionStorage.removeItem(REFRESH_TOKEN_KEY);
+  sessionStorage.removeItem(USER_KEY);
 }
 
 export function logout() {

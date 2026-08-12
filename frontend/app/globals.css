@@ -91,4 +91,18 @@ body {
   .font-cormorant-custom {
     font-family: var(--font-cormorant), serif !important;
   }
+
+  .unread-blink {
+    animation: unread-blink 2.8s ease-in-out infinite;
+  }
+}
+
+@keyframes unread-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
 }
