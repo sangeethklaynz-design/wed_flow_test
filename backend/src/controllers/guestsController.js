@@ -521,4 +521,6 @@ module.exports = {
   resendInvite,
   markInviteShared,
   togglePin,
+  fetchGuestsForWedding,
+  mapGuestRow,
 };

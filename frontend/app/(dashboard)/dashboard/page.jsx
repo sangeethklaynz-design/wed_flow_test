@@ -3,9 +3,10 @@
 /**
  * Dashboard home — stats, RSVP breakdown, countdown.
  * API: GET /api/couple/dashboard
+ * Stats are computed from the same guest records as the Guests page.
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { NotificationBell } from "@/components/ui/NotificationPanel";
 import StatCard from "@/components/dashboard/StatCard";
@@ -20,42 +21,62 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
   const [dashboard, setDashboard] = useState(null);
   const [storedUser, setStoredUser] = useState(null);
+  const fetchInProgressRef = useRef(false);
 
-  useEffect(() => {
-    setStoredUser(getStoredUser());
-
+  const loadDashboard = useCallback(async ({ silent = false } = {}) => {
     const token = getAccessToken();
     if (!token) {
       router.replace("/login");
       return;
     }
 
-    let cancelled = false;
+    if (fetchInProgressRef.current) return;
+    fetchInProgressRef.current = true;
 
-    (async () => {
-      try {
-        const data = await apiRequest("/api/couple/dashboard", { token });
-        if (!cancelled) {
-          setDashboard(data);
-          setError("");
-        }
-      } catch (err) {
-        if (cancelled) return;
-        if (err.status === 401) {
-          clearAuthSession();
-          router.replace("/login");
-          return;
-        }
-        setError(err.message || "Failed to load dashboard");
-      } finally {
-        if (!cancelled) setLoading(false);
+    if (!silent) setLoading(true);
+
+    try {
+      const data = await apiRequest("/api/couple/dashboard", { token });
+      setDashboard(data);
+      setError("");
+    } catch (err) {
+      if (err.status === 401) {
+        clearAuthSession();
+        router.replace("/login");
+        return;
       }
-    })();
+      setError(err.message || "Failed to load dashboard");
+    } finally {
+      setLoading(false);
+      fetchInProgressRef.current = false;
+    }
+  }, [router]);
+
+  useEffect(() => {
+    setStoredUser(getStoredUser());
+    loadDashboard();
+  }, [loadDashboard]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const POLL_MS = 2500;
+    const maybePoll = () => {
+      if (document.visibilityState !== "visible") return;
+      loadDashboard({ silent: true });
+    };
+
+    const intervalId = window.setInterval(maybePoll, POLL_MS);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") maybePoll();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
-      cancelled = true;
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [router]);
+  }, [loadDashboard]);
 
   const coupleNames =
     dashboard?.wedding?.coupleNames ||
@@ -63,26 +84,27 @@ export default function DashboardPage() {
     "Welcome";
   const initials = dashboard?.wedding?.initials || "W";
   const stats = dashboard?.stats;
+  const fallback = dashboard ? "0" : "—";
 
   const statCards = [
     {
       title: "Guests invited",
-      value: String(stats?.guestsInvited ?? "—"),
+      value: String(stats?.guestsInvited ?? fallback),
       dotColor: "bg-navy",
     },
     {
       title: "RSVP confirmed",
-      value: String(stats?.rsvpConfirmed ?? "—"),
+      value: String(stats?.rsvpConfirmed ?? fallback),
       dotColor: "bg-green-500",
     },
     {
       title: "Pending",
-      value: String(stats?.pending ?? "—"),
+      value: String(stats?.pending ?? fallback),
       dotColor: "bg-orange-400",
     },
     {
       title: "Declined",
-      value: String(stats?.declined ?? "—"),
+      value: String(stats?.declined ?? fallback),
       dotColor: "bg-red-500",
     },
   ];
