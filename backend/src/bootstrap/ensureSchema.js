@@ -203,14 +203,24 @@ async function ensureNotificationsTable() {
       CREATE TABLE notifications (
         id VARCHAR(36) PRIMARY KEY,
         wedding_id VARCHAR(36) NOT NULL,
+        guest_id VARCHAR(36) NULL,
         type VARCHAR(50) NOT NULL,
         title VARCHAR(255) NOT NULL,
         message TEXT,
         is_read TINYINT(1) NOT NULL DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_notif_wedding (wedding_id),
+        INDEX idx_notif_guest (guest_id),
         INDEX idx_notif_read (wedding_id, is_read)
       );
+    `);
+  }
+
+  if (!(await columnExists("notifications", "guest_id"))) {
+    await sequelize.query(`
+      ALTER TABLE notifications
+      ADD COLUMN guest_id VARCHAR(36) NULL AFTER wedding_id,
+      ADD INDEX idx_notif_guest (guest_id);
     `);
   }
 }

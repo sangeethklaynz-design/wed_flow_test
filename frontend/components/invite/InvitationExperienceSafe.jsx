@@ -130,7 +130,7 @@ export default function InvitationExperienceSafe({
       >
         <div className="relative w-[390px] flex flex-col">
           {hasSchedule ? (
-            <InvitationSchedule events={scheduleEvents} />
+            <InvitationSchedule events={scheduleEvents} guestToken={guestToken} />
           ) : null}
           <InvitationThankYou guestToken={guestToken} />
           <InvitationPage

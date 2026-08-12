@@ -197,7 +197,7 @@ async function submitPublicRsvp(req, res) {
     const updated = await loadGuestByToken(token);
     const guestName = updated.full_name || "A guest";
     const rsvpLabel = attendingStatus === "ATTENDING" ? "confirmed attendance" : "declined";
-    await createNotification(row.wedding_id, "rsvp_submitted", "New RSVP received", `${guestName} has ${rsvpLabel}.`);
+    await createNotification(row.wedding_id, "rsvp_submitted", "New RSVP received", `${guestName} has ${rsvpLabel}.`, row.id);
 
     return res.status(200).json({
       message: "RSVP saved",
@@ -286,7 +286,7 @@ async function submitChangeRequest(req, res) {
     );
 
     const guestName = row.full_name || "A guest";
-    await createNotification(row.wedding_id, "change_request", "RSVP change requested", `${guestName} has requested to change their RSVP.`);
+    await createNotification(row.wedding_id, "change_request", "RSVP change requested", `${guestName} has requested to change their RSVP.`, row.id);
 
     return res.status(201).json({ message: "Change request submitted", id });
   } catch (err) {

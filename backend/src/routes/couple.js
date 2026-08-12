@@ -26,6 +26,8 @@ const {
 const {
   listNotifications,
   markAllRead,
+  updateNotification,
+  deleteNotification
 } = require("../controllers/notificationsController");
 
 const router = express.Router();
@@ -52,5 +54,7 @@ router.delete("/schedule/:id", requireAuth, deleteScheduleEvent);
 
 router.get("/notifications", requireAuth, listNotifications);
 router.post("/notifications/mark-read", requireAuth, markAllRead);
+router.put("/notifications/:id", requireAuth, updateNotification);
+router.delete("/notifications/:id", requireAuth, deleteNotification);
 
 module.exports = router;

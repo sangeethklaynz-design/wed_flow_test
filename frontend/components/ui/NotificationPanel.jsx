@@ -83,7 +83,7 @@ function NotificationDropdown({ open, onClose }) {
       <div className="fixed inset-0 z-[69]" onClick={onClose} />
 
       {/* Dropdown - right-aligned to bell, below header */}
-      <div className="absolute top-full right-0 mt-3 z-[70] w-[360px] bg-cream rounded-2xl card-shadow border border-border max-h-[70vh] flex flex-col overflow-hidden">
+      <div className="absolute top-full right-0 mt-3 z-[70] w-[420px] bg-cream rounded-2xl card-shadow border border-border max-h-[80vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <h2 className="font-serif font-bold text-lg text-navy">Notifications</h2>
@@ -121,22 +121,22 @@ function NotificationDropdown({ open, onClose }) {
               return (
                 <div
                   key={notif.id}
-                  className={`flex items-start gap-3 p-3 rounded-xl border ${config.border} ${config.bg} ${
+                  className={`flex items-start gap-4 p-4 rounded-xl border ${config.border} ${config.bg} ${
                     !notif.isRead ? "ring-1 ring-[#e69e46]/30" : ""
                   }`}
                 >
-                  <div className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${config.bg}`}>
-                    <Icon className={`w-4 h-4 ${config.iconColor}`} strokeWidth={2} />
+                  <div className={`shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${config.bg}`}>
+                    <Icon className={`w-5 h-5 ${config.iconColor}`} strokeWidth={2} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-navy leading-tight">{notif.title}</p>
+                    <p className="text-base font-medium text-navy leading-tight">{notif.title}</p>
                     {notif.message && (
-                      <p className="text-xs text-muted mt-0.5 leading-snug">{notif.message}</p>
+                      <p className="text-sm text-muted mt-1 leading-snug">{notif.message}</p>
                     )}
-                    <p className="text-[10px] text-muted/70 mt-1">{timeAgo(notif.createdAt)}</p>
+                    <p className="text-xs text-muted/70 mt-1.5">{timeAgo(notif.createdAt)}</p>
                   </div>
                   {!notif.isRead && (
-                    <div className="shrink-0 w-2 h-2 rounded-full bg-[#e69e46] mt-1.5" />
+                    <div className="shrink-0 w-2.5 h-2.5 rounded-full bg-[#e69e46] mt-1.5" />
                   )}
                 </div>
               );
@@ -167,9 +167,9 @@ export function NotificationBell() {
         onClick={() => setOpen(!open)}
         className="relative text-navy p-2 hover:bg-gray-100 rounded-full transition-colors"
       >
-        <Bell className="w-5 h-5" />
+        <Bell className="w-7 h-7" />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 w-4 h-4 bg-[#e69e46] text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+          <span className="absolute top-0 right-0 w-5 h-5 bg-[#e69e46] text-white text-[11px] font-bold rounded-full flex items-center justify-center border-2 border-white">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}

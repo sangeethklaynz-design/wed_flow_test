@@ -53,45 +53,26 @@ export default function InvitationThankYou({ guestToken }) {
         <Image src="/invitation/9.2.png" alt="" fill className="object-contain" />
       </div>
 
-      <div className="absolute top-[120px] w-full flex flex-col items-center justify-center z-10">
+      <div className="absolute top-[140px] w-full flex flex-col items-center justify-center z-10">
         <h2 className="font-serif text-[28px] text-[#7732A4] uppercase font-semibold leading-[1.2] text-center tracking-wide">
           Thank you for<br />
           <span className="text-[#B54AB6]">your RSVP</span>
         </h2>
       </div>
 
-      <div className="absolute top-[203px] left-[107px] w-[175px] h-[34px] z-10 pointer-events-none">
+      <div className="absolute top-[250px] left-[107px] w-[175px] h-[34px] z-10 pointer-events-none">
         <Image src="/invitation/9.3.png" alt="Divider" fill className="object-contain" />
       </div>
 
-      <div className="absolute top-[280px] left-[30px] w-[330px] z-10">
-        <p className="font-quattrocento-custom font-bold text-[17px] text-[#1B3601] text-center leading-[1.4] tracking-wide">
+      <div className="absolute top-[340px] left-[30px] w-[330px] z-10">
+        <p className="font-quattrocento-custom font-bold text-[17px] text-[#1B3601] text-center leading-[1.8] tracking-wide">
           Thank you for confirming your presence on our special day.<br />
           Your love and blessings mean the world to us as we begin this new chapter together.
         </p>
       </div>
 
-      <div className="absolute top-[440px] left-[99px] w-[191px] h-[48px] z-10 pointer-events-none">
+      <div className="absolute top-[510px] left-[99px] w-[191px] h-[48px] z-10 pointer-events-none">
         <Image src="/invitation/9.4.png" alt="Divider" fill className="object-contain" />
-      </div>
-
-      <div className="absolute top-[540px] w-full flex items-center justify-center z-10">
-        <p className="font-greatvibes-custom text-[28px] text-[#7732A4] text-center">
-          Keep the day's events close at hand
-        </p>
-      </div>
-
-      <div className="absolute top-[590px] w-full flex flex-col items-center justify-center z-20 gap-3">
-        <button
-          onClick={handleDownload}
-          disabled={downloading}
-          className="bg-[#4C2D88] hover:bg-[#623bab] disabled:opacity-70 transition-colors text-white font-sans text-[15px] font-medium w-[220px] h-[48px] rounded-[24px] flex items-center justify-center cursor-pointer shadow-md active:scale-95"
-        >
-          {downloading ? "Downloading..." : "Save the Schedule"}
-        </button>
-        {error && (
-          <p className="text-red-500 text-xs text-center w-full">{error}</p>
-        )}
       </div>
 
       <div className="absolute top-[581px] left-[1px] w-[390px] h-[260px] z-0 pointer-events-none">

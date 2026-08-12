@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Home, Mail, Users, Calendar, LogOut } from "lucide-react";
+import { Home, Mail, Users, Calendar, LogOut, Bell } from "lucide-react";
 import clsx from "clsx";
 import Image from "next/image";
 import { logout, getStoredUser } from "@/lib/auth";
@@ -13,6 +13,7 @@ const navItems = [
   { name: "Invite", href: "/invite", icon: Mail },
   { name: "Guests", href: "/guests", icon: Users },
   { name: "Schedule", href: "/schedule", icon: Calendar },
+  { name: "Notifications", href: "/notifications", icon: Bell },
 ];
 
 function buildInitials(coupleNames) {

@@ -228,7 +228,7 @@ async function createGuest(req, res) {
     await transaction.commit();
 
     const rows = await fetchGuestsForWedding(wedding.id, guestId);
-    await createNotification(wedding.id, "guest_added", "New guest added", `${name} has been added to the guest list.`);
+    await createNotification(wedding.id, "guest_added", "New guest added", `${name} has been added to the guest list.`, guestId);
     return res.status(201).json({
       guest: mapGuestRow(rows[0]),
     });
@@ -313,7 +313,7 @@ async function updateGuest(req, res) {
     );
 
     const rows = await fetchGuestsForWedding(wedding.id, guestId);
-    await createNotification(wedding.id, "guest_updated", "Guest updated", `${nextName}'s details have been updated.`);
+    await createNotification(wedding.id, "guest_updated", "Guest updated", `${nextName}'s details have been updated.`, guestId);
     return res.status(200).json({
       guest: mapGuestRow(rows[0]),
     });
@@ -365,7 +365,7 @@ async function deleteGuest(req, res) {
     await transaction.commit();
 
     const deletedName = existing[0].full_name;
-    await createNotification(wedding.id, "guest_deleted", "Guest removed", `${deletedName} has been removed from the guest list.`);
+    await createNotification(wedding.id, "guest_deleted", "Guest removed", `${deletedName} has been removed from the guest list.`, guestId);
     return res.status(200).json({
       message: "Guest deleted",
       id: guestId,
@@ -401,7 +401,7 @@ async function cancelRsvp(req, res) {
     await sequelize.query(`UPDATE guests SET has_change_request = 0 WHERE id = ?;`, { replacements: [guestId] });
 
     const rows = await fetchGuestsForWedding(wedding.id, guestId);
-    await createNotification(wedding.id, "rsvp_cancelled", "RSVP cancelled", `${existing[0].full_name}'s RSVP has been cancelled by the couple.`);
+    await createNotification(wedding.id, "rsvp_cancelled", "RSVP cancelled", `${existing[0].full_name}'s RSVP has been cancelled by the couple.`, guestId);
     return res.status(200).json({ guest: mapGuestRow(rows[0]) });
   } catch (err) {
     console.error("cancelRsvp error:", err);
@@ -425,7 +425,7 @@ async function resendInvite(req, res) {
     );
 
     const rows = await fetchGuestsForWedding(wedding.id, guestId);
-    await createNotification(wedding.id, "invite_resent", "Invitation resent", `${existing[0].full_name}'s invitation has been reset. They can now RSVP again.`);
+    await createNotification(wedding.id, "invite_resent", "Invitation resent", `${existing[0].full_name}'s invitation has been reset. They can now RSVP again.`, guestId);
     return res.status(200).json({ guest: mapGuestRow(rows[0]) });
   } catch (err) {
     console.error("resendInvite error:", err);

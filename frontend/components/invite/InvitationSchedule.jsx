@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
+import { getAccessToken } from "@/lib/auth";
 
 function formatTime12(time24) {
   if (!time24) return "";
@@ -13,7 +15,46 @@ function formatTime12(time24) {
   return `${hours}:${minutes} ${period}`;
 }
 
-export default function InvitationSchedule({ events = [] }) {
+export default function InvitationSchedule({ events = [], guestToken }) {
+  const [downloading, setDownloading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    setError("");
+    try {
+      let url = "";
+      let headers = {};
+
+      if (guestToken) {
+        url = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/public/invite/${encodeURIComponent(guestToken)}/schedule/download`;
+      } else {
+        const token = getAccessToken();
+        if (!token) throw new Error("Unable to authenticate.");
+        url = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/couple/schedule/download`;
+        headers = { Authorization: `Bearer ${token}` };
+      }
+
+      const res = await fetch(url, { headers });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Failed to download schedule");
+      }
+
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = "wedding-schedule.pdf";
+      a.click();
+      URL.revokeObjectURL(objectUrl);
+    } catch (err) {
+      setError(err.message || "Failed to download schedule");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <div className="w-[390px] min-h-[844px] mx-auto bg-[#FAF6F0] flex flex-col items-center px-6 py-10 select-none">
       {/* Header */}
@@ -76,7 +117,27 @@ export default function InvitationSchedule({ events = [] }) {
         ))}
       </div>
 
-      <div className="relative w-[138px] h-[92px] mt-6">
+      {/* "Keep the day's events close at hand" and Button */}
+      <div className="w-full flex items-center justify-center z-10 mt-6">
+        <p className="font-greatvibes-custom text-[28px] text-[#7732A4] text-center">
+          Keep the day's events close at hand
+        </p>
+      </div>
+
+      <div className="w-full flex flex-col items-center justify-center z-20 gap-3 mt-3">
+        <button 
+          onClick={handleDownload}
+          disabled={downloading}
+          className="bg-[#4C2D88] hover:bg-[#623bab] disabled:opacity-70 transition-colors text-white font-sans text-[15px] font-medium w-[220px] h-[48px] rounded-[24px] flex items-center justify-center cursor-pointer shadow-md active:scale-95"
+        >
+          {downloading ? "Downloading..." : "Save the Schedule"}
+        </button>
+        {error && (
+          <p className="text-red-500 text-xs text-center w-full">{error}</p>
+        )}
+      </div>
+
+      <div className="relative w-[138px] h-[92px] mt-12">
         <Image
           src="/invitation/0.1.png"
           alt="Lotus"

@@ -270,7 +270,7 @@ async function createScheduleEvent(req, res) {
     );
 
     const rows = await fetchScheduleRows(wedding.id, eventId);
-    await createNotification(wedding.id, "schedule_added", "Event added", `"${payload.title}" has been added to the schedule.`);
+    await createNotification(wedding.id, "schedule_added", "Event added", `"${payload.title}" has been added to the schedule.`, null);
     return res.status(201).json({
       event: mapEventRow(rows[0], wedding.wedding_date),
     });
@@ -364,7 +364,7 @@ async function updateScheduleEvent(req, res) {
     );
 
     const rows = await fetchScheduleRows(wedding.id, eventId);
-    await createNotification(wedding.id, "schedule_updated", "Event updated", `"${rows[0].title}" has been updated.`);
+    await createNotification(wedding.id, "schedule_updated", "Event updated", `"${rows[0].title}" has been updated.`, null);
     return res.status(200).json({
       event: mapEventRow(rows[0], wedding.wedding_date),
     });
@@ -404,7 +404,7 @@ async function deleteScheduleEvent(req, res) {
       }
     );
 
-    await createNotification(wedding.id, "schedule_deleted", "Event removed", `"${deletedTitle}" has been removed from the schedule.`);
+    await createNotification(wedding.id, "schedule_deleted", "Event removed", `"${deletedTitle}" has been removed from the schedule.`, null);
     return res.status(200).json({
       message: "Schedule event deleted",
       id: eventId,
