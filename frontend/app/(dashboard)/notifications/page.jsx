@@ -10,6 +10,7 @@ import {
 import { apiRequest } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import RowActionsMenu from "@/components/ui/RowActionsMenu";
+import { NotificationBell } from "@/components/ui/NotificationPanel";
 import ViewNotificationModal from "@/components/notifications/ViewNotificationModal";
 import EditNotificationModal from "@/components/notifications/EditNotificationModal";
 import ConfirmDeleteModal from "@/components/guests/ConfirmDeleteModal";
@@ -204,19 +205,25 @@ export default function NotificationsPage() {
     <div className="flex-1 bg-[#fdfcf9] min-h-screen p-6 md:p-8 w-full">
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div className="md:hidden mb-6">
+        <h1 className="font-serif font-bold text-3xl text-navy mb-1">Notifications</h1>
+        <p className="text-muted text-[15px]">Stay updated with RSVP changes, guest responses, and important activity.</p>
+      </div>
+
+      <div className="hidden md:flex justify-between items-center mb-8 bg-white p-5 rounded-2xl border border-border card-shadow">
         <div>
-          <h1 className="font-serif text-[32px] font-bold text-navy mb-1">Notifications</h1>
-          <p className="text-muted text-[15px]">Stay updated with RSVP changes, guest responses, and important activity.</p>
+          <h1 className="font-serif font-bold text-2xl text-navy mb-1">Notifications</h1>
+          <p className="text-muted text-sm">Stay updated with RSVP changes, guest responses, and important activity.</p>
         </div>
         <div className="flex items-center gap-4">
           <button 
             onClick={handleMarkAllRead}
-            className="flex items-center gap-2 px-4 py-2.5 border border-[#d6c7e6] text-[#7732A4] rounded-full text-sm font-medium hover:bg-[#f8f5fb] transition-colors bg-white shadow-sm"
+            className="flex items-center gap-2 px-4 py-2 border border-[#d6c7e6] text-[#7732A4] rounded-xl text-sm font-medium hover:bg-[#f8f5fb] transition-colors bg-white shadow-sm"
           >
             <Check className="w-4 h-4" />
             Mark all as read
           </button>
+          <NotificationBell />
         </div>
       </div>
 

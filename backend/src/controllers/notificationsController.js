@@ -22,7 +22,7 @@ async function listNotifications(req, res) {
       `SELECT n.id, n.type, n.title, n.message, n.is_read, n.created_at,
               g.id as guest_id, g.full_name as guest_name, g.whatsapp_number as guest_phone, g.rsvp_status as guest_status, g.has_change_request as guest_request_for_change
        FROM notifications n
-       LEFT JOIN guests g ON n.guest_id = g.id
+       LEFT JOIN guests g ON n.guest_id COLLATE utf8mb4_unicode_ci = g.id COLLATE utf8mb4_unicode_ci
        WHERE n.wedding_id = ?
        ORDER BY n.created_at DESC
        LIMIT 100;`,
