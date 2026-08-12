@@ -9,8 +9,8 @@ import { useForm } from "react-hook-form";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { useState } from "react";
-import { setAuthSession } from "@/lib/auth";
+import { useEffect, useState } from "react";
+import { getAccessToken, setAuthSession } from "@/lib/auth";
 import { apiRequest } from "@/lib/api";
 
 export default function LoginPage() {
@@ -22,6 +22,12 @@ export default function LoginPage() {
     handleSubmit,
     formState: { errors },
   } = useForm();
+
+  useEffect(() => {
+    if (getAccessToken()) {
+      router.replace("/dashboard");
+    }
+  }, [router]);
 
   const onSubmit = async (data) => {
     setSubmitError("");
