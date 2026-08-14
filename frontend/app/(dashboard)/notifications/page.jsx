@@ -5,14 +5,13 @@ import {
   Bell, Check, Filter, Info, ChevronDown, Calendar, 
   RefreshCw, UserPlus, CheckCircle2, XCircle, 
   MoreVertical, ChevronLeft, ChevronRight, CheckSquare, Square,
-  Edit2, Trash2
+  CheckCheck, Trash2
 } from "lucide-react";
 import { apiRequest } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import RowActionsMenu from "@/components/ui/RowActionsMenu";
 import { NotificationBell } from "@/components/ui/NotificationPanel";
 import ViewNotificationModal from "@/components/notifications/ViewNotificationModal";
-import EditNotificationModal from "@/components/notifications/EditNotificationModal";
 import ConfirmDeleteModal from "@/components/guests/ConfirmDeleteModal";
 
 export default function NotificationsPage() {
@@ -36,7 +35,6 @@ export default function NotificationsPage() {
   // Modals state
   const [actionNotification, setActionNotification] = useState(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const fetchNotifications = useCallback(async () => {
@@ -84,6 +82,24 @@ export default function NotificationsPage() {
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const handleMarkOneRead = async (notif) => {
+    if (!notif || notif.isRead) return;
+    const token = getAccessToken();
+    if (token) {
+      try {
+        await apiRequest(`/api/couple/notifications/${notif.id}/mark-read`, {
+          method: "POST",
+          token,
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n))
+    );
   };
 
   const handleClearFilters = () => {
@@ -413,12 +429,9 @@ export default function NotificationsPage() {
                           }
                         },
                         {
-                          label: "Edit details",
-                          icon: Edit2,
-                          onClick: () => {
-                            setActionNotification(notif);
-                            setIsEditModalOpen(true);
-                          }
+                          label: "Mark as read",
+                          icon: CheckCheck,
+                          onClick: () => handleMarkOneRead(notif),
                         },
                         {
                           label: "Delete notification",
@@ -492,20 +505,6 @@ export default function NotificationsPage() {
           setActionNotification(null);
         }}
         notification={actionNotification}
-      />
-
-      <EditNotificationModal
-        open={isEditModalOpen}
-        onClose={() => {
-          setIsEditModalOpen(false);
-          setActionNotification(null);
-        }}
-        notification={actionNotification}
-        onSuccess={() => {
-          setIsEditModalOpen(false);
-          setActionNotification(null);
-          fetchNotifications();
-        }}
       />
 
       <ConfirmDeleteModal

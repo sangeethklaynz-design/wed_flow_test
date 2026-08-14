@@ -6,7 +6,6 @@
  */
 
 import { useForm } from "react-hook-form";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useEffect, useState } from "react";
@@ -105,15 +104,6 @@ export default function LoginPage() {
           <p className="text-sm text-red-500 text-center">{submitError}</p>
         ) : null}
 
-        <div className="flex justify-end">
-          <Link
-            href="#"
-            className="text-sm text-[#e69e46] hover:underline font-medium"
-          >
-            Forgot password?
-          </Link>
-        </div>
-
         <button
           type="submit"
           disabled={submitting}
@@ -122,16 +112,6 @@ export default function LoginPage() {
           {submitting ? "Signing in…" : "Sign in"}
         </button>
       </form>
-
-      <p className="text-sm text-muted mt-8">
-        Need help?{" "}
-        <Link
-          href="#"
-          className="text-[#e69e46] font-medium hover:underline"
-        >
-          Contact support
-        </Link>
-      </p>
     </div>
   );
 }

@@ -25,7 +25,7 @@ export default function AddScheduleEventModal({
       startTime: "",
       endTime: "",
       specialNotes: "",
-      notificationEnabled: true,
+      notificationEnabled: false,
     },
   });
 
@@ -37,7 +37,7 @@ export default function AddScheduleEventModal({
       startTime: initialEvent?.startTime ?? "",
       endTime: initialEvent?.endTime ?? "",
       specialNotes: initialEvent?.specialNotes ?? "",
-      notificationEnabled: initialEvent?.notificationEnabled ?? true,
+      notificationEnabled: initialEvent?.notificationEnabled ?? false,
     });
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -72,7 +72,8 @@ export default function AddScheduleEventModal({
       startTime: data.startTime,
       endTime: data.endTime,
       specialNotes: data.specialNotes?.trim() || "",
-      notificationEnabled: Boolean(data.notificationEnabled),
+      notificationEnabled:
+        mode === "edit" ? Boolean(data.notificationEnabled) : false,
       status: mode === "edit" ? initialEvent?.status : "upcoming",
     };
 
@@ -195,21 +196,23 @@ export default function AddScheduleEventModal({
             />
           </div>
 
-          <label className="flex items-start gap-3 rounded-2xl border border-border bg-white px-4 py-3 cursor-pointer">
-            <input
-              type="checkbox"
-              {...register("notificationEnabled")}
-              className="mt-1 h-4 w-4 rounded border-border text-navy focus:ring-[#e69e46]/50"
-            />
-            <span>
-              <span className="block text-sm font-medium text-navy">
-                Notify at event time
+          {mode === "edit" ? (
+            <label className="flex items-start gap-3 rounded-2xl border border-border bg-white px-4 py-3 cursor-pointer">
+              <input
+                type="checkbox"
+                {...register("notificationEnabled")}
+                className="mt-1 h-4 w-4 rounded border-border text-navy focus:ring-[#e69e46]/50"
+              />
+              <span>
+                <span className="block text-sm font-medium text-navy">
+                  Notify at event time
+                </span>
+                <span className="block text-xs text-muted mt-1">
+                  Wed Flow will request browser notification permission and alert you when the event starts.
+                </span>
               </span>
-              <span className="block text-xs text-muted mt-1">
-                Wed Flow will request browser notification permission and alert you when the event starts.
-              </span>
-            </span>
-          </label>
+            </label>
+          ) : null}
 
           <div className="space-y-3 pt-2">
             <button

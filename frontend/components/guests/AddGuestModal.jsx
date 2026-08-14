@@ -55,8 +55,8 @@ export default function AddGuestModal({
       name: data.name.trim(),
       phone: data.phone.trim(),
       guestCount: Number(data.invitees) || 1,
-      note: data.note?.trim() || "",
-      tableNumber: data.tableNo?.trim() || "",
+      note: data.note.trim(),
+      tableNumber: data.tableNo.trim(),
       status: status ?? "pending",
     };
 
@@ -166,9 +166,12 @@ export default function AddGuestModal({
             <input
               type="text"
               placeholder="e.g. A1"
-              {...register("tableNo")}
+              {...register("tableNo", { required: "Table number is required" })}
               className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#e69e46]/50 transition-shadow placeholder:text-gray-300"
             />
+            {errors.tableNo && (
+              <p className="text-xs text-red-500">{errors.tableNo.message}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -178,9 +181,12 @@ export default function AddGuestModal({
             <textarea
               rows={3}
               placeholder="e.g. You and your family"
-              {...register("note")}
+              {...register("note", { required: "Invitation note is required" })}
               className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#e69e46]/50 transition-shadow placeholder:text-gray-300 resize-none"
             />
+            {errors.note && (
+              <p className="text-xs text-red-500">{errors.note.message}</p>
+            )}
           </div>
 
           <div className="space-y-3 pt-2">
