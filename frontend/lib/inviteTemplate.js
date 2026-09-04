@@ -9,7 +9,7 @@
 const DEFAULTS = {
   groomName: "Groom",
   brideName: "Bride",
-  coupleNames: "Groom & Bride",
+  coupleNames: "Bride & Groom",
   formattedDate: "22 . 07 . 2026",
   weekday: "WEDNESDAY",
   longDate: "22 JULY 2026",
@@ -24,6 +24,7 @@ const DEFAULTS = {
   parkingNote: "Complimentary valet available",
   thankYouNote: null,
   tableNumber: "Table 12",
+  ceremonySetting: "Outdoor ceremony",
   maxGuests: 1,
   contacts: [
     { name: "Bride", phone: "000 000 0000" },
@@ -104,10 +105,25 @@ export function normalizeInvitationTemplate(raw) {
     invitationNoteLine2 = "........";
   }
 
+  // Invitation display order: bride first, then groom
+  const displayCoupleNames =
+    brideName && groomName
+      ? `${brideName} & ${groomName}`
+      : wedding.coupleNames || `${groomName} & ${brideName}`;
+
+  const weatherNote = invitation?.weatherNote || DEFAULTS.weatherNote;
+  const weatherLower = String(weatherNote).toLowerCase();
+  let ceremonySetting = DEFAULTS.ceremonySetting;
+  if (/\bindoor\b/.test(weatherLower)) {
+    ceremonySetting = "Indoor ceremony";
+  } else if (/\boutdoor\b/.test(weatherLower)) {
+    ceremonySetting = "Outdoor ceremony";
+  }
+
   return {
     groomName,
     brideName,
-    coupleNames: wedding.coupleNames || `${groomName} & ${brideName}`,
+    coupleNames: displayCoupleNames,
     formattedDate: wedding.formattedDate || DEFAULTS.formattedDate,
     weekday,
     longDate,
@@ -118,12 +134,13 @@ export function normalizeInvitationTemplate(raw) {
     hotelName: (invitation?.hotelName || DEFAULTS.hotelName).toUpperCase(),
     hotelAddress: invitation?.hotelAddress || null,
     googleMapsLink: invitation?.googleMapsLink || null,
-    weatherNote: invitation?.weatherNote || DEFAULTS.weatherNote,
+    weatherNote,
     parkingNote: invitation?.parkingNote || DEFAULTS.parkingNote,
     thankYouNote: invitation?.thankYouNote || null,
     tableNumber: guest?.tableNumber
       ? `Table ${guest.tableNumber}`
       : DEFAULTS.tableNumber,
+    ceremonySetting,
     maxGuests: guest?.maxGuests || 1,
     contacts: contacts.length
       ? contacts.map((c) => ({ name: c.name, phone: c.phone }))

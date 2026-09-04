@@ -204,13 +204,13 @@ export default function InvitationPage({
 
       <div className="absolute top-[277px] left-0 w-[390px] h-[178px] flex flex-col items-center justify-center z-10">
         <h2 className="font-script-custom text-[68px] text-[#7732A4] leading-none mb-1">
-          {t.groomName}
+          {t.brideName}
         </h2>
         <span className="font-script-custom text-[42px] text-[#7732A4] leading-none my-1">
           &
         </span>
         <h2 className="font-script-custom text-[68px] text-[#7732A4] leading-none mt-1">
-          {t.brideName}
+          {t.groomName}
         </h2>
       </div>
 
@@ -509,14 +509,28 @@ export default function InvitationPage({
         <Image src="/invitation/4.1.png" alt="Page 4 lotus divider" fill className="object-contain" />
       </div>
 
-      {/* CIRCLE 1 & ICON 4.2 & TEXT */}
+      {/* CIRCLE 1 — table number disabled for now; keep markup for later re-enable */}
+      {false && (
+        <>
+          <div className="absolute top-[2811px] left-[37px] w-[60px] h-[60px] rounded-full bg-[#473284] border-[2px] border-[#C6A15B] z-0"></div>
+          <div className="absolute top-[2823px] left-[46px] w-[43px] h-[35px] z-10">
+            <Image src="/invitation/4.2.png" alt="Table number icon" fill className="object-contain" />
+          </div>
+          <div className="absolute top-[2811px] left-[160px] h-[60px] flex flex-col justify-center z-10 w-[210px]">
+            <h3 className="font-cormorant-custom font-bold text-[18px] text-[#B54AB6] tracking-widest uppercase leading-none mb-1.5">TABLE NUMBER</h3>
+            <p className="font-quattrocento-custom font-bold text-[16px] text-[#1B3601] leading-none">{t.tableNumber}</p>
+          </div>
+        </>
+      )}
+
+      {/* Temporary replacement for table number — indoor/outdoor ceremony */}
       <div className="absolute top-[2811px] left-[37px] w-[60px] h-[60px] rounded-full bg-[#473284] border-[2px] border-[#C6A15B] z-0"></div>
       <div className="absolute top-[2823px] left-[46px] w-[43px] h-[35px] z-10">
-        <Image src="/invitation/4.2.png" alt="Table number icon" fill className="object-contain" />
+        <Image src="/invitation/4.2.png" alt="Ceremony setting icon" fill className="object-contain" />
       </div>
       <div className="absolute top-[2811px] left-[160px] h-[60px] flex flex-col justify-center z-10 w-[210px]">
-        <h3 className="font-cormorant-custom font-bold text-[18px] text-[#B54AB6] tracking-widest uppercase leading-none mb-1.5">TABLE NUMBER</h3>
-        <p className="font-quattrocento-custom font-bold text-[16px] text-[#1B3601] leading-none">{t.tableNumber}</p>
+        <h3 className="font-cormorant-custom font-bold text-[18px] text-[#B54AB6] tracking-widest uppercase leading-none mb-1.5">CEREMONY</h3>
+        <p className="font-quattrocento-custom font-bold text-[16px] text-[#1B3601] leading-none">{t.ceremonySetting}</p>
       </div>
 
       {/* CIRCLE 2 & ICON 4.3 & TEXT */}

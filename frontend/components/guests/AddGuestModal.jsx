@@ -56,7 +56,8 @@ export default function AddGuestModal({
       phone: data.phone.trim(),
       guestCount: Number(data.invitees) || 1,
       note: data.note.trim(),
-      tableNumber: data.tableNo.trim(),
+      // Table number disabled in UI for now — send empty so backend can store null
+      tableNumber: "",
       status: status ?? "pending",
     };
 
@@ -159,20 +160,23 @@ export default function AddGuestModal({
             )}
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-muted block">
-              Table no
-            </label>
-            <input
-              type="text"
-              placeholder="e.g. A1"
-              {...register("tableNo", { required: "Table number is required" })}
-              className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#e69e46]/50 transition-shadow placeholder:text-gray-300"
-            />
-            {errors.tableNo && (
-              <p className="text-xs text-red-500">{errors.tableNo.message}</p>
-            )}
-          </div>
+          {/* Table number disabled for now — keep markup for later re-enable */}
+          {false && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted block">
+                Table no
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. A1"
+                {...register("tableNo")}
+                className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#e69e46]/50 transition-shadow placeholder:text-gray-300"
+              />
+              {errors.tableNo && (
+                <p className="text-xs text-red-500">{errors.tableNo.message}</p>
+              )}
+            </div>
+          )}
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-muted block">

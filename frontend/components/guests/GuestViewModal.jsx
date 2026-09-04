@@ -89,14 +89,17 @@ export default function GuestViewModal({ open, onClose, guest }) {
             <p className="text-navy font-medium text-lg">{guest.phone}</p>
           </div>
 
-          <div className="bg-white rounded-2xl border border-border p-4 sm:p-5">
-            <p className="text-sm font-medium text-muted block mb-1">
-              Table no
-            </p>
-            <p className="text-navy font-medium text-base">
-              {guest.tableNumber ? guest.tableNumber : "—"}
-            </p>
-          </div>
+          {/* Table number disabled for now — keep markup for later re-enable */}
+          {false && (
+            <div className="bg-white rounded-2xl border border-border p-4 sm:p-5">
+              <p className="text-sm font-medium text-muted block mb-1">
+                Table no
+              </p>
+              <p className="text-navy font-medium text-base">
+                {guest.tableNumber ? guest.tableNumber : "—"}
+              </p>
+            </div>
+          )}
 
           <div className="bg-white rounded-2xl border border-border p-4 sm:p-5">
             <p className="text-sm font-medium text-muted block mb-1">

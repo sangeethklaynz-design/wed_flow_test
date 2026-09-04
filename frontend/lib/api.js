@@ -12,6 +12,10 @@ const API_BASE_URL =
  * - GET|POST|PUT|DELETE /api/couple/guests[...]   → guests page (note → invitation_note)
  * - GET|POST|PUT|DELETE /api/couple/schedule[...]  → schedule page
  * - GET  /api/couple/schedule/download            → schedule PDF download
+ * - GET  /api/couple/notifications                → notifications page + bell
+ * - POST /api/couple/notifications/mark-read      → mark all read
+ * - POST /api/couple/notifications/:id/mark-read  → mark one read
+ * - DELETE /api/couple/notifications/:id          → delete notification
  * - GET  /api/public/invite/:token/invitation-template → /i/[token] guest invite
  * - POST /api/public/invite/:token/rsvp           → InvitationPage RSVP form
  *
@@ -21,6 +25,7 @@ const API_BASE_URL =
  *
  * Backend-only (no couple UI yet):
  * - PUT  /api/couple/invitation-template
+ * - PUT  /api/couple/notifications/:id           → edit notification text
  *
  * Legacy aliases (superseded by invitation-template routes above):
  * - GET  /api/couple/invite

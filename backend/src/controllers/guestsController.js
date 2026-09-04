@@ -173,12 +173,12 @@ async function createGuest(req, res) {
 
     const { name, phone, guestCount, note, tableNumber } = parseGuestBody(req.body);
 
-    if (!name || !phone || !note || !tableNumber) {
+    if (!name || !phone || !note) {
       await transaction.rollback();
       return res.status(400).json({
         error: "Bad Request",
         message:
-          "name, phone, number of guests, table number, and invitation note are required",
+          "name, phone, number of guests, and invitation note are required",
       });
     }
 

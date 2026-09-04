@@ -40,7 +40,7 @@ async function listNotifications(req, res) {
         id: r.guest_id,
         name: r.guest_name,
         phone: r.guest_phone,
-        status: r.guest_status,
+        status: String(r.guest_status || "PENDING").toLowerCase(),
         requestForChange: Boolean(Number(r.guest_request_for_change))
       } : null
     }));
