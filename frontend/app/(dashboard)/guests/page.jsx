@@ -329,7 +329,7 @@ export default function GuestsPage() {
                       type="button"
                       onClick={() => setFilter(item.id)}
                       className={clsx(
-                        "px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap border transition-colors focus:outline-none focus:ring-2 focus:ring-[#e69e46]",
+                        "px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap border transition-colors outline-none focus:outline-none focus-visible:outline-none",
                         isActive
                           ? "bg-navy text-white border-navy"
                           : "bg-white text-muted border-border hover:bg-cream"

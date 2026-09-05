@@ -6,6 +6,7 @@ import InvitationVideoIntro, {
   INVITE_FRAME_H,
   INVITE_FRAME_W,
 } from "@/components/invite/InvitationVideoIntro";
+import InvitationBackgroundMusic from "@/components/invite/InvitationBackgroundMusic";
 
 /**
  * Shared phone shell: video and invitation share the exact 390x844 frame.
@@ -20,6 +21,10 @@ export default function InvitationExperience({
   const hasVideo = Boolean(
     templateData?.static?.video?.hasVideo && templateData?.static?.video?.url
   );
+  const musicUrl =
+    templateData?.static?.music?.hasMusic && templateData?.static?.music?.url
+      ? templateData.static.music.url
+      : null;
   const [videoState, setVideoState] = useState(hasVideo ? "playing" : "done");
   const [templateVisible, setTemplateVisible] = useState(!hasVideo);
   const [guestCanSkip, setGuestCanSkip] = useState(false);
@@ -55,6 +60,7 @@ export default function InvitationExperience({
   const isVideoActive = videoState === "playing" || videoState === "fading";
   const showTemplate = videoState !== "playing";
   const showSkipButton = hasVideo && (!isGuestView || guestCanSkip);
+  const musicActive = videoState === "done";
 
   return (
     <main
@@ -70,6 +76,7 @@ export default function InvitationExperience({
           : "radial-gradient(at 20% 20%, rgba(181, 74, 182, 0.12) 0%, transparent 60%), radial-gradient(at 80% 80%, rgba(119, 50, 164, 0.12) 0%, transparent 60%)",
       }}
     >
+      <InvitationBackgroundMusic musicUrl={musicUrl} active={musicActive} />
       {/*
         While the video plays, keep the tall invitation out of document flow
         (absolute + clipped) so it cannot create a white strip below the frame.

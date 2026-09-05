@@ -22,6 +22,7 @@ const API_BASE_URL =
  * Static media (Express):
  * - GET  /assets/invitation_video/<slug>/...     → intro video
  * - GET  /assets/couple_images/<slug>/...        → Our Journey photos
+ * - GET  /assets/couple_music/<slug>/...         → invitation background music
  *
  * Backend-only (no couple UI yet):
  * - PUT  /api/couple/invitation-template

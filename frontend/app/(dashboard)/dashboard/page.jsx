@@ -80,9 +80,15 @@ export default function DashboardPage() {
 
   const coupleNames =
     dashboard?.wedding?.coupleNames ||
+    (storedUser?.brideName && storedUser?.groomName
+      ? `${storedUser.brideName} & ${storedUser.groomName}`
+      : null) ||
     storedUser?.coupleNames ||
     "Welcome";
-  const initials = dashboard?.wedding?.initials || "W";
+  const initials =
+    dashboard?.wedding?.initials ||
+    storedUser?.initials ||
+    "W";
   const stats = dashboard?.stats;
   const fallback = dashboard ? "0" : "—";
 

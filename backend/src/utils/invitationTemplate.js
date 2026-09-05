@@ -8,6 +8,7 @@ const {
 const {
   resolveInvitationVideoFromDisk,
   resolveCoupleImagesFromDisk,
+  resolveCoupleMusicFromDisk,
 } = require("./invitationMedia");
 
 function splitCoupleNames(coupleNames) {
@@ -172,6 +173,7 @@ async function loadStaticInvitationBundle(weddingId) {
   // Sync URLs into DB so invitation media stays linked.
   const diskVideo = resolveInvitationVideoFromDisk(wedding.couple_names);
   const diskImages = resolveCoupleImagesFromDisk(wedding.couple_names);
+  const diskMusic = resolveCoupleMusicFromDisk(wedding.couple_names);
   await syncInvitationMediaToDb(
     wedding.id,
     invitation?.id || null,
@@ -285,6 +287,8 @@ async function loadStaticInvitationBundle(weddingId) {
     invitation?.opening_video_url ||
     null;
 
+  const musicUrl = (diskMusic && diskMusic.url) || null;
+
   return {
     wedding: {
       id: wedding.id,
@@ -298,6 +302,10 @@ async function loadStaticInvitationBundle(weddingId) {
     video: {
       url: openingVideoUrl,
       hasVideo: Boolean(openingVideoUrl),
+    },
+    music: {
+      url: musicUrl,
+      hasMusic: Boolean(musicUrl),
     },
     invitation: invitation
       ? {
@@ -384,6 +392,7 @@ function buildTemplateResponse(staticBundle, guestRow = null) {
     static: {
       wedding: staticBundle.wedding,
       video: staticBundle.video,
+      music: staticBundle.music || { url: null, hasMusic: false },
       invitation: staticBundle.invitation,
       images: staticBundle.images,
       milestones: staticBundle.milestones,

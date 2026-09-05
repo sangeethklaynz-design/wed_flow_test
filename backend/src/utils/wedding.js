@@ -45,6 +45,24 @@ function buildInitials(coupleNames) {
   return coupleNames.slice(0, 2).toUpperCase();
 }
 
+/** Display order for UI: bride first, then groom. Does not change stored couple_names (used for asset slugs). */
+function formatDisplayCoupleNames({ brideName, groomName, coupleNames } = {}) {
+  const bride = String(brideName || "").trim();
+  const groom = String(groomName || "").trim();
+  if (bride && groom) return `${bride} & ${groom}`;
+
+  // Registration stores couple_names as "Groom & Bride" — reverse for display
+  // when bride_name / groom_name columns are empty.
+  const raw = String(coupleNames || "").trim();
+  if (raw.includes("&")) {
+    const [left, ...rest] = raw.split("&").map((p) => p.trim());
+    const right = rest.join(" & ").trim();
+    if (left && right) return `${right} & ${left}`;
+  }
+
+  return coupleNames || null;
+}
+
 function formatTime(value) {
   if (!value) return null;
   const str = String(value);
@@ -56,5 +74,6 @@ module.exports = {
   getWeddingForUser,
   toDateOnly,
   buildInitials,
+  formatDisplayCoupleNames,
   formatTime,
 };

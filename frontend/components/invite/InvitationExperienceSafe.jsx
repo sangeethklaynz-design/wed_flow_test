@@ -6,6 +6,7 @@ import InvitationVideoIntro, {
   INVITE_FRAME_H,
   INVITE_FRAME_W,
 } from "@/components/invite/InvitationVideoIntro";
+import InvitationBackgroundMusic from "@/components/invite/InvitationBackgroundMusic";
 import InvitationSchedule from "@/components/invite/InvitationSchedule";
 import InvitationThankYou from "@/components/invite/InvitationThankYou";
 import InviteMobileScaler from "@/components/invite/InviteMobileScaler";
@@ -28,6 +29,10 @@ export default function InvitationExperienceSafe({
   const hasVideo = Boolean(
     templateData?.static?.video?.hasVideo && templateData?.static?.video?.url
   );
+  const musicUrl =
+    templateData?.static?.music?.hasMusic && templateData?.static?.music?.url
+      ? templateData.static.music.url
+      : null;
 
   const isGuestView = Boolean(guestToken);
   const scheduleEvents = templateData?.static?.scheduleEvents || [];
@@ -121,6 +126,7 @@ export default function InvitationExperienceSafe({
   const isVideoActive = step === "video" && (videoState === "playing" || videoState === "fading");
   const showSkipButton = hasVideo && step === "video" && (!isGuestView || guestCanSkip);
   const showPostRsvpFlow = step === "postRsvp";
+  const musicActive = !isVideoActive;
 
   // Continuous post-RSVP scroll: schedule → thank you → invitation
   if (showPostRsvpFlow) {
@@ -130,6 +136,7 @@ export default function InvitationExperienceSafe({
           className="relative overflow-hidden border-0 outline-none isolate card-shadow md:rounded-2xl"
           style={{ width: INVITE_FRAME_W, backgroundColor: "#FAF6F0" }}
         >
+          <InvitationBackgroundMusic musicUrl={musicUrl} active={musicActive} />
           <div className="relative w-[390px] flex flex-col">
             {hasSchedule ? (
               <InvitationSchedule events={scheduleEvents} guestToken={guestToken} />
@@ -168,6 +175,7 @@ export default function InvitationExperienceSafe({
           : "radial-gradient(at 20% 20%, rgba(181, 74, 182, 0.12) 0%, transparent 60%), radial-gradient(at 80% 80%, rgba(119, 50, 164, 0.12) 0%, transparent 60%)",
       }}
     >
+      <InvitationBackgroundMusic musicUrl={musicUrl} active={musicActive} />
       <div
         className={
           isVideoActive

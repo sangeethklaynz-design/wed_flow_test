@@ -5,6 +5,7 @@ const {
   signRefreshToken,
   verifyRefreshToken,
 } = require("../utils/jwt");
+const { formatDisplayCoupleNames, buildInitials } = require("../utils/wedding");
 
 async function findUserWithWeddingByEmail(email) {
   const [rows] = await sequelize.query(
@@ -16,6 +17,8 @@ async function findUserWithWeddingByEmail(email) {
       u.role,
       w.id AS wedding_id,
       w.couple_names,
+      w.bride_name,
+      w.groom_name,
       w.wedding_date
     FROM users u
     LEFT JOIN weddings w ON w.user_id = u.id
@@ -36,6 +39,8 @@ async function findUserWithWeddingById(userId) {
       u.role,
       w.id AS wedding_id,
       w.couple_names,
+      w.bride_name,
+      w.groom_name,
       w.wedding_date
     FROM users u
     LEFT JOIN weddings w ON w.user_id = u.id
@@ -48,11 +53,23 @@ async function findUserWithWeddingById(userId) {
 }
 
 function formatUser(row) {
+  const brideName = row.bride_name || null;
+  const groomName = row.groom_name || null;
+  const displayCoupleNames =
+    formatDisplayCoupleNames({
+      brideName,
+      groomName,
+      coupleNames: row.couple_names,
+    }) || null;
+
   return {
     id: row.user_id,
     email: row.email,
     role: row.role,
-    coupleNames: row.couple_names || null,
+    coupleNames: displayCoupleNames,
+    brideName,
+    groomName,
+    initials: buildInitials(displayCoupleNames),
     weddingId: row.wedding_id || null,
     weddingDate: row.wedding_date
       ? String(row.wedding_date).slice(0, 10)

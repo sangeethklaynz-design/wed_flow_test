@@ -6,7 +6,8 @@ import { useEffect, useState } from "react";
 import { Home, Mail, Users, Calendar, LogOut, Bell } from "lucide-react";
 import clsx from "clsx";
 import Image from "next/image";
-import { logout, getStoredUser, getAccessToken, clearAuthSession } from "@/lib/auth";
+import { logout, getStoredUser, getAccessToken, clearAuthSession, setAuthSession } from "@/lib/auth";
+import { apiRequest } from "@/lib/api";
 
 const navItems = [
   { name: "Home", href: "/dashboard", icon: Home },
@@ -26,6 +27,15 @@ function buildInitials(coupleNames) {
     return `${parts[0][0] || ""}&${parts[1][0] || ""}`.toUpperCase();
   }
   return coupleNames.slice(0, 2).toUpperCase();
+}
+
+/** Prefer bride & groom when available so sidebar shows bride first. */
+function formatCoupleDisplay(user) {
+  const bride = String(user?.brideName || "").trim();
+  const groom = String(user?.groomName || "").trim();
+  if (bride && groom) return `${bride} & ${groom}`;
+  // Auth /me already returns coupleNames in bride-first display order
+  return user?.coupleNames || "Couple";
 }
 
 export default function DashboardLayout({ children }) {
@@ -48,7 +58,20 @@ export default function DashboardLayout({ children }) {
     setUser(getStoredUser());
     setIsAuthorized(true);
     setAuthChecked(true);
-  }, []);
+
+    // Refresh user from API so bride/groom display order stays current
+    (async () => {
+      try {
+        const data = await apiRequest("/api/auth/me", { token });
+        if (data?.user) {
+          setAuthSession({ user: data.user });
+          setUser(data.user);
+        }
+      } catch {
+        // Keep stored session if refresh fails
+      }
+    })();
+  }, [router]);
 
   const handleLogout = () => {
     logout();
@@ -58,8 +81,8 @@ export default function DashboardLayout({ children }) {
   // Prevent dashboard “glimpse” for unauthenticated users.
   if (!authChecked || !isAuthorized) return null;
 
-  const coupleNames = user?.coupleNames || "Couple";
-  const initials = buildInitials(coupleNames);
+  const coupleNames = formatCoupleDisplay(user);
+  const initials = user?.initials || buildInitials(coupleNames);
 
   return (
     <div className="min-h-screen-zoom flex flex-col md:flex-row bg-[#fdfcf9]">
@@ -83,7 +106,7 @@ export default function DashboardLayout({ children }) {
                 key={item.name}
                 href={item.href}
                 className={clsx(
-                  "flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200",
+                  "flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 outline-none focus:outline-none focus-visible:outline-none",
                   isActive
                     ? "bg-[#fcecd4] text-[#e69e46] font-medium"
                     : "text-navy hover:bg-[#fdfcf9]"

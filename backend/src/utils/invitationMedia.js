@@ -4,9 +4,11 @@ const path = require("path");
 const ASSETS_ROOT = path.join(__dirname, "../../assets");
 const VIDEO_DIR = path.join(ASSETS_ROOT, "invitation_video");
 const IMAGES_DIR = path.join(ASSETS_ROOT, "couple_images");
+const MUSIC_DIR = path.join(ASSETS_ROOT, "couple_music");
 
 const VIDEO_EXTS = new Set([".mp4", ".webm", ".mov", ".m4v"]);
 const IMAGE_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif"]);
+const MUSIC_EXTS = new Set([".mp3", ".m4a", ".aac", ".ogg", ".wav"]);
 
 function coupleSlugFromNames(coupleNames) {
   const slug = String(coupleNames || "")
@@ -35,7 +37,7 @@ function listFiles(dir, allowedExts) {
     .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
 }
 
-function pickNewestVideoFile(dir, files) {
+function pickNewestFile(dir, files) {
   if (!files.length) return null;
   if (files.length === 1) return files[0];
   return files
@@ -51,12 +53,26 @@ function videoFromFolder(slug) {
   const files = listFiles(dir, VIDEO_EXTS);
   if (!files.length) return null;
 
-  const fileName = pickNewestVideoFile(dir, files);
+  const fileName = pickNewestFile(dir, files);
   return {
     slug,
     fileName,
     absolutePath: path.join(dir, fileName),
     url: toPublicAssetUrl("invitation_video", slug, fileName),
+  };
+}
+
+function musicFromFolder(slug) {
+  const dir = path.join(MUSIC_DIR, slug);
+  const files = listFiles(dir, MUSIC_EXTS);
+  if (!files.length) return null;
+
+  const fileName = pickNewestFile(dir, files);
+  return {
+    slug,
+    fileName,
+    absolutePath: path.join(dir, fileName),
+    url: toPublicAssetUrl("couple_music", slug, fileName),
   };
 }
 
@@ -107,10 +123,37 @@ function resolveCoupleImagesFromDisk(coupleNames) {
   }));
 }
 
+/**
+ * Resolve invitation background music from assets/couple_music/<slug>/
+ * Same slug rules as video/images. Falls back to the only music folder
+ * when the couple slug changed.
+ */
+function resolveCoupleMusicFromDisk(coupleNames) {
+  const slug = coupleSlugFromNames(coupleNames);
+  if (slug) {
+    const match = musicFromFolder(slug);
+    if (match) return match;
+  }
+
+  if (!fs.existsSync(MUSIC_DIR)) return null;
+
+  const subdirs = fs
+    .readdirSync(MUSIC_DIR, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
+
+  if (subdirs.length === 1) {
+    return musicFromFolder(subdirs[0]);
+  }
+
+  return null;
+}
+
 module.exports = {
   ASSETS_ROOT,
   coupleSlugFromNames,
   toPublicAssetUrl,
   resolveInvitationVideoFromDisk,
   resolveCoupleImagesFromDisk,
+  resolveCoupleMusicFromDisk,
 };

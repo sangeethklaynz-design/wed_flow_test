@@ -1,4 +1,4 @@
-const { getWeddingForUser, toDateOnly, buildInitials } = require("../utils/wedding");
+const { getWeddingForUser, toDateOnly, buildInitials, formatDisplayCoupleNames } = require("../utils/wedding");
 const { fetchGuestsForWedding, mapGuestRow } = require("./guestsController");
 
 function statsFromGuests(guests) {
@@ -43,12 +43,20 @@ async function getDashboard(req, res) {
     const guests = rows.map(mapGuestRow);
     const stats = statsFromGuests(guests);
     const weddingDate = toDateOnly(wedding.wedding_date);
+    const displayCoupleNames =
+      formatDisplayCoupleNames({
+        brideName: wedding.bride_name,
+        groomName: wedding.groom_name,
+        coupleNames: wedding.couple_names,
+      }) || wedding.couple_names;
 
     return res.status(200).json({
       wedding: {
         id: wedding.id,
-        coupleNames: wedding.couple_names,
-        initials: buildInitials(wedding.couple_names),
+        coupleNames: displayCoupleNames,
+        brideName: wedding.bride_name || null,
+        groomName: wedding.groom_name || null,
+        initials: buildInitials(displayCoupleNames),
         weddingDate,
         weddingDateTime: wedding.wedding_date,
       },
