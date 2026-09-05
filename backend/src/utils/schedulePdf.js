@@ -2,7 +2,7 @@ const path = require("path");
 const fs = require("fs");
 const PDFDocument = require("pdfkit");
 const { sequelize } = require("../models");
-const { toDateOnly } = require("./wedding");
+const { toDateOnly, formatDisplayCoupleNames } = require("./wedding");
 
 const EVENTS_PER_PAGE = 13;
 const PAGE_WIDTH = 390;
@@ -194,6 +194,8 @@ async function loadScheduleDownloadContext(weddingId) {
       SELECT
         id,
         couple_names,
+        bride_name,
+        groom_name,
         wedding_date,
         schedule_image_url,
         schedule_title,
@@ -235,7 +237,12 @@ async function loadScheduleDownloadContext(weddingId) {
   }));
 
   return {
-    coupleNames: wedding.couple_names,
+    coupleNames:
+      formatDisplayCoupleNames({
+        brideName: wedding.bride_name,
+        groomName: wedding.groom_name,
+        coupleNames: wedding.couple_names,
+      }) || wedding.couple_names,
     weddingDateLabel: formatFooterDate(wedding.wedding_date),
     title: (wedding.schedule_title || "WEDDING TIMELINE").toUpperCase(),
     venue: (
