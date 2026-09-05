@@ -14,6 +14,11 @@ const nextConfig = {
         port: "4000",
         pathname: "/assets/**",
       },
+      {
+        protocol: "https",
+        hostname: "api-wedflow.framelabs.lk",
+        pathname: "/assets/**",
+      },
     ],
   },
 };
