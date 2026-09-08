@@ -9,6 +9,7 @@ const {
   resolveInvitationVideoFromDisk,
   resolveCoupleImagesFromDisk,
   resolveCoupleMusicFromDisk,
+  resolveCoupleBackgroundFromDisk,
 } = require("./invitationMedia");
 
 function splitCoupleNames(coupleNames) {
@@ -174,6 +175,7 @@ async function loadStaticInvitationBundle(weddingId) {
   const diskVideo = resolveInvitationVideoFromDisk(wedding.couple_names);
   const diskImages = resolveCoupleImagesFromDisk(wedding.couple_names);
   const diskMusic = resolveCoupleMusicFromDisk(wedding.couple_names);
+  const diskBackground = resolveCoupleBackgroundFromDisk(wedding.couple_names);
   await syncInvitationMediaToDb(
     wedding.id,
     invitation?.id || null,
@@ -215,13 +217,17 @@ async function loadStaticInvitationBundle(weddingId) {
   );
 
   const resolvedImages =
-    imageRows.length > 0
-      ? imageRows
-      : diskImages.map((img, i) => ({
-          id: `disk-${i}`,
+    diskImages.length > 0
+      ? diskImages.map((img) => ({
+          id: `disk-${img.displayOrder}-${img.fileName}`,
           image_url: img.url,
           caption: img.caption,
           display_order: img.displayOrder,
+          file_name: img.fileName,
+        }))
+      : imageRows.map((row) => ({
+          ...row,
+          file_name: null,
         }));
 
   let milestones = [];
@@ -288,6 +294,7 @@ async function loadStaticInvitationBundle(weddingId) {
     null;
 
   const musicUrl = (diskMusic && diskMusic.url) || null;
+  const backgroundUrl = (diskBackground && diskBackground.url) || null;
 
   return {
     wedding: {
@@ -307,6 +314,10 @@ async function loadStaticInvitationBundle(weddingId) {
       url: musicUrl,
       hasMusic: Boolean(musicUrl),
     },
+    background: {
+      url: backgroundUrl,
+      hasBackground: Boolean(backgroundUrl),
+    },
     invitation: invitation
       ? {
           id: invitation.id,
@@ -324,7 +335,18 @@ async function loadStaticInvitationBundle(weddingId) {
       id: img.id,
       url: img.image_url,
       caption: img.caption,
-      displayOrder: img.display_order,
+      displayOrder: Number(img.display_order) || null,
+      fileName:
+        img.file_name ||
+        (() => {
+          try {
+            const pathOnly = String(img.image_url || "").split("?")[0];
+            const parts = pathOnly.split("/");
+            return decodeURIComponent(parts[parts.length - 1] || "") || null;
+          } catch {
+            return null;
+          }
+        })(),
     })),
     milestones,
     scheduleEvents: await loadScheduleEventsForWedding(weddingId),
@@ -393,6 +415,7 @@ function buildTemplateResponse(staticBundle, guestRow = null) {
       wedding: staticBundle.wedding,
       video: staticBundle.video,
       music: staticBundle.music || { url: null, hasMusic: false },
+      background: staticBundle.background || { url: null, hasBackground: false },
       invitation: staticBundle.invitation,
       images: staticBundle.images,
       milestones: staticBundle.milestones,

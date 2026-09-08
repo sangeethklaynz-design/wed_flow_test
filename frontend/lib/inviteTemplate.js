@@ -79,6 +79,7 @@ export function normalizeInvitationTemplate(raw) {
     url: img.url,
     caption: img.caption || null,
     displayOrder: img.displayOrder,
+    fileName: img.fileName || null,
   }));
 
   const groomName =
@@ -148,6 +149,7 @@ export function normalizeInvitationTemplate(raw) {
     hasGuest: Boolean(guest),
     rsvp: guest?.rsvp || null,
     video: staticBlock.video || raw.video || null,
+    background: staticBlock.background || raw.background || null,
     /** Our Journey photos from assets/couple_images (via API) */
     images,
   };
@@ -174,4 +176,71 @@ export function buildGoogleMapsUrl({ googleMapsLink, hotelName, hotelAddress } =
   if (!query) return null;
 
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
+/**
+ * Slot from Image_1 / image-2 / img3 style names (1-based).
+ * Returns null when the name has no explicit slot.
+ */
+export function imageSlotFromFileName(fileName) {
+  if (!fileName) return null;
+  let base = String(fileName).split(/[\\/]/).pop() || "";
+  try {
+    base = decodeURIComponent(base);
+  } catch {
+    // keep raw
+  }
+  base = base.replace(/\.[^.]+$/, "");
+  const match = base.match(/^(?:image|img)[_\s-]*(\d+)$/i);
+  if (!match) return null;
+  const slot = Number(match[1]);
+  return Number.isInteger(slot) && slot >= 1 ? slot : null;
+}
+
+/**
+ * Build Our Journey URLs for N fixed containers.
+ * Filename wins: Image_1 → container 1, Image_2 → container 2, etc.
+ * displayOrder is only a fallback when the filename has no slot number.
+ */
+export function mapJourneyImagesBySlot(images, fallbacks = []) {
+  const slotCount = fallbacks.length;
+  const slots = fallbacks.slice();
+  const list = Array.isArray(images) ? images : [];
+  const claimed = new Set();
+
+  const resolveSlot = (img) => {
+    const fromName =
+      imageSlotFromFileName(img?.fileName) ||
+      imageSlotFromFileName(String(img?.url || "").split("?")[0]);
+    if (fromName != null) return fromName;
+    const fromOrder = Number(img?.displayOrder);
+    if (Number.isInteger(fromOrder) && fromOrder >= 1) return fromOrder;
+    return null;
+  };
+
+  // Pass 1: explicit Image_N / displayOrder → fixed containers
+  for (const img of list) {
+    const slot = resolveSlot(img);
+    if (slot == null || slot < 1 || slot > slotCount) continue;
+    if (claimed.has(slot)) continue;
+    const url = img?.url;
+    if (!url) continue;
+    slots[slot - 1] = url;
+    claimed.add(slot);
+  }
+
+  // Pass 2: unnumbered leftovers fill remaining containers in API order
+  let next = 1;
+  for (const img of list) {
+    if (resolveSlot(img) != null) continue;
+    const url = img?.url;
+    if (!url) continue;
+    while (next <= slotCount && claimed.has(next)) next += 1;
+    if (next > slotCount) break;
+    slots[next - 1] = url;
+    claimed.add(next);
+    next += 1;
+  }
+
+  return slots;
 }

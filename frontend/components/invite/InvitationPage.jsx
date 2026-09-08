@@ -8,6 +8,7 @@ import {
   normalizeInvitationTemplate,
   splitSpecialText,
   buildGoogleMapsUrl,
+  mapJourneyImagesBySlot,
 } from "@/lib/inviteTemplate";
 import RsvpChangeRequestForm from "@/components/invite/RsvpChangeRequestForm";
 
@@ -17,6 +18,12 @@ const JOURNEY_FALLBACKS = [
   "/invitation/7.4.png",
   "/invitation/7.5.png",
 ];
+
+/** Set true to show the Our Story timeline page again. */
+const SHOW_OUR_STORY = false;
+/** Vertical span from Our Story title (3460) to The Big Day (4390). */
+const OUR_STORY_PAGE_HEIGHT = 930;
+const INVITE_CANVAS_HEIGHT = 7100;
 
 /**
  * Full visual invitation template.
@@ -49,13 +56,16 @@ export default function InvitationPage({
     [t.googleMapsLink, t.hotelName, t.hotelAddress]
   );
   const journeyImages = useMemo(() => {
-    const fromApi = (t.images || [])
-      .map((img) => resolveMediaUrl(img.url))
-      .filter(Boolean);
-    return [0, 1, 2, 3].map(
-      (i) => fromApi[i] || JOURNEY_FALLBACKS[i]
-    );
+    const fromApi = (t.images || []).map((img) => ({
+      ...img,
+      url: resolveMediaUrl(img.url),
+    }));
+    return mapJourneyImagesBySlot(fromApi, JOURNEY_FALLBACKS);
   }, [t.images]);
+  const landingBackgroundUrl = useMemo(() => {
+    if (!t.background?.hasBackground || !t.background?.url) return null;
+    return resolveMediaUrl(t.background.url);
+  }, [t.background]);
   const router = useRouter();
 
   const [attendance, setAttendance] = useState("");
@@ -157,14 +167,35 @@ export default function InvitationPage({
     setGuests(String(n));
   };
 
+  const storyShift = SHOW_OUR_STORY ? 0 : OUR_STORY_PAGE_HEIGHT;
+  const canvasHeight = INVITE_CANVAS_HEIGHT - storyShift;
+
   return (
-    <div className={`relative w-[390px] h-[7100px] mx-auto bg-[#FAF6F0] overflow-hidden select-none ${
-      embedded ? "" : "shadow-2xl border border-gray-200"
-    }`}>
+    <div
+      className={`relative w-[390px] mx-auto bg-[#FAF6F0] overflow-hidden select-none ${
+        embedded ? "" : "shadow-2xl border border-gray-200"
+      }`}
+      style={{ height: canvasHeight }}
+    >
       
       {/* =========================================================
           PAGE 1 (Y: 1085 -> Y: 1960)
           ========================================================= */}
+
+      {/* Landing background - assets/background_image/<slug>/ @ 50% opacity, fit to height */}
+      {landingBackgroundUrl ? (
+        <div className="absolute top-0 left-0 w-[390px] h-[875px] z-0 overflow-hidden pointer-events-none select-none opacity-50 flex justify-center">
+          <Image
+            src={landingBackgroundUrl}
+            alt=""
+            width={1200}
+            height={1800}
+            className="h-full w-auto max-w-none"
+            unoptimized
+            aria-hidden
+          />
+        </div>
+      ) : null}
 
       {/* Top Flower Decoration (Width: 390px, Height: 175px, Y: 0) */}
       <div className="absolute top-0 left-0 w-[390px] h-[175px] pointer-events-none select-none z-0">
@@ -576,89 +607,101 @@ export default function InvitationPage({
       </div>
 
       {/* =========================================================
-          PAGE 5 (Y: 3450 -> Y: 4500)
+          PAGE 5 (Y: 3450 -> Y: 4500) — Our Story (disabled via SHOW_OUR_STORY)
           ========================================================= */}
+      {SHOW_OUR_STORY ? (
+        <>
+          {/* OUR STORY Text */}
+          <div className="absolute top-[3460px] left-0 w-full flex items-center justify-center z-10">
+            <h1 className="font-cormorant-custom font-semibold text-[38px] text-[#7732A4] tracking-wider uppercase text-center leading-none whitespace-nowrap">
+              OUR STORY
+            </h1>
+          </div>
 
-      {/* OUR STORY Text */}
-      <div className="absolute top-[3460px] left-0 w-full flex items-center justify-center z-10">
-        <h1 className="font-cormorant-custom font-semibold text-[38px] text-[#7732A4] tracking-wider uppercase text-center leading-none whitespace-nowrap">
-          OUR STORY
-        </h1>
-      </div>
+          {/* 5.1 Lotus Divider */}
+          <div className="absolute top-[3510px] left-1/2 -translate-x-1/2 w-[175px] h-[34px] z-0">
+            <Image src="/invitation/5.1.png" alt="Our story lotus divider" fill className="object-contain" />
+          </div>
 
-      {/* 5.1 Lotus Divider */}
-      <div className="absolute top-[3510px] left-1/2 -translate-x-1/2 w-[175px] h-[34px] z-0">
-        <Image src="/invitation/5.1.png" alt="Our story lotus divider" fill className="object-contain" />
-      </div>
+          {/* Every love story... Text */}
+          <div className="absolute top-[3570px] w-full flex flex-col items-center justify-center z-10">
+            <p className="font-quattrocento-custom font-bold text-[18px] text-[#1B3601] text-center leading-relaxed">
+              Every <span className="font-greatvibes-custom text-[30px] text-[#B54AB6] font-normal mx-1">love story</span><br/>
+              is beautiful,<br/>
+              but ours is<br/>
+              my favourite.
+            </p>
+          </div>
 
-      {/* Every love story... Text */}
-      <div className="absolute top-[3570px] w-full flex flex-col items-center justify-center z-10">
-        <p className="font-quattrocento-custom font-bold text-[18px] text-[#1B3601] text-center leading-relaxed">
-          Every <span className="font-greatvibes-custom text-[30px] text-[#B54AB6] font-normal mx-1">love story</span><br/>
-          is beautiful,<br/>
-          but ours is<br/>
-          my favourite.
-        </p>
-      </div>
+          {/* 5.2 Small Lotus */}
+          <div className="absolute top-[3720px] left-1/2 -translate-x-1/2 w-[80px] h-[53px] z-0">
+            <Image src="/invitation/0.2.png" alt="Small lotus" fill className="object-contain" />
+          </div>
 
-      {/* 5.2 Small Lotus */}
-      <div className="absolute top-[3720px] left-1/2 -translate-x-1/2 w-[80px] h-[53px] z-0">
-        <Image src="/invitation/0.2.png" alt="Small lotus" fill className="object-contain" />
-      </div>
+          {/* 5.7 Background Floral */}
+          <div className="absolute top-[3861px] left-[0px] w-[390px] h-[442px] z-0 pointer-events-none">
+            <Image src="/invitation/5.7.png" alt="Page 5 floral background" fill className="object-contain" />
+          </div>
 
-      {/* 5.7 Background Floral */}
-      <div className="absolute top-[3861px] left-[0px] w-[390px] h-[442px] z-0 pointer-events-none">
-        <Image src="/invitation/5.7.png" alt="Page 5 floral background" fill className="object-contain" />
-      </div>
+          {/* Vertical Timeline Line */}
+          <div className="absolute top-[3840px] left-[119px] w-[2px] h-[270px] bg-[#B54AB6] z-0"></div>
 
-      {/* Vertical Timeline Line */}
-      <div className="absolute top-[3840px] left-[119px] w-[2px] h-[270px] bg-[#B54AB6] z-0"></div>
+          {/* Timeline Items */}
+          {/* 2019 */}
+          <div className="absolute top-[3810px] left-[90px] w-[60px] h-[60px] rounded-full border border-[#B54AB6] bg-white z-10 flex items-center justify-center shadow-sm">
+            <div className="relative w-[45px] h-[45px]">
+              <Image src="/invitation/5.3.png" alt="2019" fill className="object-contain" />
+            </div>
+          </div>
+          <div className="absolute top-[3810px] left-[200px] h-[60px] flex flex-col justify-center z-10">
+            <h3 className="font-cormorant-custom font-bold text-[20px] text-[#B54AB6] leading-none mb-1">2019</h3>
+            <p className="font-quattrocento-custom font-bold text-[16px] text-[#1B3601] leading-tight">The day<br/>we met</p>
+          </div>
 
-      {/* Timeline Items */}
-      {/* 2019 */}
-      <div className="absolute top-[3810px] left-[90px] w-[60px] h-[60px] rounded-full border border-[#B54AB6] bg-white z-10 flex items-center justify-center shadow-sm">
-        <div className="relative w-[45px] h-[45px]">
-          <Image src="/invitation/5.3.png" alt="2019" fill className="object-contain" />
-        </div>
-      </div>
-      <div className="absolute top-[3810px] left-[200px] h-[60px] flex flex-col justify-center z-10">
-        <h3 className="font-cormorant-custom font-bold text-[20px] text-[#B54AB6] leading-none mb-1">2019</h3>
-        <p className="font-quattrocento-custom font-bold text-[16px] text-[#1B3601] leading-tight">The day<br/>we met</p>
-      </div>
+          {/* 2021 */}
+          <div className="absolute top-[3900px] left-[90px] w-[60px] h-[60px] rounded-full border border-[#B54AB6] bg-white z-10 flex items-center justify-center shadow-sm">
+            <div className="relative w-[45px] h-[45px]">
+              <Image src="/invitation/5.4.png" alt="2021" fill className="object-contain" />
+            </div>
+          </div>
+          <div className="absolute top-[3900px] left-[200px] h-[60px] flex flex-col justify-center z-10">
+            <h3 className="font-cormorant-custom font-bold text-[20px] text-[#B54AB6] leading-none mb-1">2021</h3>
+            <p className="font-quattrocento-custom font-bold text-[16px] text-[#1B3601] leading-tight">We fell<br/>in love</p>
+          </div>
 
-      {/* 2021 */}
-      <div className="absolute top-[3900px] left-[90px] w-[60px] h-[60px] rounded-full border border-[#B54AB6] bg-white z-10 flex items-center justify-center shadow-sm">
-        <div className="relative w-[45px] h-[45px]">
-          <Image src="/invitation/5.4.png" alt="2021" fill className="object-contain" />
-        </div>
-      </div>
-      <div className="absolute top-[3900px] left-[200px] h-[60px] flex flex-col justify-center z-10">
-        <h3 className="font-cormorant-custom font-bold text-[20px] text-[#B54AB6] leading-none mb-1">2021</h3>
-        <p className="font-quattrocento-custom font-bold text-[16px] text-[#1B3601] leading-tight">We fell<br/>in love</p>
-      </div>
+          {/* 2023 */}
+          <div className="absolute top-[3990px] left-[90px] w-[60px] h-[60px] rounded-full border border-[#B54AB6] bg-white z-10 flex items-center justify-center shadow-sm">
+            <div className="relative w-[45px] h-[45px]">
+              <Image src="/invitation/5.5.png" alt="2023" fill className="object-contain" />
+            </div>
+          </div>
+          <div className="absolute top-[3990px] left-[200px] h-[60px] flex flex-col justify-center z-10">
+            <h3 className="font-cormorant-custom font-bold text-[20px] text-[#B54AB6] leading-none mb-1">2023</h3>
+            <p className="font-quattrocento-custom font-bold text-[16px] text-[#1B3601] leading-tight">The proposal</p>
+          </div>
 
-      {/* 2023 */}
-      <div className="absolute top-[3990px] left-[90px] w-[60px] h-[60px] rounded-full border border-[#B54AB6] bg-white z-10 flex items-center justify-center shadow-sm">
-        <div className="relative w-[45px] h-[45px]">
-          <Image src="/invitation/5.5.png" alt="2023" fill className="object-contain" />
-        </div>
-      </div>
-      <div className="absolute top-[3990px] left-[200px] h-[60px] flex flex-col justify-center z-10">
-        <h3 className="font-cormorant-custom font-bold text-[20px] text-[#B54AB6] leading-none mb-1">2023</h3>
-        <p className="font-quattrocento-custom font-bold text-[16px] text-[#1B3601] leading-tight">The proposal</p>
-      </div>
+          {/* 2026 */}
+          <div className="absolute top-[4080px] left-[90px] w-[60px] h-[60px] rounded-full border border-[#B54AB6] bg-white z-10 flex items-center justify-center shadow-sm">
+            <div className="relative w-[45px] h-[45px]">
+              <Image src="/invitation/5.6.png" alt="2026" fill className="object-contain" />
+            </div>
+          </div>
+          <div className="absolute top-[4080px] left-[200px] h-[60px] flex flex-col justify-center z-10">
+            <h3 className="font-cormorant-custom font-bold text-[20px] text-[#B54AB6] leading-none mb-1">2026</h3>
+            <p className="font-quattrocento-custom font-bold text-[16px] text-[#1B3601] leading-tight">Forever<br/>starts here</p>
+          </div>
+        </>
+      ) : null}
 
-      {/* 2026 */}
-      <div className="absolute top-[4080px] left-[90px] w-[60px] h-[60px] rounded-full border border-[#B54AB6] bg-white z-10 flex items-center justify-center shadow-sm">
-        <div className="relative w-[45px] h-[45px]">
-          <Image src="/invitation/5.6.png" alt="2026" fill className="object-contain" />
-        </div>
-      </div>
-      <div className="absolute top-[4080px] left-[200px] h-[60px] flex flex-col justify-center z-10">
-        <h3 className="font-cormorant-custom font-bold text-[20px] text-[#B54AB6] leading-none mb-1">2026</h3>
-        <p className="font-quattrocento-custom font-bold text-[16px] text-[#1B3601] leading-tight">Forever<br/>starts here</p>
-      </div>
-
+      {/* Later pages shift up when Our Story is hidden */}
+      <div
+        className="absolute left-0 top-0 w-full"
+        style={
+          storyShift
+            ? { transform: `translateY(-${storyShift}px)`, height: INVITE_CANVAS_HEIGHT }
+            : { height: INVITE_CANVAS_HEIGHT }
+        }
+      >
       {/* =========================================================
           PAGE 6 (Y: 4420 -> Y: 5300)
           ========================================================= */}
@@ -760,9 +803,9 @@ export default function InvitationPage({
         <Image src="/invitation/7.1.png" alt="Our journey lotus divider" fill className="object-contain" />
       </div>
 
-      {/* Journey 1 — couple_images[0] */}
+      {/* Journey 1 — Image_1 */}
       <div className="absolute top-[5403px] left-[21px] w-[103px] h-[155px] z-10 overflow-hidden rounded-[12px] shadow-md">
-        <Image src={journeyImages[0]} alt="Journey 1" fill className="object-cover" unoptimized={journeyImages[0].startsWith("http")} />
+        <Image src={journeyImages[0]} alt="Journey 1" fill className="object-cover" unoptimized />
       </div>
       <div className="absolute top-[5440px] left-[155px] w-[198px] flex items-center justify-center z-10">
         <p className="font-greatvibes-custom text-[28px] text-[#B54AB6] text-center leading-snug">
@@ -770,9 +813,9 @@ export default function InvitationPage({
         </p>
       </div>
 
-      {/* Journey 2 — couple_images[1] */}
+      {/* Journey 2 — Image_2 */}
       <div className="absolute top-[5558px] right-[26px] w-[103px] h-[155px] z-10 overflow-hidden rounded-[12px] shadow-md">
-        <Image src={journeyImages[1]} alt="Journey 2" fill className="object-cover" unoptimized={journeyImages[1].startsWith("http")} />
+        <Image src={journeyImages[1]} alt="Journey 2" fill className="object-cover" unoptimized />
       </div>
       <div className="absolute top-[5593px] left-[40px] w-[198px] flex items-center justify-center z-10">
         <p className="font-greatvibes-custom text-[28px] text-[#B54AB6] text-center leading-snug">
@@ -780,28 +823,34 @@ export default function InvitationPage({
         </p>
       </div>
 
-      {/* Journey 3 — couple_images[2] */}
-      <div className="absolute top-[5713px] left-[21px] w-[103px] h-[155px] z-10 overflow-hidden rounded-[12px] shadow-md">
-        <Image src={journeyImages[2]} alt="Journey 3" fill className="object-cover" unoptimized={journeyImages[2].startsWith("http")} />
+      {/* Journey 3 — Image_3 (landscape, smaller so spacing matches other rows) */}
+      <div className="absolute top-[5728px] left-[21px] w-[175px] h-[120px] z-10 overflow-hidden rounded-[12px] shadow-md bg-[#FAF6F0]">
+        <Image
+          src={journeyImages[2]}
+          alt="Journey 3"
+          fill
+          className="object-cover"
+          unoptimized
+        />
       </div>
-      <div className="absolute top-[5733px] left-[155px] w-[198px] flex items-center justify-center z-10">
+      <div className="absolute top-[5748px] left-[212px] w-[155px] flex items-center justify-center z-10">
         <p className="font-greatvibes-custom text-[28px] text-[#B54AB6] text-center leading-snug">
           Different<br/>chapters,<br/>one love story.
         </p>
       </div>
 
-      {/* Journey 4 — couple_images[3] */}
-      <div className="absolute top-[5868px] right-[26px] w-[103px] h-[155px] z-10 overflow-hidden rounded-[12px] shadow-md">
-        <Image src={journeyImages[3]} alt="Journey 4" fill className="object-cover" unoptimized={journeyImages[3].startsWith("http")} />
+      {/* Journey 4 — Image_4 */}
+      <div className="absolute top-[5895px] right-[26px] w-[103px] h-[155px] z-10 overflow-hidden rounded-[12px] shadow-md">
+        <Image src={journeyImages[3]} alt="Journey 4" fill className="object-cover" unoptimized />
       </div>
-      <div className="absolute top-[5926px] left-[40px] w-[198px] flex items-center justify-center z-10">
+      <div className="absolute top-[5953px] left-[40px] w-[198px] flex items-center justify-center z-10">
         <p className="font-greatvibes-custom text-[28px] text-[#B54AB6] text-center leading-snug">
           And the best<br/>is yet to come...
         </p>
       </div>
 
       {/* 7.6 Background Floral */}
-      <div className="absolute top-[5886px] left-[0px] w-[390px] h-[287px] z-20 pointer-events-none">
+      <div className="absolute top-[5913px] left-[0px] w-[390px] h-[287px] z-20 pointer-events-none">
         <Image src="/invitation/7.6.png" alt="Page 7 floral background" fill className="object-contain" />
       </div>
 
@@ -885,6 +934,8 @@ export default function InvitationPage({
           </div>
           <span className="font-sans font-bold text-[12px] tracking-[0.15em] text-[#1B1B1B]">KLAYNZ</span>
         </a>
+
+      </div>
 
       </div>
 

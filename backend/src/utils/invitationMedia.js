@@ -5,6 +5,7 @@ const ASSETS_ROOT = path.join(__dirname, "../../assets");
 const VIDEO_DIR = path.join(ASSETS_ROOT, "invitation_video");
 const IMAGES_DIR = path.join(ASSETS_ROOT, "couple_images");
 const MUSIC_DIR = path.join(ASSETS_ROOT, "couple_music");
+const BACKGROUND_DIR = path.join(ASSETS_ROOT, "background_image");
 
 const VIDEO_EXTS = new Set([".mp4", ".webm", ".mov", ".m4v"]);
 const IMAGE_EXTS = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif"]);
@@ -48,6 +49,18 @@ function pickNewestFile(dir, files) {
     .sort((a, b) => b.mtimeMs - a.mtimeMs)[0].fileName;
 }
 
+/**
+ * Map filenames like Image_1.jpg / image-2.png / img3.webp → slot 1, 2, 3.
+ * Returns null when the name has no explicit image slot number.
+ */
+function imageSlotFromFileName(fileName) {
+  const base = path.basename(String(fileName || ""), path.extname(fileName));
+  const match = base.match(/^(?:image|img)[_\s-]*(\d+)$/i);
+  if (!match) return null;
+  const slot = Number(match[1]);
+  return Number.isInteger(slot) && slot >= 1 ? slot : null;
+}
+
 function videoFromFolder(slug) {
   const dir = path.join(VIDEO_DIR, slug);
   const files = listFiles(dir, VIDEO_EXTS);
@@ -73,6 +86,27 @@ function musicFromFolder(slug) {
     fileName,
     absolutePath: path.join(dir, fileName),
     url: toPublicAssetUrl("couple_music", slug, fileName),
+  };
+}
+
+function backgroundFromFolder(slug) {
+  const dir = path.join(BACKGROUND_DIR, slug);
+  const files = listFiles(dir, IMAGE_EXTS);
+  if (!files.length) return null;
+
+  const fileName = pickNewestFile(dir, files);
+  const absolutePath = path.join(dir, fileName);
+  let cacheTag = "1";
+  try {
+    cacheTag = String(Math.floor(fs.statSync(absolutePath).mtimeMs));
+  } catch {
+    // keep default
+  }
+  return {
+    slug,
+    fileName,
+    absolutePath,
+    url: `${toPublicAssetUrl("background_image", slug, fileName)}?v=${cacheTag}`,
   };
 }
 
@@ -103,8 +137,9 @@ function resolveInvitationVideoFromDisk(coupleNames) {
 }
 
 /**
- * Resolve couple journey images from assets/couple_images/<slug>/
- * Ordered alphabetically by filename.
+ * Resolve couple journey images from assets/couple_images/<slug>/.
+ * Slot comes from the filename: Image_1 → container 1, Image_2 → 2, etc.
+ * Unnumbered files fill the next free slots in alphabetical order.
  */
 function resolveCoupleImagesFromDisk(coupleNames) {
   const slug = coupleSlugFromNames(coupleNames);
@@ -112,15 +147,48 @@ function resolveCoupleImagesFromDisk(coupleNames) {
 
   const dir = path.join(IMAGES_DIR, slug);
   const files = listFiles(dir, IMAGE_EXTS);
+  const bySlot = new Map();
+  const unnumbered = [];
 
-  return files.map((fileName, index) => ({
-    slug,
-    fileName,
-    absolutePath: path.join(dir, fileName),
-    url: toPublicAssetUrl("couple_images", slug, fileName),
-    caption: null,
-    displayOrder: index + 1,
-  }));
+  for (const fileName of files) {
+    const absolutePath = path.join(dir, fileName);
+    let cacheTag = "1";
+    try {
+      cacheTag = String(Math.floor(fs.statSync(absolutePath).mtimeMs));
+    } catch {
+      // keep default
+    }
+    const entry = {
+      slug,
+      fileName,
+      absolutePath,
+      url: `${toPublicAssetUrl("couple_images", slug, fileName)}?v=${cacheTag}`,
+      caption: null,
+      displayOrder: null,
+    };
+    const slot = imageSlotFromFileName(fileName);
+    if (slot == null) {
+      unnumbered.push(entry);
+      continue;
+    }
+    // First match wins (files already sorted alphabetically).
+    if (!bySlot.has(slot)) {
+      entry.displayOrder = slot;
+      bySlot.set(slot, entry);
+    }
+  }
+
+  let nextSlot = 1;
+  for (const entry of unnumbered) {
+    while (bySlot.has(nextSlot)) nextSlot += 1;
+    entry.displayOrder = nextSlot;
+    bySlot.set(nextSlot, entry);
+    nextSlot += 1;
+  }
+
+  return [...bySlot.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([, img]) => img);
 }
 
 /**
@@ -149,11 +217,38 @@ function resolveCoupleMusicFromDisk(coupleNames) {
   return null;
 }
 
+/**
+ * Resolve invitation landing-page background from assets/background_image/<slug>/
+ * Same slug rules as video/images/music.
+ */
+function resolveCoupleBackgroundFromDisk(coupleNames) {
+  const slug = coupleSlugFromNames(coupleNames);
+  if (slug) {
+    const match = backgroundFromFolder(slug);
+    if (match) return match;
+  }
+
+  if (!fs.existsSync(BACKGROUND_DIR)) return null;
+
+  const subdirs = fs
+    .readdirSync(BACKGROUND_DIR, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
+
+  if (subdirs.length === 1) {
+    return backgroundFromFolder(subdirs[0]);
+  }
+
+  return null;
+}
+
 module.exports = {
   ASSETS_ROOT,
   coupleSlugFromNames,
   toPublicAssetUrl,
+  imageSlotFromFileName,
   resolveInvitationVideoFromDisk,
   resolveCoupleImagesFromDisk,
   resolveCoupleMusicFromDisk,
+  resolveCoupleBackgroundFromDisk,
 };
