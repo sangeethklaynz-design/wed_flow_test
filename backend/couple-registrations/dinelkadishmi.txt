@@ -13,7 +13,7 @@ hotel_address=Weerawila Watta, Weerawila, 82632, Sri Lanka
 google_maps_link=https://maps.google.com/?q=DoubleTree+by+Hilton+Weerawila+Rajawarna+Resort
 poruwa_time=09:30
 weather_note=Warm coastal evening — light outdoor attire recommended
-parking_note=Complimentary valet at the main lobby entrance
+parking_note=Parking Available
 special_text=With joy in our hearts, we invite you to celebrate our wedding day.
 thank_you_note=Thank you for sharing this special moment with us.
 
