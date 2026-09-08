@@ -18,32 +18,53 @@ async function listNotifications(req, res) {
       return res.status(404).json({ error: "Not Found", message: "No wedding found" });
     }
 
-    const [rows] = await sequelize.query(
-      `SELECT n.id, n.type, n.title, n.message, n.is_read, n.created_at,
-              g.id as guest_id, g.full_name as guest_name, g.whatsapp_number as guest_phone, g.rsvp_status as guest_status, g.has_change_request as guest_request_for_change
-       FROM notifications n
-       LEFT JOIN guests g ON n.guest_id COLLATE utf8mb4_unicode_ci = g.id COLLATE utf8mb4_unicode_ci
-       WHERE n.wedding_id = ?
-       ORDER BY n.created_at DESC
+    const [notificationRows] = await sequelize.query(
+      `SELECT id, type, title, message, is_read, created_at, guest_id
+       FROM notifications
+       WHERE wedding_id = ?
+       ORDER BY created_at DESC
        LIMIT 100;`,
       { replacements: [wedding.id] }
     );
 
-    const notifications = rows.map((r) => ({
+    const guestIds = [
+      ...new Set(notificationRows.map((row) => row.guest_id).filter(Boolean)),
+    ];
+    let guestsById = new Map();
+
+    if (guestIds.length > 0) {
+      const [guestRows] = await sequelize.query(
+        `SELECT id, full_name, whatsapp_number, rsvp_status, has_change_request
+         FROM guests
+         WHERE wedding_id = :weddingId AND id IN (:guestIds);`,
+        {
+          replacements: {
+            weddingId: wedding.id,
+            guestIds,
+          },
+        }
+      );
+      guestsById = new Map(guestRows.map((guest) => [guest.id, guest]));
+    }
+
+    const notifications = notificationRows.map((r) => {
+      const guest = r.guest_id ? guestsById.get(r.guest_id) : null;
+      return {
       id: r.id,
       type: r.type,
       title: r.title,
       message: r.message || "",
       isRead: Boolean(Number(r.is_read)),
       createdAt: r.created_at,
-      guest: r.guest_id ? {
-        id: r.guest_id,
-        name: r.guest_name,
-        phone: r.guest_phone,
-        status: String(r.guest_status || "PENDING").toLowerCase(),
-        requestForChange: Boolean(Number(r.guest_request_for_change))
+      guest: guest ? {
+        id: guest.id,
+        name: guest.full_name,
+        phone: guest.whatsapp_number,
+        status: String(guest.rsvp_status || "PENDING").toLowerCase(),
+        requestForChange: Boolean(Number(guest.has_change_request))
       } : null
-    }));
+    };
+    });
 
     const unreadCount = notifications.filter((n) => !n.isRead).length;
 

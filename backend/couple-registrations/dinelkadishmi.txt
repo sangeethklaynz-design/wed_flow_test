@@ -1,6 +1,7 @@
-# Dinelka & Dishmi — couple registration
+# Dinelka & Dishmi - couple registration
+#
 # Usage (from wedflow/backend):
-#   npm run register-couple -- couple-registrations/dinelkadishmi.txt
+# npm run register-couple -- couple-registrations/dinelkadishmi.txt
 #
 # Video folder: assets/invitation_video/dinelkadishmi/
 
@@ -12,7 +13,7 @@ hotel_name=DoubleTree by Hilton Weerawila Rajawarna Resort
 hotel_address=Weerawila Watta, Weerawila, 82632, Sri Lanka
 google_maps_link=https://maps.google.com/?q=DoubleTree+by+Hilton+Weerawila+Rajawarna+Resort
 poruwa_time=09:30
-weather_note=Warm coastal evening — light outdoor attire recommended
+weather_note=Warm coastal evening - light outdoor attire recommended
 parking_note=Parking Available
 special_text=With joy in our hearts, we invite you to celebrate our wedding day.
 thank_you_note=Thank you for sharing this special moment with us.
