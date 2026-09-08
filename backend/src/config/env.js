@@ -23,7 +23,8 @@ const env = {
   JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || "7d",
 
   SALT_ROUNDS: process.env.SALT_ROUNDS,
-  FRONTEND_ORIGIN: process.env.FRONTEND_ORIGIN,
+  FRONTEND_ORIGIN: process.env.FRONTEND_ORIGIN || process.env.CORS_ORIGIN,
+  CORS_ORIGIN: process.env.CORS_ORIGIN || process.env.FRONTEND_ORIGIN,
 };
 
 module.exports = { env, requireEnv };
