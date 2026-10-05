@@ -40,6 +40,13 @@ function toUtcStamp(dateStr, endOfDay = false) {
   return endOfDay ? `${y}${m}${d}T173000Z` : `${y}${m}${d}T130000Z`;
 }
 
+function toIsoStamp(dateStr, endOfDay = false) {
+  if (!dateStr) return "";
+  const day = String(dateStr).slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return "";
+  return endOfDay ? `${day}T17:30:00Z` : `${day}T13:00:00Z`;
+}
+
 export default function SaveTheDatePage({
   fields = {},
   contentScale = 1,
@@ -56,6 +63,8 @@ export default function SaveTheDatePage({
     : calendarEventName;
   const startUtc = toUtcStamp(eventDate, false) || "20261112T130000Z";
   const endUtc = toUtcStamp(eventDate, true) || "20261112T173000Z";
+  const startIso = toIsoStamp(eventDate, false) || "2026-11-12T13:00:00Z";
+  const endIso = toIsoStamp(eventDate, true) || "2026-11-12T17:30:00Z";
 
   const links =
     Array.isArray(fields.calendarLinks) && fields.calendarLinks.length
@@ -66,6 +75,14 @@ export default function SaveTheDatePage({
   const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
     calendarEventName
   )}&dates=${startUtc}/${endUtc}&details=${encodeURIComponent(
+    calendarEventDetails
+  )}&location=${encodeURIComponent(location)}`;
+
+  const outlookCalendarUrl = `https://outlook.live.com/calendar/0/deeplink/compose?path=%2Fcalendar%2Faction%2Fcompose&rru=addevent&subject=${encodeURIComponent(
+    calendarEventName
+  )}&startdt=${encodeURIComponent(startIso)}&enddt=${encodeURIComponent(
+    endIso
+  )}&body=${encodeURIComponent(
     calendarEventDetails
   )}&location=${encodeURIComponent(location)}`;
 
@@ -107,6 +124,7 @@ export default function SaveTheDatePage({
     const customUrl = String(item?.url || "").trim();
     if (customUrl) return customUrl;
     if (provider === "google") return googleCalendarUrl;
+    if (provider === "outlook") return outlookCalendarUrl;
     if (provider === "custom") return "#";
     return null;
   };
@@ -115,7 +133,7 @@ export default function SaveTheDatePage({
     const provider = String(item?.provider || "").toLowerCase();
     const customUrl = String(item?.url || "").trim();
     if (customUrl) return;
-    if (provider === "apple" || provider === "outlook") {
+    if (provider === "apple") {
       e.preventDefault();
       handleDownloadIcs();
     }
@@ -195,8 +213,7 @@ export default function SaveTheDatePage({
             const label = item?.label || meta.label;
             const href = resolveHref(item);
             const isDownload =
-              !String(item?.url || "").trim() &&
-              (provider === "apple" || provider === "outlook");
+              !String(item?.url || "").trim() && provider === "apple";
 
             if (isDownload) {
               return (

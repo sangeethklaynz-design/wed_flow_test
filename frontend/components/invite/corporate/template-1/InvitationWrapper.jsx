@@ -16,8 +16,13 @@ import {
 } from './pages';
 import { computeCorporatePageHeight } from '@/lib/corporateLayoutMetrics';
 import { corporateThemeVars } from '@/lib/corporatePageStyles';
-import InvitationVideoIntro from '@/components/invite/InvitationVideoIntro';
+import InvitationVideoIntro, {
+  INVITE_FRAME_H,
+  INVITE_FRAME_W,
+} from '@/components/invite/InvitationVideoIntro';
 import InvitationBackgroundMusic from '@/components/invite/InvitationBackgroundMusic';
+import InviteMobileScaler from '@/components/invite/InviteMobileScaler';
+import InvitationPreviewBackButton from '@/components/invite/InvitationPreviewBackButton';
 import { RsvpConfirmationOverlay } from './overlays/RsvpConfirmationOverlay';
 import { PaymentSuccessOverlay } from './overlays/PaymentSuccessOverlay';
 import { TicketQrOverlay } from './overlays/TicketQrOverlay';
@@ -67,16 +72,34 @@ function resolveEventLocation(templateData) {
 }
 
 function resolveEventMedia(templateData) {
+  const musicUrl =
+    templateData?.static?.music?.url ||
+    templateData?.music?.url ||
+    templateData?.musicUrl ||
+    null;
+  const hasMusic =
+    templateData?.static?.music?.hasMusic !== undefined
+      ? Boolean(templateData?.static?.music?.hasMusic && musicUrl)
+      : Boolean(musicUrl);
+
+  const videoUrl =
+    templateData?.static?.video?.url ||
+    templateData?.video?.url ||
+    templateData?.videoUrl ||
+    null;
+  const hasVideo =
+    templateData?.static?.video?.hasVideo !== undefined
+      ? Boolean(templateData?.static?.video?.hasVideo && videoUrl)
+      : Boolean(videoUrl);
+
   return {
-    backgroundUrl: templateData?.static?.background?.url || null,
-    videoUrl:
-      templateData?.static?.video?.hasVideo && templateData?.static?.video?.url
-        ? templateData.static.video.url
-        : null,
-    musicUrl:
-      templateData?.static?.music?.hasMusic && templateData?.static?.music?.url
-        ? templateData.static.music.url
-        : null,
+    backgroundUrl:
+      templateData?.static?.background?.url ||
+      templateData?.background?.url ||
+      templateData?.backgroundUrl ||
+      null,
+    videoUrl: hasVideo ? videoUrl : null,
+    musicUrl: hasMusic ? musicUrl : null,
   };
 }
 
@@ -162,12 +185,7 @@ export function CorporatePagePreview({
   if (pageId === 'agenda') {
     return (
       <div {...frameProps}>
-        <Page
-          fields={fields}
-          isRsvpConfirmed={true}
-          guestToken={null}
-          scheduleEvents={templateData?.static?.scheduleEvents || []}
-        />
+        <Page fields={fields} isRsvpConfirmed={true} guestToken={null} />
       </div>
     );
   }
@@ -210,6 +228,17 @@ function CorporateInvitationFull({
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
   const [isPaymentSuccessOpen, setIsPaymentSuccessOpen] = useState(false);
   const [isTicketOpen, setIsTicketOpen] = useState(false);
+  const [isInvitationRoute, setIsInvitationRoute] = useState(false);
+
+  useEffect(() => {
+    if (
+      typeof window !== 'undefined' &&
+      window.location.pathname.startsWith('/invitation')
+    ) {
+      setIsInvitationRoute(true);
+    }
+  }, []);
+
   const guest = templateData?.guest || templateData?.static?.guest || null;
   const maxGuests = Number(guest?.maxGuests || guest?.invitedCount) || 1;
 
@@ -326,17 +355,23 @@ function CorporateInvitationFull({
 
   const handleExploreClick = () => {
     const page2 = document.getElementById('page-2');
-    if (page2 && containerRef.current) {
-      containerRef.current.scrollTo({
-        top: page2.offsetTop,
-        behavior: 'smooth',
-      });
+    if (page2) {
+      if (embedded && containerRef.current) {
+        containerRef.current.scrollTo({
+          top: page2.offsetTop,
+          behavior: 'smooth',
+        });
+      } else {
+        page2.scrollIntoView({ behavior: 'smooth' });
+      }
     }
   };
 
   const handleScrollToPage1 = () => {
-    if (containerRef.current) {
+    if (embedded && containerRef.current) {
       containerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
@@ -393,11 +428,15 @@ function CorporateInvitationFull({
     setHash('#page-7');
     setTimeout(() => {
       const page7 = document.getElementById('page-7');
-      if (page7 && containerRef.current) {
-        containerRef.current.scrollTo({
-          top: page7.offsetTop,
-          behavior: 'smooth',
-        });
+      if (page7) {
+        if (embedded && containerRef.current) {
+          containerRef.current.scrollTo({
+            top: page7.offsetTop,
+            behavior: 'smooth',
+          });
+        } else {
+          page7.scrollIntoView({ behavior: 'smooth' });
+        }
       }
     }, 50);
   };
@@ -473,7 +512,6 @@ function CorporateInvitationFull({
           fields={fields}
           isRsvpConfirmed={Boolean(isConfirmed)}
           guestToken={guestToken}
-          scheduleEvents={templateData?.static?.scheduleEvents || []}
         />
       );
     }
@@ -505,69 +543,49 @@ function CorporateInvitationFull({
     return <Page key={pageId} fields={fields} />;
   };
 
-  const shellClass = embedded
-    ? 'relative flex items-center justify-center w-[390px]'
-    : 'w-screen h-screen flex items-center justify-center relative overflow-hidden bg-[#E5F3FD]';
-
-  const Tag = embedded ? 'div' : 'main';
-
-  return (
-    <Tag className={shellClass}>
-      {media.musicUrl ? (
-        <InvitationBackgroundMusic
-          musicUrl={media.musicUrl}
-          active={musicActive && !showIntroVideo}
-          showMuteButton
-          usePortal={!embedded}
-        />
-      ) : null}
+  if (embedded) {
+    return (
       <div
-        id="invitation-wrapper"
-        ref={wrapperRef}
+        ref={containerRef}
         style={{
-          transform:
-            !embedded && typeof window !== 'undefined' && window.innerWidth > 480
-              ? `scale(${scale})`
-              : undefined,
-          transformOrigin: 'center center',
-          transition: 'transform 0.15s ease-out',
+          width: 390,
+          height: 844,
+          borderRadius: 26,
+          backgroundColor: '#02122B',
+          ...corporateThemeVars(fields),
         }}
-        className={
-          embedded
-            ? 'relative flex items-center justify-center'
-            : 'relative flex items-center justify-center max-sm:w-full max-sm:h-full'
-        }
+        className="relative overflow-y-auto scrollbar-none"
+        aria-label="Corporate invitation"
       >
-        <div
-          id="invitation-container"
-          ref={containerRef}
-          style={corporateThemeVars(fields)}
-          className={
-            embedded
-              ? 'w-[390px] h-[844px] relative rounded-[26px] overflow-y-auto overflow-x-hidden snap-y snap-mandatory scroll-smooth shadow-card bg-[#02122B] no-scrollbar'
-              : 'w-[390px] h-[844px] relative rounded-[26px] overflow-y-auto overflow-x-hidden snap-y snap-mandatory scroll-smooth shadow-card bg-[#02122B] no-scrollbar max-sm:w-full max-sm:max-w-[430px] max-sm:h-[100dvh] max-sm:rounded-none max-sm:shadow-none'
-          }
-        >
-          {showIntroVideo && media.videoUrl ? (
-            <InvitationVideoIntro
-              key={media.videoUrl}
-              videoUrl={media.videoUrl}
-              autoPlay
-              showSkipButton
-              onFadeStart={() => {}}
-              onComplete={() => {
-                setShowIntroVideo(false);
-                setMusicActive(true);
-              }}
-              onSkip={() => {
-                setShowIntroVideo(false);
-                setMusicActive(true);
-              }}
-            />
-          ) : (
-            visiblePages.map((pageId) => renderPage(pageId))
-          )}
-        </div>
+        {media.musicUrl ? (
+          <InvitationBackgroundMusic
+            musicUrl={media.musicUrl}
+            active={musicActive && !showIntroVideo}
+            showMuteButton
+            usePortal={false}
+          />
+        ) : null}
+        {showIntroVideo && media.videoUrl ? (
+          <InvitationVideoIntro
+            key={media.videoUrl}
+            videoUrl={media.videoUrl}
+            autoPlay
+            showSkipButton
+            onFadeStart={() => {}}
+            onComplete={() => {
+              setShowIntroVideo(false);
+              setMusicActive(true);
+            }}
+            onSkip={() => {
+              setShowIntroVideo(false);
+              setMusicActive(true);
+            }}
+          />
+        ) : (
+          <div className="relative w-[390px] flex flex-col">
+            {visiblePages.map((pageId) => renderPage(pageId))}
+          </div>
+        )}
 
         <RsvpConfirmationOverlay
           isOpen={isConfirmationOpen}
@@ -594,7 +612,105 @@ function CorporateInvitationFull({
           onAddToCalendar={handleNavigateToCalendar}
         />
       </div>
-    </Tag>
+    );
+  }
+
+  const isVideoActive = showIntroVideo && Boolean(media.videoUrl);
+
+  return (
+    <div
+      className="relative w-full flex flex-col items-center justify-center mx-auto"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '100%',
+        margin: '0 auto',
+      }}
+    >
+      <InvitationPreviewBackButton href="/invite" label="Back to invite" />
+
+      <InvitationBackgroundMusic
+        musicUrl={media.musicUrl || "/assets/couple_music/dinelkadishmi/dinelkadishmi_music.mp3"}
+        active={musicActive && !isVideoActive}
+        showMuteButton
+        usePortal
+      />
+
+      <InviteMobileScaler
+        mode={isVideoActive ? 'cover' : 'width'}
+        fixedHeight={isVideoActive ? INVITE_FRAME_H : undefined}
+        className="w-full flex justify-center items-center mx-auto"
+      >
+        <main
+          className={`relative mx-auto overflow-hidden border-0 outline-none isolate ${
+            isVideoActive ? '' : 'card-shadow md:rounded-2xl'
+          }`}
+          style={{
+            width: INVITE_FRAME_W,
+            maxWidth: INVITE_FRAME_W,
+            height: isVideoActive ? INVITE_FRAME_H : undefined,
+            backgroundColor: '#02122B',
+            margin: '0 auto',
+            display: 'block',
+          }}
+          aria-label="Corporate invitation"
+        >
+          {isVideoActive ? (
+            <div className="absolute inset-0 w-[390px] h-[844px] overflow-hidden mx-auto">
+              <InvitationVideoIntro
+                key={media.videoUrl}
+                videoUrl={media.videoUrl}
+                autoPlay
+                showSkipButton
+                onFadeStart={() => {}}
+                onComplete={() => {
+                  setShowIntroVideo(false);
+                  setMusicActive(true);
+                }}
+                onSkip={() => {
+                  setShowIntroVideo(false);
+                  setMusicActive(true);
+                }}
+              />
+            </div>
+          ) : (
+            <div
+              className="relative w-[390px] flex flex-col mx-auto"
+              style={{ ...corporateThemeVars(fields), margin: '0 auto' }}
+            >
+              {visiblePages.map((pageId) => renderPage(pageId))}
+            </div>
+          )}
+
+          <RsvpConfirmationOverlay
+            isOpen={isConfirmationOpen}
+            canAttend={
+              rsvpData
+                ? (rsvpData.attendance || 'yes').toLowerCase() !== 'no' &&
+                  (rsvpData.attendingStatus || '').toLowerCase() !== 'declined'
+                : true
+            }
+            onClose={handleCloseConfirmation}
+            onProceedToPayment={handleProceedToPayment}
+          />
+          <PaymentSuccessOverlay
+            isOpen={isPaymentSuccessOpen}
+            onClose={handleClosePaymentSuccess}
+            onBackToRsvp={handleBackToRsvp}
+            onAddToCalendar={handleNavigateToCalendar}
+            onViewTicket={handleOpenTicket}
+          />
+          <TicketQrOverlay
+            isOpen={isTicketOpen}
+            onClose={handleCloseTicket}
+            onBackToPayment={handleBackToPayment}
+            onAddToCalendar={handleNavigateToCalendar}
+          />
+        </main>
+      </InviteMobileScaler>
+    </div>
   );
 }
 

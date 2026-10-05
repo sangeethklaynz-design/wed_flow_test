@@ -215,14 +215,12 @@ async function loadScheduleDownloadContext(weddingId) {
     ),
     sequelize.query(
       `
-      SELECT se.event_time, se.end_time, se.title, se.special_notes, se.location
-      FROM schedule_events se
-      LEFT JOIN weddings w ON w.id = ?
-      WHERE se.wedding_id = ?
-         OR (w.event_id IS NOT NULL AND se.event_id = w.event_id)
-      ORDER BY se.event_time ASC, se.display_order ASC;
+      SELECT event_time, end_time, title, special_notes, location
+      FROM schedule_events
+      WHERE wedding_id = ?
+      ORDER BY event_time ASC, display_order ASC;
       `,
-      { replacements: [weddingId, weddingId] }
+      { replacements: [weddingId] }
     ),
     sequelize.query(
       `
@@ -256,24 +254,22 @@ async function loadScheduleDownloadContext(weddingId) {
       eventFields = cfg.fields || {};
     } catch (_) {}
 
-    if (events.length === 0) {
-      if (isCorporate && Array.isArray(eventFields.agendaItems) && eventFields.agendaItems.length > 0) {
-        events = eventFields.agendaItems
-          .filter((item) => item.time || item.title)
-          .map((item) => ({
-            startTime: item.time || "",
-            title: item.title || "",
-            note: item.location || "",
-          }));
-      } else if (isParty && Array.isArray(eventFields.scheduleItems) && eventFields.scheduleItems.length > 0) {
-        events = eventFields.scheduleItems
-          .filter((item) => item.time || item.title)
-          .map((item) => ({
-            startTime: item.time || "",
-            title: item.title || "",
-            note: item.description || item.location || "",
-          }));
-      }
+    if (isCorporate && Array.isArray(eventFields.agendaItems) && eventFields.agendaItems.length > 0) {
+      events = eventFields.agendaItems
+        .filter((item) => item.time || item.title)
+        .map((item) => ({
+          startTime: item.time || "",
+          title: item.title || "",
+          note: item.location || "",
+        }));
+    } else if (isParty && Array.isArray(eventFields.scheduleItems) && eventFields.scheduleItems.length > 0) {
+      events = eventFields.scheduleItems
+        .filter((item) => item.time || item.title)
+        .map((item) => ({
+          startTime: item.time || "",
+          title: item.title || "",
+          note: item.description || item.location || "",
+        }));
     }
   }
 

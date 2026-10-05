@@ -62,13 +62,11 @@ export default function PublicInvitationPage() {
     templateData?.static?.event?.templateKey ||
     templateData?.templateKey ||
     "template-1";
-  const isCorporate = String(eventType).toLowerCase() === "corporate";
-  const isParty = String(eventType).toLowerCase() === "party";
-  const useEmbeddedInvite = isCorporate || isParty;
+  const useEmbeddedInvite = false;
 
   return (
-    <div className="min-h-screen-zoom w-full relative flex flex-col items-stretch md:items-center bg-[#EAF5FF] md:bg-gradient-to-br md:from-[#EAF5FF] md:via-[#E8DFD8] md:to-[#DCD3CB] overflow-x-hidden md:py-10">
-      <InvitationPreviewBackButton />
+    <div className="min-h-screen-zoom w-full relative flex flex-col items-center justify-start bg-[#EAF5FF] md:bg-gradient-to-br md:from-[#EAF5FF] md:via-[#E8DFD8] md:to-[#DCD3CB] overflow-x-hidden md:py-10">
+      {eventType === "wedding" ? <InvitationPreviewBackButton /> : null}
 
       {error ? (
         <div className="mb-4 w-[390px] bg-red-50 border border-red-100 text-red-600 text-sm rounded-2xl px-4 py-3">

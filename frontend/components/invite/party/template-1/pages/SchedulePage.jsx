@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import React, { useState } from "react";
 import styles from "./Page4.module.css";
 import {
   computeScheduleHeight,
@@ -19,86 +19,60 @@ const ICON_MAP = {
   dj: "/assets/events/parties/templates/template-1/chrome/schedule-page/dj.webp",
 };
 
-function formatTime12(time24) {
-  if (!time24) return "";
-  const [hStr, mStr] = String(time24).slice(0, 5).split(":");
-  let hours = Number(hStr);
-  const minutes = mStr || "00";
-  const period = hours >= 12 ? "PM" : "AM";
-  hours = hours % 12;
-  if (hours === 0) hours = 12;
-  return `${hours}:${minutes} ${period}`;
+function escapePdfText(text) {
+  return String(text || "")
+    .replace(/\\/g, "\\\\")
+    .replace(/\(/g, "\\(")
+    .replace(/\)/g, "\\)");
 }
 
-function resolvePartyIcon(title = "", desc = "") {
-  const text = `${title} ${desc}`.toLowerCase();
-  if (/drink|cocktail|toast|wine|beer|bar|beverage|champagne/i.test(text)) return "drink";
-  if (/music|band|concert|song|acoustic|orchestra/i.test(text)) return "music";
-  if (/dj|dance|party|floor|disco/i.test(text)) return "dj";
-  if (/food|dinner|lunch|breakfast|buffet|meal|eat|cake|catering/i.test(text)) return "food";
-  if (/speech|mic|welcome|talk|announcement|toast|address|remarks/i.test(text)) return "mic";
-  return "celebrate";
-}
-
-function escapePdfText(str) {
-  return String(str || "").replace(/[\\()]/g, "\\$&");
-}
-
-function generateClientPartySchedulePdf(fields, meta, items) {
-  const eventName = meta?.eventName || fields.partyTitle || "GALA NIGHT";
-  const title = (fields.scheduleTitle || "Event Schedule").toUpperCase();
-  const dateVenue = [meta?.eventDate, meta?.eventVenue].filter(Boolean).join(" | ");
+function generatePartySchedulePdf(fields, items) {
+  const mainTitle = (fields.eventMainTitle || "GALA NIGHT").replace(/[\r\n]+/g, " ");
+  const scriptTitle = fields.eventScriptTitle || "Annual";
+  const scheduleTitle = fields.scheduleTitle || "Event Schedule";
+  const dateVenue = [fields.eventDateLabel, fields.eventVenueLabel].filter(Boolean).join(" | ");
 
   const textOps = [];
   textOps.push("BT");
   textOps.push("/F2 18 Tf");
   textOps.push("50 780 Td");
-  textOps.push(`(${escapePdfText(eventName)}) Tj`);
-  textOps.push("ET");
-
-  textOps.push("BT");
-  textOps.push("/F2 13 Tf");
-  textOps.push("50 755 Td");
-  textOps.push(`(${escapePdfText(title)}) Tj`);
+  textOps.push(`(${escapePdfText(scriptTitle + " " + mainTitle)}) Tj`);
   textOps.push("ET");
 
   if (dateVenue) {
     textOps.push("BT");
     textOps.push("/F1 10 Tf");
-    textOps.push("50 735 Td");
+    textOps.push("50 758 Td");
     textOps.push(`(${escapePdfText(dateVenue)}) Tj`);
     textOps.push("ET");
   }
 
-  let y = 690;
+  textOps.push("BT");
+  textOps.push("/F2 13 Tf");
+  textOps.push("50 720 Td");
+  textOps.push(`(${escapePdfText(scheduleTitle.toUpperCase())}) Tj`);
+  textOps.push("ET");
+
+  let y = 685;
   items.forEach((item) => {
     if (!item.time && !item.title && !item.desc) return;
     textOps.push("BT");
-    textOps.push("/F2 11 Tf");
+    textOps.push("/F2 10 Tf");
     textOps.push(`50 ${y} Td`);
     textOps.push(`(${escapePdfText(item.time || "")}) Tj`);
     textOps.push("ET");
 
     textOps.push("BT");
-    textOps.push("/F1 11 Tf");
+    textOps.push("/F1 10 Tf");
     textOps.push(`140 ${y} Td`);
     textOps.push(`(${escapePdfText(item.title || item.desc || "")}) Tj`);
     textOps.push("ET");
 
-    if (item.desc && item.title) {
-      y -= 14;
-      textOps.push("BT");
-      textOps.push("/F1 9 Tf");
-      textOps.push(`140 ${y} Td`);
-      textOps.push(`(${escapePdfText(item.desc)}) Tj`);
-      textOps.push("ET");
-    }
-
-    y -= 28;
+    y -= 26;
   });
 
   const streamContent = textOps.join("\n");
-  const streamLength = Buffer.byteLength(streamContent, "utf-8");
+  const streamLength = streamContent.length;
 
   const pdf = `%PDF-1.4
 1 0 obj
@@ -143,50 +117,32 @@ startxref
 export default function SchedulePage({
   fields = {},
   contentScale = 1,
-  scheduleEvents = null,
-  isRsvpConfirmed = false,
   guestToken = null,
-  eventName = null,
-  eventDate = null,
-  eventVenue = null,
+  onSaveSchedule = null,
+  isDownloadingPdf = false,
 }) {
-  const [downloading, setDownloading] = useState(false);
-  const [downloadError, setDownloadError] = useState("");
+  const [internalDownloading, setInternalDownloading] = useState(false);
+  const isDownloading = isDownloadingPdf || internalDownloading;
 
   const title = fields.scheduleTitle || "Event Schedule";
-
-  const items = useMemo(() => {
-    if (Array.isArray(scheduleEvents) && scheduleEvents.length > 0) {
-      return scheduleEvents.map((ev) => {
-        const timeStr = ev.startTime
-          ? formatTime12(ev.startTime) + (ev.endTime ? ` - ${formatTime12(ev.endTime)}` : "")
-          : ev.time || "";
-        const titleStr = ev.title || "";
-        const descStr = ev.specialNotes || ev.location || ev.desc || "";
-        return {
-          time: timeStr,
-          title: titleStr,
-          desc: descStr,
-          icon: ev.icon || resolvePartyIcon(titleStr, descStr),
-        };
-      });
-    }
-    if (Array.isArray(fields.scheduleItems) && fields.scheduleItems.length > 0) {
-      return fields.scheduleItems;
-    }
-    return DEFAULT_SCHEDULE_ITEMS;
-  }, [scheduleEvents, fields.scheduleItems]);
-
-  const pageHeight = computeScheduleHeight(items, isRsvpConfirmed);
+  const items =
+    Array.isArray(fields.scheduleItems) && fields.scheduleItems.length
+      ? fields.scheduleItems
+      : DEFAULT_SCHEDULE_ITEMS;
+  const pageHeight = computeScheduleHeight(items);
   const listH =
     items.length === 0
       ? 0
       : items.length * SCHEDULE_ITEM_H +
         Math.max(0, items.length - 1) * SCHEDULE_ITEM_GAP;
 
-  const handleDownload = async () => {
-    setDownloading(true);
-    setDownloadError("");
+  const handleDownloadSchedule = async () => {
+    if (typeof onSaveSchedule === "function") {
+      onSaveSchedule();
+      return;
+    }
+
+    setInternalDownloading(true);
     try {
       let blob = null;
       if (guestToken) {
@@ -201,11 +157,7 @@ export default function SchedulePage({
       }
 
       if (!blob) {
-        blob = generateClientPartySchedulePdf(
-          fields,
-          { eventName, eventDate, eventVenue },
-          items
-        );
+        blob = generatePartySchedulePdf(fields, items);
       }
 
       const objectUrl = URL.createObjectURL(blob);
@@ -217,9 +169,9 @@ export default function SchedulePage({
       a.remove();
       setTimeout(() => URL.revokeObjectURL(objectUrl), 2000);
     } catch (err) {
-      setDownloadError(err?.message || "Failed to download schedule");
+      console.error("Failed to download schedule:", err);
     } finally {
-      setDownloading(false);
+      setInternalDownloading(false);
     }
   };
 
@@ -282,60 +234,61 @@ export default function SchedulePage({
           </div>
         </div>
 
-        {/* Save the Schedule Button - Visible only after RSVP is submitted */}
-        {isRsvpConfirmed ? (
-          <div className={styles.saveScheduleContainer}>
-            <button
-              type="button"
-              id="save-party-schedule-btn"
-              onClick={handleDownload}
-              disabled={downloading}
-              className={styles.saveScheduleBtn}
-              aria-label="Save the Schedule"
-            >
-              {downloading ? (
-                <>
-                  <svg
-                    className={styles.spinner}
-                    viewBox="0 0 24 24"
-                    fill="none"
-                  >
-                    <circle
-                      cx="12"
-                      cy="12"
-                      r="9"
-                      stroke="#ffffff"
-                      strokeWidth="2.5"
-                      strokeDasharray="28"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  <span>Downloading...</span>
-                </>
-              ) : (
-                <>
-                  <svg
-                    className={styles.downloadIcon}
-                    viewBox="0 0 24 24"
-                    fill="none"
+        {/* Save the Schedule Button at the end of the schedule list */}
+        <div className={styles.saveScheduleContainer}>
+          <button
+            type="button"
+            id="save-schedule-btn"
+            onClick={handleDownloadSchedule}
+            disabled={isDownloading}
+            className={styles.saveScheduleBtn}
+            aria-label="Save the Schedule"
+          >
+            {isDownloading ? (
+              <>
+                <svg
+                  className="animate-spin"
+                  style={{ width: 16, height: 16 }}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
                     stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="7 10 12 15 17 10" />
-                    <line x1="12" y1="15" x2="12" y2="3" />
-                  </svg>
-                  <span>Save the Schedule</span>
-                </>
-              )}
-            </button>
-            {downloadError ? (
-              <p className={styles.downloadError}>{downloadError}</p>
-            ) : null}
-          </div>
-        ) : null}
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v8H4z"
+                  />
+                </svg>
+                <span>Downloading Schedule…</span>
+              </>
+            ) : (
+              <>
+                <svg
+                  style={{ width: 18, height: 18, flexShrink: 0 }}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                <span>Save the Schedule</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       <img

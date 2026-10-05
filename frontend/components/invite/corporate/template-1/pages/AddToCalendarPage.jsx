@@ -66,8 +66,24 @@ export const AddToCalendarPage = ({ onCloseClick, fields = {} }) => {
   };
 
   const handleOutlook = () => {
-    showToast('Downloading Outlook calendar invite (.ics)...');
-    downloadIcs();
+    showToast('Opening Outlook Calendar...');
+    const eventName = fields?.eventTitle || 'Nexora Annual Business Summit 2026';
+    const eventDescription =
+      'Nexora Annual Business Summit 2026 - Ideas Today, A Smart Tomorrow. Keynotes, panel discussions, and networking.';
+    const eventLocation =
+      fields?.eventVenueLabel ||
+      'Shangri-La Hotel Colombo, 1 Galle Face, Colombo 02, Sri Lanka';
+    const isoStart = '2026-11-12T03:30:00Z';
+    const isoEnd = '2026-11-12T11:30:00Z';
+
+    const outlookUrl = `https://outlook.live.com/calendar/0/deeplink/compose?path=%2Fcalendar%2Faction%2Fcompose&rru=addevent&subject=${encodeURIComponent(
+      eventName
+    )}&startdt=${encodeURIComponent(isoStart)}&enddt=${encodeURIComponent(
+      isoEnd
+    )}&body=${encodeURIComponent(
+      eventDescription
+    )}&location=${encodeURIComponent(eventLocation)}`;
+    window.open(outlookUrl, '_blank', 'noopener,noreferrer');
   };
 
   return (

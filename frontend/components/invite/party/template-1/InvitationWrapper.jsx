@@ -15,8 +15,13 @@ import {
 } from "./pages";
 import { computePartyPageHeight } from "@/lib/partyLayoutMetrics";
 import { partyThemeVars } from "@/lib/partyPageStyles";
-import InvitationVideoIntro from "@/components/invite/InvitationVideoIntro";
+import InvitationVideoIntro, {
+  INVITE_FRAME_H,
+  INVITE_FRAME_W,
+} from "@/components/invite/InvitationVideoIntro";
 import InvitationBackgroundMusic from "@/components/invite/InvitationBackgroundMusic";
+import InviteMobileScaler from "@/components/invite/InviteMobileScaler";
+import InvitationPreviewBackButton from "@/components/invite/InvitationPreviewBackButton";
 import RsvpChangeRequestPage from "./pages/RsvpChangeRequestPage";
 import RsvpConfirmationPage from "./pages/RsvpConfirmationPage";
 import PaymentSuccessPage from "./pages/PaymentSuccessPage";
@@ -170,23 +175,6 @@ export function PartyPagePreview({
     );
   }
 
-  if (pageId === "schedule") {
-    return (
-      <div {...frameProps}>
-        <Page
-          fields={fields}
-          contentScale={1}
-          scheduleEvents={templateData?.static?.scheduleEvents || []}
-          isRsvpConfirmed={false}
-          guestToken={null}
-          eventName={meta.eventName}
-          eventDate={meta.eventDate}
-          eventVenue={meta.eventVenue}
-        />
-      </div>
-    );
-  }
-
   if (pageId === "location") {
     return (
       <div {...frameProps}>
@@ -232,9 +220,19 @@ function PartyInvitationFull({
   onRsvpSuccess: onRsvpSuccessProp = null,
   previewBypassValidation = false,
 }) {
-  const scrollViewportRef = useRef(null);
+  const embeddedContainerRef = useRef(null);
   const [showRsvpConfirmation, setShowRsvpConfirmation] = useState(false);
   const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
+  const [isInvitationRoute, setIsInvitationRoute] = useState(false);
+
+  useEffect(() => {
+    if (
+      typeof window !== "undefined" &&
+      window.location.pathname.startsWith("/invitation")
+    ) {
+      setIsInvitationRoute(true);
+    }
+  }, []);
 
   const guest = templateData?.guest || templateData?.static?.guest || null;
   const initialRsvp = guest?.rsvp || null;
@@ -259,15 +257,6 @@ function PartyInvitationFull({
   const maxGuests = Number(guest?.maxGuests || guest?.invitedCount) || 1;
   const [isDownloadingSchedule, setIsDownloadingSchedule] = useState(false);
 
-  const [dims, setDims] = useState({
-    isMobile: false,
-    cardWidth: 390,
-    cardHeight: 844,
-    contentScale: 1,
-    borderRadius: 28,
-    mounted: false,
-  });
-
   const { pagesCfg, fields } = resolveFields(templateData, templateConfigProp);
   const location = resolveEventLocation(templateData);
   const meta = resolveEventMeta(templateData);
@@ -285,64 +274,25 @@ function PartyInvitationFull({
     isPageEnabled(pagesCfg, id)
   );
 
-  useEffect(() => {
-    if (embedded) {
-      setDims({
-        isMobile: false,
-        cardWidth: 390,
-        cardHeight: 844,
-        contentScale: 1,
-        borderRadius: 26,
-        mounted: true,
-      });
-      return undefined;
-    }
-
-    const handleResize = () => {
-      const w = window.innerWidth;
-      const h = window.innerHeight;
-      const isMobile = w <= 640;
-
-      if (isMobile) {
-        const contentScale = Math.min(w / 390, h / 844);
-        setDims({
-          isMobile: true,
-          cardWidth: w,
-          cardHeight: h,
-          contentScale,
-          borderRadius: 0,
-          mounted: true,
-        });
-      } else {
-        const scale = Math.min(1, (h - 44) / 844, (w - 44) / 390);
-        setDims({
-          isMobile: false,
-          cardWidth: Math.round(390 * scale),
-          cardHeight: Math.round(844 * scale),
-          contentScale: scale,
-          borderRadius: Math.round(28 * scale),
-          mounted: true,
-        });
-      }
-    };
-
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    window.addEventListener("orientationchange", handleResize);
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      window.removeEventListener("orientationchange", handleResize);
-    };
-  }, [embedded]);
-
   const scrollToPage = (pageId) => {
     const el = document.querySelector(`[data-invite-page="${pageId}"]`);
-    if (el) el.scrollIntoView({ behavior: "smooth" });
+    if (el) {
+      if (embedded && embeddedContainerRef.current) {
+        embeddedContainerRef.current.scrollTo({
+          top: el.offsetTop,
+          behavior: "smooth",
+        });
+      } else {
+        el.scrollIntoView({ behavior: "smooth" });
+      }
+    }
   };
 
   const scrollToFirst = () => {
-    if (scrollViewportRef.current) {
-      scrollViewportRef.current.scrollTo({ top: 0, behavior: "smooth" });
+    if (embedded && embeddedContainerRef.current) {
+      embeddedContainerRef.current.scrollTo({ top: 0, behavior: "smooth" });
+    } else if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
@@ -393,7 +343,7 @@ function PartyInvitationFull({
           key="rsvp-change"
           rsvpData={rsvpData}
           guestToken={guestToken || ""}
-          contentScale={dims.contentScale}
+          contentScale={1}
         />
       );
     }
@@ -406,7 +356,7 @@ function PartyInvitationFull({
         <Page
           key={pageId}
           fields={fields}
-          contentScale={dims.contentScale}
+          contentScale={1}
           eventDate={meta.eventDate}
           eventTime={meta.eventTime}
           eventVenue={meta.eventVenue}
@@ -426,7 +376,7 @@ function PartyInvitationFull({
           guest={guest}
           guestToken={guestToken}
           maxGuests={maxGuests}
-          contentScale={dims.contentScale}
+          contentScale={1}
           previewBypassValidation={previewBypassValidation || !guestToken}
           onRsvpSuccess={interactive ? handleRsvpSuccess : () => {}}
         />
@@ -437,13 +387,10 @@ function PartyInvitationFull({
         <Page
           key={pageId}
           fields={fields}
-          contentScale={dims.contentScale}
-          scheduleEvents={templateData?.static?.scheduleEvents || []}
-          isRsvpConfirmed={Boolean(hasSubmittedRsvp)}
+          contentScale={1}
           guestToken={guestToken}
-          eventName={meta.eventName}
-          eventDate={meta.eventDate}
-          eventVenue={meta.eventVenue}
+          onSaveSchedule={handleDownloadSchedule}
+          isDownloadingPdf={isDownloadingSchedule}
         />
       );
     }
@@ -452,7 +399,7 @@ function PartyInvitationFull({
         <Page
           key={pageId}
           fields={fields}
-          contentScale={dims.contentScale}
+          contentScale={1}
           locationName={location.locationName}
           locationAddress={location.locationAddress}
           googleMapsLink={location.googleMapsLink}
@@ -464,7 +411,7 @@ function PartyInvitationFull({
         <Page
           key={pageId}
           fields={fields}
-          contentScale={dims.contentScale}
+          contentScale={1}
           eventDate={meta.eventDate}
           eventName={meta.eventName}
           eventVenue={meta.eventVenue}
@@ -473,62 +420,32 @@ function PartyInvitationFull({
       );
     }
     return (
-      <Page key={pageId} fields={fields} contentScale={dims.contentScale} />
+      <Page key={pageId} fields={fields} contentScale={1} />
     );
   };
 
-  if (!dims.mounted && !embedded) {
+  if (embedded) {
     return (
       <div
-        className={styles.desktopShell}
-        style={{ minHeight: "100dvh", background: "#0a1628" }}
-      />
-    );
-  }
-
-  const shellClass = embedded
-    ? "relative flex items-center justify-center"
-    : dims.isMobile
-      ? styles.mobileShell
-      : styles.desktopShell;
-
-  const frameClass = embedded
-    ? undefined
-    : dims.isMobile
-      ? styles.mobileFrame
-      : styles.deviceFrame;
-
-  return (
-    <div className={`${shellClass} partyInviteRoot`}>
-      {meta.musicUrl ? (
-        <InvitationBackgroundMusic
-          musicUrl={meta.musicUrl}
-          active={musicActive && !showIntroVideo}
-          showMuteButton
-          usePortal={!embedded}
-        />
-      ) : null}
-      <main
-        className={frameClass}
-        style={
-          !embedded && !dims.isMobile
-            ? {
-                width: `${dims.cardWidth}px`,
-                height: `${dims.cardHeight}px`,
-                borderRadius: `${dims.borderRadius}px`,
-              }
-            : embedded
-              ? {
-                  width: 390,
-                  height: 844,
-                  borderRadius: 26,
-                  overflow: "hidden",
-                  position: "relative",
-                }
-              : undefined
-        }
+        ref={embeddedContainerRef}
+        className="relative overflow-y-auto partyInviteRoot scrollbar-none"
+        style={{
+          width: 390,
+          height: 844,
+          borderRadius: 26,
+          backgroundColor: "#060e1d",
+          ...partyThemeVars(fields),
+        }}
         aria-label="Party invitation"
       >
+        {meta.musicUrl ? (
+          <InvitationBackgroundMusic
+            musicUrl={meta.musicUrl}
+            active={musicActive && !showIntroVideo}
+            showMuteButton
+            usePortal={false}
+          />
+        ) : null}
         {showIntroVideo && meta.videoUrl ? (
           <InvitationVideoIntro
             key={meta.videoUrl}
@@ -547,7 +464,7 @@ function PartyInvitationFull({
           />
         ) : showPaymentSuccess ? (
           <PaymentSuccessPage
-            contentScale={dims.contentScale}
+            contentScale={1}
             onAddToCalendar={() => {
               setShowPaymentSuccess(false);
               setShowRsvpConfirmation(false);
@@ -561,7 +478,7 @@ function PartyInvitationFull({
           />
         ) : showRsvpConfirmation ? (
           <RsvpConfirmationPage
-            contentScale={dims.contentScale}
+            contentScale={1}
             canAttend={
               rsvpData?.attendance !== "no" &&
               rsvpData?.attendingStatus !== "declined"
@@ -580,21 +497,122 @@ function PartyInvitationFull({
             isDownloadingPdf={isDownloadingSchedule}
           />
         ) : (
-          <div
-            ref={scrollViewportRef}
-            className={`${styles.scrollViewport} invitation-scroll-container`}
-            id="invitation-scroll-viewport"
-            style={{
-              ...partyThemeVars(fields),
-              ...(embedded
-                ? { width: 390, height: 844, overflowY: "auto" }
-                : {}),
-            }}
-          >
+          <div className="relative w-[390px] flex flex-col">
             {visiblePages.map((pageId) => renderPage(pageId))}
           </div>
         )}
-      </main>
+      </div>
+    );
+  }
+
+  const isVideoActive = showIntroVideo && Boolean(meta.videoUrl);
+
+  return (
+    <div
+      className="relative w-full flex flex-col items-center justify-center mx-auto partyInviteRoot"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        width: "100%",
+        margin: "0 auto",
+      }}
+    >
+      <InvitationPreviewBackButton href="/invite" label="Back to invite" />
+
+      <InvitationBackgroundMusic
+        musicUrl={meta.musicUrl || "/assets/couple_music/dinelkadishmi/dinelkadishmi_music.mp3"}
+        active={musicActive && !isVideoActive}
+        showMuteButton
+        usePortal
+      />
+
+      <InviteMobileScaler
+        mode={isVideoActive ? "cover" : "width"}
+        fixedHeight={isVideoActive ? INVITE_FRAME_H : undefined}
+        className="w-full flex justify-center items-center mx-auto"
+      >
+        <main
+          className={`relative mx-auto overflow-hidden border-0 outline-none isolate ${
+            isVideoActive ? "" : "card-shadow md:rounded-2xl"
+          }`}
+          style={{
+            width: INVITE_FRAME_W,
+            maxWidth: INVITE_FRAME_W,
+            height: isVideoActive ? INVITE_FRAME_H : undefined,
+            backgroundColor: "#060e1d",
+            margin: "0 auto",
+            display: "block",
+          }}
+          aria-label="Party invitation"
+        >
+          {isVideoActive ? (
+            <div className="absolute inset-0 w-[390px] h-[844px] overflow-hidden mx-auto">
+              <InvitationVideoIntro
+                key={meta.videoUrl}
+                videoUrl={meta.videoUrl}
+                autoPlay
+                showSkipButton
+                onFadeStart={() => {}}
+                onComplete={() => {
+                  setShowIntroVideo(false);
+                  setMusicActive(true);
+                }}
+                onSkip={() => {
+                  setShowIntroVideo(false);
+                  setMusicActive(true);
+                }}
+              />
+            </div>
+          ) : showPaymentSuccess ? (
+            <div className="relative w-[390px] min-h-[844px] mx-auto" style={{ margin: "0 auto" }}>
+              <PaymentSuccessPage
+                contentScale={1}
+                onAddToCalendar={() => {
+                  setShowPaymentSuccess(false);
+                  setShowRsvpConfirmation(false);
+                  setTimeout(() => scrollToPage("saveTheDate"), 120);
+                }}
+                onBackToInvite={() => {
+                  setShowPaymentSuccess(false);
+                  setShowRsvpConfirmation(false);
+                  scrollToFirst();
+                }}
+              />
+            </div>
+          ) : showRsvpConfirmation ? (
+            <div className="relative w-[390px] min-h-[844px] mx-auto" style={{ margin: "0 auto" }}>
+              <RsvpConfirmationPage
+                contentScale={1}
+                canAttend={
+                  rsvpData?.attendance !== "no" &&
+                  rsvpData?.attendingStatus !== "declined"
+                }
+                rsvpData={rsvpData}
+                onBackToInvite={() => setShowRsvpConfirmation(false)}
+                onProceedToPayment={() => {
+                  if (
+                    rsvpData?.attendance === "no" ||
+                    rsvpData?.attendingStatus === "declined"
+                  )
+                    return;
+                  setShowPaymentSuccess(true);
+                }}
+                onSaveSchedule={handleDownloadSchedule}
+                isDownloadingPdf={isDownloadingSchedule}
+              />
+            </div>
+          ) : (
+            <div
+              className="relative w-[390px] flex flex-col mx-auto"
+              style={{ ...partyThemeVars(fields), margin: "0 auto" }}
+            >
+              {visiblePages.map((pageId) => renderPage(pageId))}
+            </div>
+          )}
+        </main>
+      </InviteMobileScaler>
     </div>
   );
 }

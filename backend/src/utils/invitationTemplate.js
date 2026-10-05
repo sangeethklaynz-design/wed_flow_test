@@ -137,14 +137,12 @@ async function syncInvitationMediaToDb(weddingId, invitationId, diskVideo, diskI
 async function loadScheduleEventsForWedding(weddingId) {
   const [rows] = await sequelize.query(
     `
-    SELECT se.id, se.event_time, se.end_time, se.title, se.location, se.special_notes, se.display_order
-    FROM schedule_events se
-    LEFT JOIN weddings w ON w.id = ?
-    WHERE se.wedding_id = ?
-       OR (w.event_id IS NOT NULL AND se.event_id = w.event_id)
-    ORDER BY se.event_time ASC, se.display_order ASC;
+    SELECT id, event_time, end_time, title, location, special_notes, display_order
+    FROM schedule_events
+    WHERE wedding_id = ?
+    ORDER BY event_time ASC, display_order ASC;
     `,
-    { replacements: [weddingId, weddingId] }
+    { replacements: [weddingId] }
   );
   return rows.map((r) => ({
     id: r.id,
@@ -183,18 +181,24 @@ async function loadStaticInvitationBundle(weddingId) {
 
   let invitation = invitationRows[0] || null;
 
+  const eventType = String(wedding.event_type || "wedding").toLowerCase();
+  const isWedding = eventType === "wedding";
+
   // Prefer disk assets: assets/invitation_video/<slug>/ + assets/couple_images/<slug>/
-  // Sync URLs into DB so invitation media stays linked.
-  const diskVideo = resolveInvitationVideoFromDisk(wedding.couple_names);
-  const diskImages = resolveCoupleImagesFromDisk(wedding.couple_names);
-  const diskMusic = resolveCoupleMusicFromDisk(wedding.couple_names);
-  const diskBackground = resolveCoupleBackgroundFromDisk(wedding.couple_names);
-  await syncInvitationMediaToDb(
-    wedding.id,
-    invitation?.id || null,
-    diskVideo,
-    diskImages
-  );
+  // Sync URLs into DB so invitation media stays linked. Only wedding couples use this disk fallback.
+  const diskVideo = isWedding ? resolveInvitationVideoFromDisk(wedding.couple_names) : null;
+  const diskImages = isWedding ? resolveCoupleImagesFromDisk(wedding.couple_names) : [];
+  const diskMusic = isWedding ? resolveCoupleMusicFromDisk(wedding.couple_names) : null;
+  const diskBackground = isWedding ? resolveCoupleBackgroundFromDisk(wedding.couple_names) : null;
+
+  if (isWedding) {
+    await syncInvitationMediaToDb(
+      wedding.id,
+      invitation?.id || null,
+      diskVideo,
+      diskImages
+    );
+  }
 
   if (diskVideo || diskImages.length) {
     const [freshInvitationRows] = await sequelize.query(
@@ -301,13 +305,55 @@ async function loadStaticInvitationBundle(weddingId) {
       : splitCoupleNames(wedding.couple_names);
 
   const weddingDate = toDateOnly(wedding.wedding_date);
+  let documents = [];
+  let packBackgroundUrl = null;
+  let packVideoUrl = null;
+  let packMusicUrl = null;
+
+  const eventTypeForDocs = String(wedding.event_type || "").toLowerCase();
+  if (
+    (eventTypeForDocs === "corporate" || eventTypeForDocs === "party") &&
+    wedding.resource_pack_id
+  ) {
+    documents = listPackFiles(
+      wedding.event_type,
+      wedding.resource_pack_id,
+      "documents"
+    );
+    const bgFiles = listPackFiles(
+      wedding.event_type,
+      wedding.resource_pack_id,
+      "background"
+    );
+    if (bgFiles && bgFiles.length) {
+      packBackgroundUrl = bgFiles[0].url;
+    }
+    const videoFiles = listPackFiles(
+      wedding.event_type,
+      wedding.resource_pack_id,
+      "video"
+    );
+    if (videoFiles && videoFiles.length) {
+      packVideoUrl = videoFiles[0].url;
+    }
+    const musicFiles = listPackFiles(
+      wedding.event_type,
+      wedding.resource_pack_id,
+      "music"
+    );
+    if (musicFiles && musicFiles.length) {
+      packMusicUrl = musicFiles[0].url;
+    }
+  }
+
   const openingVideoUrl =
     (diskVideo && diskVideo.url) ||
+    packVideoUrl ||
     invitation?.opening_video_url ||
     null;
 
-  const musicUrl = (diskMusic && diskMusic.url) || null;
-  const backgroundUrl = (diskBackground && diskBackground.url) || null;
+  const musicUrl = (diskMusic && diskMusic.url) || packMusicUrl || null;
+  const backgroundUrl = (diskBackground && diskBackground.url) || packBackgroundUrl || null;
 
   let templateConfig = null;
   if (wedding.template_config) {
@@ -319,19 +365,6 @@ async function loadStaticInvitationBundle(weddingId) {
     } catch {
       templateConfig = null;
     }
-  }
-
-  let documents = [];
-  const eventTypeForDocs = String(wedding.event_type || "").toLowerCase();
-  if (
-    (eventTypeForDocs === "corporate" || eventTypeForDocs === "party") &&
-    wedding.resource_pack_id
-  ) {
-    documents = listPackFiles(
-      wedding.event_type,
-      wedding.resource_pack_id,
-      "documents"
-    );
   }
 
   const chromeBaseUrl = publicChromeUrl(

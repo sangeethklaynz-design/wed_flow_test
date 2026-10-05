@@ -13,10 +13,18 @@ export default function InvitationPreviewBackButton({
 }) {
   const router = useRouter();
 
+  const handleBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push(href);
+    }
+  };
+
   return (
     <button
       type="button"
-      onClick={() => router.push(href)}
+      onClick={handleBack}
       className="fixed top-4 left-4 z-[120] inline-flex items-center gap-2 bg-white/95 backdrop-blur-sm text-navy font-medium text-sm px-3.5 py-2.5 sm:px-4 rounded-xl border border-border card-shadow hover:bg-cream transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#054380]/60"
       aria-label={label}
     >

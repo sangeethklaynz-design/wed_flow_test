@@ -153,11 +153,7 @@ export default function AdminGuestPreviewPage() {
           templateData={templateData}
           guestToken={null}
           interactive
-          embedded={["corporate", "party"].includes(
-            String(
-              templateData?.static?.event?.type || templateData?.eventType || ""
-            ).toLowerCase()
-          )}
+          embedded={false}
         />
       </div>
     </div>

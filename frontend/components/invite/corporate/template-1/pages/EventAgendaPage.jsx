@@ -125,41 +125,18 @@ startxref
   return new Blob([pdf], { type: 'application/pdf' });
 }
 
-function formatTime12(time24) {
-  if (!time24) return '';
-  const [hStr, mStr] = String(time24).slice(0, 5).split(':');
-  let hours = Number(hStr);
-  const minutes = mStr || '00';
-  const period = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12;
-  if (hours === 0) hours = 12;
-  return `${hours}:${minutes} ${period}`;
-}
-
 export const EventAgendaPage = ({
   fields = {},
   isRsvpConfirmed = false,
   guestToken = null,
-  scheduleEvents = null,
 }) => {
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState('');
 
-  const agendaItems = React.useMemo(() => {
-    if (Array.isArray(scheduleEvents) && scheduleEvents.length > 0) {
-      return scheduleEvents.map((ev) => ({
-        time: ev.startTime
-          ? formatTime12(ev.startTime) + (ev.endTime ? ` - ${formatTime12(ev.endTime)}` : '')
-          : ev.time || '',
-        title: ev.title || '',
-        location: ev.location || ev.specialNotes || '',
-      }));
-    }
-    if (Array.isArray(fields.agendaItems) && fields.agendaItems.length > 0) {
-      return fields.agendaItems;
-    }
-    return AGENDA_ITEMS;
-  }, [scheduleEvents, fields.agendaItems]);
+  const agendaItems =
+    Array.isArray(fields.agendaItems) && fields.agendaItems.length
+      ? fields.agendaItems
+      : AGENDA_ITEMS;
   const pageHeight = computeAgendaHeight(agendaItems, isRsvpConfirmed);
   const listH =
     agendaItems.length === 0

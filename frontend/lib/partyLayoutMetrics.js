@@ -174,9 +174,7 @@ export function estimateRsvpFormHeight(questions) {
   return total + RSVP_BUTTON_GAP + RSVP_BUTTON_H;
 }
 
-export const SAVE_SCHEDULE_BTN_H = 68;
-
-export function computeScheduleHeight(scheduleItems, isRsvpConfirmed = false) {
+export function computeScheduleHeight(scheduleItems) {
   const items =
     Array.isArray(scheduleItems) && scheduleItems.length
       ? scheduleItems
@@ -189,7 +187,7 @@ export function computeScheduleHeight(scheduleItems, isRsvpConfirmed = false) {
   const content =
     SCHEDULE_HEADER_H +
     listH +
-    (isRsvpConfirmed ? SAVE_SCHEDULE_BTN_H : 0) +
+    64 +
     PAGE_AFTER_DECOR_GAP +
     SCHEDULE_DECOR_H;
   return Math.max(PARTY_BASE_HEIGHT, content);
@@ -245,10 +243,10 @@ export function computeRsvpHeight(rsvpQuestions) {
   return Math.max(PARTY_BASE_HEIGHT, RSVP_HEADER_H + formH + RSVP_BOTTOM_PAD);
 }
 
-export function computePartyPageHeight(pageId, fields = {}, isRsvpConfirmed = false) {
+export function computePartyPageHeight(pageId, fields = {}) {
   switch (pageId) {
     case "schedule":
-      return computeScheduleHeight(fields.scheduleItems, isRsvpConfirmed);
+      return computeScheduleHeight(fields.scheduleItems);
     case "details":
       return computeDetailsHeight(fields.detailItems);
     case "about":
