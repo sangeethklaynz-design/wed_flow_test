@@ -7,6 +7,7 @@ import {
   parseOptionList,
 } from '@/lib/corporateLayoutMetrics';
 import { corporatePageGradientStyle } from '@/lib/corporatePageStyles';
+import { apiRequest } from '@/lib/api';
 
 function fieldKey(question, index) {
   return `q_${index}_${String(question?.label || 'field')
@@ -18,6 +19,8 @@ export const RsvpPage = ({
   fields = {},
   onRsvpSuccess,
   previewBypassValidation = false,
+  guestToken = null,
+  maxGuests = 1,
 }) => {
   const questions =
     Array.isArray(fields.rsvpQuestions) && fields.rsvpQuestions.length
@@ -43,6 +46,7 @@ export const RsvpPage = ({
 
   const [answers, setAnswers] = useState(initialAnswers);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [rsvpError, setRsvpError] = useState('');
   const [btnText, setBtnText] = useState('Submit RSVP');
   const [btnGreen, setBtnGreen] = useState(false);
 
@@ -55,19 +59,126 @@ export const RsvpPage = ({
     setAnswers((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setRsvpError('');
+
+    // Determine attendance
+    let status = 'ATTENDING';
+    let attendanceVal = 'yes';
+    const attendIndex = questions.findIndex(
+      (q) => /attend/i.test(q?.label || '') || /attendance/i.test(q?.label || '')
+    );
+    if (attendIndex >= 0) {
+      const aKey = fieldKey(questions[attendIndex], attendIndex);
+      const answerVal = String(answers[aKey] || '').toLowerCase();
+      if (/can.?t|cannot|\bno\b|sorry|decline|won.?t|unable|not/i.test(answerVal)) {
+        status = 'DECLINED';
+        attendanceVal = 'no';
+      }
+    }
+
+    // Determine guest count
+    let attendingCount = 0;
+    const limit = Math.max(1, Number(maxGuests) || 1);
+    if (status === 'ATTENDING') {
+      const guestsIndex = questions.findIndex((q) =>
+        /number of guest|guests? count|how many guest|attendee/i.test(q?.label || '')
+      );
+      if (guestsIndex >= 0) {
+        const gKey = fieldKey(questions[guestsIndex], guestsIndex);
+        const digits = String(answers[gKey] || '').replace(/\D/g, '');
+        let n = Number(digits);
+        if (!digits || !Number.isInteger(n) || n < 1) {
+          n = 1;
+        }
+        if (n > limit) {
+          n = limit;
+        }
+        attendingCount = n;
+      } else {
+        attendingCount = 1;
+      }
+    }
+
+    // Format extra notes/wishes from non-attendance and non-guest fields
+    const notes = [];
+    questions.forEach((q, i) => {
+      const k = fieldKey(q, i);
+      const lbl = q?.label || `Field ${i + 1}`;
+      if (
+        /attend/i.test(lbl) ||
+        /number of guest|guest count|how many guest/i.test(lbl)
+      ) {
+        return;
+      }
+      const val = answers[k];
+      if (val && String(val).trim()) {
+        notes.push(`${lbl}: ${String(val).trim()}`);
+      }
+    });
+    const wishesPayload = notes.join('\n');
+
+    // Extract meal preference & special requirements for downstream display
+    const mealQ = questions.find((q) => /meal/i.test(q?.label || ''));
+    const mealVal = mealQ ? answers[fieldKey(mealQ, questions.indexOf(mealQ))] : '';
+    const reqQ = questions.find((q) =>
+      /special requirement|dietary|wishes|note/i.test(q?.label || '')
+    );
+    const reqVal = reqQ ? answers[fieldKey(reqQ, questions.indexOf(reqQ))] : '';
+
+    const successPayload = {
+      ...answers,
+      attendance: attendanceVal,
+      attendingStatus: status === 'ATTENDING' ? 'confirmed' : 'declined',
+      attendingCount,
+      guests: attendingCount,
+      meal: mealVal,
+      mealPreference: mealVal,
+      specialRequirements: reqVal,
+      requirements: reqVal,
+      wishes: wishesPayload,
+    };
+
+    if (!guestToken) {
+      // Preview mode (admin / template modal)
+      setIsSubmitting(true);
+      setBtnText(status === 'ATTENDING' ? 'RSVP Confirmed ✓' : 'RSVP Declined ✓');
+      setBtnGreen(true);
+      setTimeout(() => {
+        if (typeof onRsvpSuccess === 'function') onRsvpSuccess(successPayload);
+        setIsSubmitting(false);
+        setBtnText('Submit RSVP');
+        setBtnGreen(false);
+      }, 350);
+      return;
+    }
+
     setIsSubmitting(true);
-    setBtnText('RSVP Confirmed ✓');
-    setBtnGreen(true);
-    setTimeout(() => {
-      if (typeof onRsvpSuccess === 'function') onRsvpSuccess(answers);
-    }, 350);
-    setTimeout(() => {
+    setBtnText('Submitting...');
+    try {
+      await apiRequest(`/api/public/invite/${encodeURIComponent(guestToken)}/rsvp`, {
+        method: 'POST',
+        body: {
+          status,
+          attendingCount,
+          wishes: wishesPayload,
+        },
+      });
+
+      setBtnText(status === 'ATTENDING' ? 'RSVP Confirmed ✓' : 'RSVP Declined ✓');
+      setBtnGreen(true);
+
+      setTimeout(() => {
+        if (typeof onRsvpSuccess === 'function') onRsvpSuccess(successPayload);
+      }, 350);
+    } catch (err) {
+      setRsvpError(err?.message || 'Could not save RSVP. Please try again.');
       setBtnText('Submit RSVP');
       setBtnGreen(false);
+    } finally {
       setIsSubmitting(false);
-    }, 3500);
+    }
   };
 
   const inputClass =
@@ -222,6 +333,7 @@ export const RsvpPage = ({
             }
 
             // text (default) — includes Number of Guests
+            const isGuestCount = /number of guest|guests? count|how many guest/i.test(label);
             return (
               <div key={key} className="w-full flex flex-col gap-[6px]">
                 <label
@@ -229,15 +341,31 @@ export const RsvpPage = ({
                   className="font-instrument font-bold text-[12.5px] leading-[1.15] text-[var(--corp-text-primary)] tracking-[0.01em]"
                 >
                   {label}
+                  {isGuestCount && maxGuests > 1 ? (
+                    <span className="font-normal text-[11px] text-[#64748B] ml-1.5">
+                      (Up to {maxGuests})
+                    </span>
+                  ) : null}
                 </label>
                 <input
-                  type="text"
+                  type={isGuestCount ? 'number' : 'text'}
                   id={key}
                   name={key}
+                  min={isGuestCount ? 1 : undefined}
+                  max={isGuestCount ? maxGuests : undefined}
                   value={answers[key] || ''}
-                  onChange={(e) => setAnswer(key, e.target.value)}
+                  onChange={(e) => {
+                    if (isGuestCount) {
+                      const digits = e.target.value.replace(/\D/g, '');
+                      let n = Number(digits);
+                      if (maxGuests && n > maxGuests) n = maxGuests;
+                      setAnswer(key, digits === '' ? '' : String(n));
+                    } else {
+                      setAnswer(key, e.target.value);
+                    }
+                  }}
                   className={inputClass}
-                  placeholder={label}
+                  placeholder={isGuestCount ? `1 (Max: ${maxGuests})` : label}
                   required={
                     !previewBypassValidation && !/optional/i.test(label)
                   }
@@ -245,6 +373,12 @@ export const RsvpPage = ({
               </div>
             );
           })}
+
+          {rsvpError ? (
+            <div className="w-full bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg p-2.5 text-center font-instrument">
+              {rsvpError}
+            </div>
+          ) : null}
 
           <button
             type="submit"

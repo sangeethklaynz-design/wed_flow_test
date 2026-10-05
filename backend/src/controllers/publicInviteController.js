@@ -235,13 +235,22 @@ async function downloadPublicSchedule(req, res) {
       });
     }
 
-    const { buildSchedulePdfBuffer } = require("../utils/schedulePdf");
+    const { buildSchedulePdfBuffer, loadScheduleDownloadContext } = require("../utils/schedulePdf");
+    const context = await loadScheduleDownloadContext(row.wedding_id);
     const pdfBuffer = await buildSchedulePdfBuffer(row.wedding_id);
+
+    const isCorporate = Boolean(context?.isCorporate);
+    const isParty = Boolean(context?.isParty);
+    const filename = isCorporate
+      ? "event-agenda.pdf"
+      : isParty
+        ? "party-schedule.pdf"
+        : "wedding-schedule.pdf";
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="wedding-schedule.pdf"`
+      `attachment; filename="${filename}"`
     );
     return res.status(200).send(pdfBuffer);
   } catch (err) {

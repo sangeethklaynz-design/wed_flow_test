@@ -256,8 +256,16 @@ async function ensureEventsTable() {
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX idx_events_date (event_date),
         INDEX idx_events_type (type)
-      );
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
     `);
+  }
+
+  try {
+    await sequelize.query(`
+      ALTER TABLE events CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    `);
+  } catch {
+    // Ignore if not supported or already matching
   }
 
   if (!(await columnExists("events", "resource_pack_id"))) {

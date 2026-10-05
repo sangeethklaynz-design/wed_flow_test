@@ -157,11 +157,31 @@ export function PartyPagePreview({
           fields={fields}
           contentScale={1}
           previewBypassValidation={previewBypassValidation}
+          guestToken={null}
+          maxGuests={1}
+          guest={null}
           onRsvpSuccess={
             interactive && typeof onRsvpSuccess === "function"
               ? onRsvpSuccess
               : () => {}
           }
+        />
+      </div>
+    );
+  }
+
+  if (pageId === "schedule") {
+    return (
+      <div {...frameProps}>
+        <Page
+          fields={fields}
+          contentScale={1}
+          scheduleEvents={templateData?.static?.scheduleEvents || []}
+          isRsvpConfirmed={false}
+          guestToken={null}
+          eventName={meta.eventName}
+          eventDate={meta.eventDate}
+          eventVenue={meta.eventVenue}
         />
       </div>
     );
@@ -215,10 +235,30 @@ function PartyInvitationFull({
   const scrollViewportRef = useRef(null);
   const [showRsvpConfirmation, setShowRsvpConfirmation] = useState(false);
   const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
-  const [hasSubmittedRsvp, setHasSubmittedRsvp] = useState(() =>
-    guestAlreadyRsvped(templateData)
-  );
-  const [rsvpData, setRsvpData] = useState(null);
+
+  const guest = templateData?.guest || templateData?.static?.guest || null;
+  const initialRsvp = guest?.rsvp || null;
+  const isInitiallyRsvped =
+    guestAlreadyRsvped(templateData) || Boolean(initialRsvp?.hasSubmitted);
+
+  const [hasSubmittedRsvp, setHasSubmittedRsvp] = useState(isInitiallyRsvped);
+  const [rsvpData, setRsvpData] = useState(() => {
+    if (!initialRsvp && !isInitiallyRsvped) return null;
+    const isAttending =
+      initialRsvp?.attendingStatus === "attending" ||
+      String(guest?.rsvpStatus || guest?.rsvp_status || "").toUpperCase() === "CONFIRMED";
+    return {
+      attendance: isAttending ? "yes" : "no",
+      attendingStatus: isAttending ? "confirmed" : "declined",
+      attendingCount: initialRsvp?.attendingCount ?? (isAttending ? 1 : 0),
+      guestCount: initialRsvp?.attendingCount ?? (isAttending ? 1 : 0),
+      guests: initialRsvp?.attendingCount ?? (isAttending ? 1 : 0),
+      wishes: initialRsvp?.wishes || "",
+    };
+  });
+  const maxGuests = Number(guest?.maxGuests || guest?.invitedCount) || 1;
+  const [isDownloadingSchedule, setIsDownloadingSchedule] = useState(false);
+
   const [dims, setDims] = useState({
     isMobile: false,
     cardWidth: 390,
@@ -317,6 +357,35 @@ function PartyInvitationFull({
     setShowRsvpConfirmation(true);
   };
 
+  const handleDownloadSchedule = async () => {
+    setIsDownloadingSchedule(true);
+    try {
+      if (guestToken) {
+        const apiUrl =
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+        const res = await fetch(
+          `${apiUrl}/api/public/invite/${encodeURIComponent(guestToken)}/schedule/download`
+        );
+        if (res.ok) {
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "party-schedule.pdf";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 2000);
+          return;
+        }
+      }
+    } catch (err) {
+      console.error("Failed to download party schedule:", err);
+    } finally {
+      setIsDownloadingSchedule(false);
+    }
+  };
+
   const renderPage = (pageId) => {
     if (pageId === "rsvp" && hasSubmittedRsvp) {
       return (
@@ -354,9 +423,27 @@ function PartyInvitationFull({
         <Page
           key={pageId}
           fields={fields}
+          guest={guest}
+          guestToken={guestToken}
+          maxGuests={maxGuests}
           contentScale={dims.contentScale}
           previewBypassValidation={previewBypassValidation || !guestToken}
           onRsvpSuccess={interactive ? handleRsvpSuccess : () => {}}
+        />
+      );
+    }
+    if (pageId === "schedule") {
+      return (
+        <Page
+          key={pageId}
+          fields={fields}
+          contentScale={dims.contentScale}
+          scheduleEvents={templateData?.static?.scheduleEvents || []}
+          isRsvpConfirmed={Boolean(hasSubmittedRsvp)}
+          guestToken={guestToken}
+          eventName={meta.eventName}
+          eventDate={meta.eventDate}
+          eventVenue={meta.eventVenue}
         />
       );
     }
@@ -475,14 +562,22 @@ function PartyInvitationFull({
         ) : showRsvpConfirmation ? (
           <RsvpConfirmationPage
             contentScale={dims.contentScale}
-            canAttend={rsvpData?.attendance !== "no"}
+            canAttend={
+              rsvpData?.attendance !== "no" &&
+              rsvpData?.attendingStatus !== "declined"
+            }
             rsvpData={rsvpData}
             onBackToInvite={() => setShowRsvpConfirmation(false)}
             onProceedToPayment={() => {
-              if (rsvpData?.attendance === "no") return;
+              if (
+                rsvpData?.attendance === "no" ||
+                rsvpData?.attendingStatus === "declined"
+              )
+                return;
               setShowPaymentSuccess(true);
             }}
-            onSaveSchedule={() => {}}
+            onSaveSchedule={handleDownloadSchedule}
+            isDownloadingPdf={isDownloadingSchedule}
           />
         ) : (
           <div

@@ -137,12 +137,14 @@ async function syncInvitationMediaToDb(weddingId, invitationId, diskVideo, diskI
 async function loadScheduleEventsForWedding(weddingId) {
   const [rows] = await sequelize.query(
     `
-    SELECT id, event_time, end_time, title, location, special_notes, display_order
-    FROM schedule_events
-    WHERE wedding_id = ?
-    ORDER BY event_time ASC, display_order ASC;
+    SELECT se.id, se.event_time, se.end_time, se.title, se.location, se.special_notes, se.display_order
+    FROM schedule_events se
+    LEFT JOIN weddings w ON w.id = ?
+    WHERE se.wedding_id = ?
+       OR (w.event_id IS NOT NULL AND se.event_id = w.event_id)
+    ORDER BY se.event_time ASC, se.display_order ASC;
     `,
-    { replacements: [weddingId] }
+    { replacements: [weddingId, weddingId] }
   );
   return rows.map((r) => ({
     id: r.id,

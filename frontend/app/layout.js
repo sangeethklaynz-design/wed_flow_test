@@ -72,9 +72,10 @@ export default function RootLayout({ children }) {
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${inter.variable} ${playfair.variable} ${alexBrush.variable} ${greatVibes.variable} ${quattrocento.variable} ${pinyonScript.variable} ${cormorant.variable} ${petrona.variable} ${instrumentSans.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans bg-cream text-navy">
+      <body suppressHydrationWarning className="min-h-full flex flex-col font-sans bg-cream text-navy">
         {children}
       </body>
     </html>

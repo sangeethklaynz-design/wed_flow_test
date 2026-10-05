@@ -133,6 +133,8 @@ export function CorporatePagePreview({
       <div {...frameProps}>
         <Page
           fields={fields}
+          guestToken={null}
+          maxGuests={1}
           previewBypassValidation={previewBypassValidation}
           onRsvpSuccess={
             interactive && typeof onRsvpSuccess === 'function'
@@ -152,6 +154,19 @@ export function CorporatePagePreview({
           locationName={location.locationName}
           locationAddress={location.locationAddress}
           googleMapsLink={location.googleMapsLink}
+        />
+      </div>
+    );
+  }
+
+  if (pageId === 'agenda') {
+    return (
+      <div {...frameProps}>
+        <Page
+          fields={fields}
+          isRsvpConfirmed={true}
+          guestToken={null}
+          scheduleEvents={templateData?.static?.scheduleEvents || []}
         />
       </div>
     );
@@ -195,10 +210,29 @@ function CorporateInvitationFull({
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
   const [isPaymentSuccessOpen, setIsPaymentSuccessOpen] = useState(false);
   const [isTicketOpen, setIsTicketOpen] = useState(false);
+  const guest = templateData?.guest || templateData?.static?.guest || null;
+  const maxGuests = Number(guest?.maxGuests || guest?.invitedCount) || 1;
+
   const [hasSubmittedRsvp, setHasSubmittedRsvp] = useState(() =>
     guestAlreadyRsvped(templateData)
   );
-  const [rsvpData, setRsvpData] = useState(null);
+  const [rsvpData, setRsvpData] = useState(() => {
+    const guestRsvp = guest?.rsvp;
+    if (guestRsvp && (guestRsvp.hasSubmitted || guestAlreadyRsvped(templateData))) {
+      const isAttending =
+        String(guestRsvp.attendingStatus || guest?.rsvpStatus).toLowerCase() === 'confirmed' ||
+        String(guestRsvp.attendingStatus).toLowerCase() === 'attending';
+      return {
+        attendance: isAttending ? 'yes' : 'no',
+        attendingStatus: isAttending ? 'confirmed' : 'declined',
+        attendingCount: Number(guestRsvp.attendingCount) || 1,
+        guests: Number(guestRsvp.attendingCount) || 1,
+        wishes: guestRsvp.wishes || '',
+        specialRequirements: guestRsvp.wishes || '',
+      };
+    }
+    return null;
+  });
 
   const { pagesCfg, fields } = resolveFields(templateData, templateConfigProp);
   const location = resolveEventLocation(templateData);
@@ -415,8 +449,31 @@ function CorporateInvitationFull({
         <Page
           key={pageId}
           fields={fields}
+          guestToken={guestToken}
+          maxGuests={maxGuests}
           previewBypassValidation={previewBypassValidation || !guestToken}
           onRsvpSuccess={interactive ? handleRsvpSuccess : () => {}}
+        />
+      );
+    }
+    if (pageId === 'agenda') {
+      const isConfirmed =
+        (rsvpData &&
+          (rsvpData.attendance === 'yes' ||
+            String(rsvpData.attendingStatus).toLowerCase() === 'confirmed' ||
+            String(rsvpData.attendingStatus).toLowerCase() === 'attending')) ||
+        (!rsvpData &&
+          guest?.rsvp &&
+          (String(guest.rsvp.attendingStatus || guest?.rsvpStatus).toLowerCase() === 'confirmed' ||
+            String(guest.rsvp.attendingStatus).toLowerCase() === 'attending'));
+
+      return (
+        <Page
+          key={pageId}
+          fields={fields}
+          isRsvpConfirmed={Boolean(isConfirmed)}
+          guestToken={guestToken}
+          scheduleEvents={templateData?.static?.scheduleEvents || []}
         />
       );
     }
@@ -514,6 +571,12 @@ function CorporateInvitationFull({
 
         <RsvpConfirmationOverlay
           isOpen={isConfirmationOpen}
+          canAttend={
+            rsvpData
+              ? (rsvpData.attendance || 'yes').toLowerCase() !== 'no' &&
+                (rsvpData.attendingStatus || '').toLowerCase() !== 'declined'
+              : true
+          }
           onClose={handleCloseConfirmation}
           onProceedToPayment={handleProceedToPayment}
         />

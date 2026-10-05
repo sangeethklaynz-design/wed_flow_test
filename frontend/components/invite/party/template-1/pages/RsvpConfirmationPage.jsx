@@ -47,102 +47,115 @@ export default function RsvpConfirmationPage({
           THANK YOU!
         </h1>
 
-        {/* 3. Subtitle 1: "Your RSVP has been successfully submitted." */}
+        {/* 3. Subtitle 1 */}
         <p className={styles.subtitlePrimary}>
-          Your RSVP has been<br />
-          successfully submitted.
+          {canAttend ? (
+            <>
+              Your RSVP has been<br />
+              successfully submitted.
+            </>
+          ) : (
+            <>
+              Your response has been<br />
+              successfully submitted.
+            </>
+          )}
         </p>
 
-        {/* 4. Highlight text: "We’re excited to have you!" */}
+        {/* 4. Highlight text */}
         <p className={styles.subtitleHighlight}>
-          We’re excited to have you!
+          {canAttend ? "We’re excited to have you!" : "We'll miss celebrating with you!"}
         </p>
 
-        {/* 5. "Next Step" Section - Directly positioned per Figma layers */}
-        {/* Next Step Circle Badge Group - Figma: X: 47, Y: 401, W: 68, H: 67 */}
-        <div className={styles.nextStepIconGroup} aria-hidden="true">
-          <div className={styles.nextStepCircle}>
-            <img
-              src="/assets/events/parties/templates/template-1/chrome/rsvp-confirmation-page/upper-tick-mark.webp"
-              alt="Next step checkmark"
-              className={styles.nextStepTickImg}
-            />
-          </div>
-        </div>
+        {/* 5. "Next Step" Section - Shown only when attending */}
+        {canAttend ? (
+          <>
+            <div className={styles.nextStepIconGroup} aria-hidden="true">
+              <div className={styles.nextStepCircle}>
+                <img
+                  src="/assets/events/parties/templates/template-1/chrome/rsvp-confirmation-page/upper-tick-mark.webp"
+                  alt="Next step checkmark"
+                  className={styles.nextStepTickImg}
+                />
+              </div>
+            </div>
 
-        {/* Next Step Title - Figma: X: 129, Y: 396, W: 213, H: 23, Plus Jakarta Sans Bold 18 */}
-        <h2 className={styles.nextStepTitle}>Next Step</h2>
+            <h2 className={styles.nextStepTitle}>Next Step</h2>
 
-        {/* Next Step Description - Figma: X: 129, Y: 426, W: 261, H: 34, Inter Regular 14 */}
-        <p className={styles.nextStepDesc}>
-          Please complete your payment<br />
-          to confirm participation.
-        </p>
+            <p className={styles.nextStepDesc}>
+              Please complete your payment<br />
+              to confirm participation.
+            </p>
+          </>
+        ) : null}
 
         {/* 6. Action Buttons Stack */}
-        <div className={styles.buttonsContainer}>
-          {/* Button 1: Proceed to Payment - Disabled if guest is not attending */}
-          <button
-            type="button"
-            className={`${styles.btnPrimary} ${!canAttend ? styles.btnDisabled : ""}`}
-            onClick={canAttend ? onProceedToPayment : undefined}
-            disabled={!canAttend}
-            aria-disabled={!canAttend}
-            aria-label={canAttend ? "Proceed to Payment" : "Payment not required (Not attending)"}
-            title={!canAttend ? "Payment is not required because you are not attending." : "Proceed to Payment"}
-          >
-            <span>Proceed to Payment</span>
-            <svg
-              viewBox="0 0 24 24"
-              className={styles.arrowIcon}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+        <div
+          className={styles.buttonsContainer}
+          style={!canAttend ? { top: "370px" } : undefined}
+        >
+          {canAttend ? (
+            <button
+              type="button"
+              className={styles.btnPrimary}
+              onClick={onProceedToPayment}
+              aria-label="Proceed to Payment"
             >
-              <line x1="5" y1="12" x2="19" y2="12" />
-              <polyline points="12 5 19 12 12 19" />
-            </svg>
-          </button>
+              <span>Proceed to Payment</span>
+              <svg
+                viewBox="0 0 24 24"
+                className={styles.arrowIcon}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <polyline points="12 5 19 12 12 19" />
+              </svg>
+            </button>
+          ) : null}
 
           {/* Button 2: Back to Invitation */}
           <button
             type="button"
-            className={styles.btnSecondary}
+            className={canAttend ? styles.btnSecondary : styles.btnPrimary}
             onClick={onBackToInvite}
             aria-label="Back to Invitation"
           >
             <span>Back to Invitation</span>
           </button>
 
-          {/* Button 3: Save the Schedule - Downloads Event Schedule PDF */}
-          <button
-            type="button"
-            className={styles.btnSecondary}
-            onClick={onSaveSchedule}
-            aria-label="Save the Schedule"
-            disabled={isDownloadingPdf}
-          >
-            {isDownloadingPdf ? (
-              <span className={styles.btnLoading}>
-                <svg className={styles.spinner} viewBox="0 0 24 24" fill="none">
-                  <circle
-                    cx="12"
-                    cy="12"
-                    r="9"
-                    stroke="#081368"
-                    strokeWidth="2.5"
-                    strokeDasharray="28"
-                    strokeLinecap="round"
-                  />
-                </svg>
-                Downloading PDF...
-              </span>
-            ) : (
-              <span>Save the Schedule</span>
-            )}
-          </button>
+          {/* Button 3: Save the Schedule */}
+          {typeof onSaveSchedule === "function" ? (
+            <button
+              type="button"
+              className={styles.btnSecondary}
+              onClick={onSaveSchedule}
+              aria-label="Save the Schedule"
+              disabled={isDownloadingPdf}
+            >
+              {isDownloadingPdf ? (
+                <span className={styles.btnLoading}>
+                  <svg className={styles.spinner} viewBox="0 0 24 24" fill="none">
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="9"
+                      stroke="#081368"
+                      strokeWidth="2.5"
+                      strokeDasharray="28"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  Downloading PDF...
+                </span>
+              ) : (
+                <span>Save the Schedule</span>
+              )}
+            </button>
+          ) : null}
         </div>
       </div>
     </div>

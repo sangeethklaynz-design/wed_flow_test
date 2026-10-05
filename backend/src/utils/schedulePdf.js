@@ -192,29 +192,37 @@ async function loadScheduleDownloadContext(weddingId) {
     sequelize.query(
       `
       SELECT
-        id,
-        couple_names,
-        bride_name,
-        groom_name,
-        wedding_date,
-        schedule_image_url,
-        schedule_title,
-        schedule_venue,
-        schedule_style_json
-      FROM weddings
-      WHERE id = ?
+        w.id,
+        w.couple_names,
+        w.bride_name,
+        w.groom_name,
+        w.wedding_date,
+        w.schedule_image_url,
+        w.schedule_title,
+        w.schedule_venue,
+        w.schedule_style_json,
+        w.event_id,
+        e.type AS event_type,
+        e.name AS event_name,
+        e.template_config AS event_template_config,
+        e.location AS event_location
+      FROM weddings w
+      LEFT JOIN events e ON e.id = w.event_id
+      WHERE w.id = ?
       LIMIT 1;
       `,
       { replacements: [weddingId] }
     ),
     sequelize.query(
       `
-      SELECT event_time, end_time, title, special_notes, location
-      FROM schedule_events
-      WHERE wedding_id = ?
-      ORDER BY event_time ASC, display_order ASC;
+      SELECT se.event_time, se.end_time, se.title, se.special_notes, se.location
+      FROM schedule_events se
+      LEFT JOIN weddings w ON w.id = ?
+      WHERE se.wedding_id = ?
+         OR (w.event_id IS NOT NULL AND se.event_id = w.event_id)
+      ORDER BY se.event_time ASC, se.display_order ASC;
       `,
-      { replacements: [weddingId] }
+      { replacements: [weddingId, weddingId] }
     ),
     sequelize.query(
       `
@@ -230,27 +238,79 @@ async function loadScheduleDownloadContext(weddingId) {
   const wedding = weddingRows[0];
   if (!wedding) return null;
 
-  const events = eventRows.map((row) => ({
+  let events = eventRows.map((row) => ({
     startTime: row.event_time ? String(row.event_time).slice(0, 5) : "",
     title: row.title || "",
     note: row.special_notes || row.location || "",
   }));
 
+  const isCorporate = String(wedding.event_type || "").toLowerCase() === "corporate";
+  const isParty = String(wedding.event_type || "").toLowerCase() === "party";
+  let eventFields = {};
+  if ((isCorporate || isParty) && wedding.event_template_config) {
+    try {
+      const cfg =
+        typeof wedding.event_template_config === "string"
+          ? JSON.parse(wedding.event_template_config)
+          : wedding.event_template_config;
+      eventFields = cfg.fields || {};
+    } catch (_) {}
+
+    if (events.length === 0) {
+      if (isCorporate && Array.isArray(eventFields.agendaItems) && eventFields.agendaItems.length > 0) {
+        events = eventFields.agendaItems
+          .filter((item) => item.time || item.title)
+          .map((item) => ({
+            startTime: item.time || "",
+            title: item.title || "",
+            note: item.location || "",
+          }));
+      } else if (isParty && Array.isArray(eventFields.scheduleItems) && eventFields.scheduleItems.length > 0) {
+        events = eventFields.scheduleItems
+          .filter((item) => item.time || item.title)
+          .map((item) => ({
+            startTime: item.time || "",
+            title: item.title || "",
+            note: item.description || item.location || "",
+          }));
+      }
+    }
+  }
+
+  const coupleNames = isCorporate
+    ? (eventFields.orgName || wedding.event_name || wedding.couple_names || "EVENT")
+    : isParty
+      ? (wedding.event_name || wedding.couple_names || "GALA NIGHT")
+      : (formatDisplayCoupleNames({
+          brideName: wedding.bride_name,
+          groomName: wedding.groom_name,
+          coupleNames: wedding.couple_names,
+        }) || wedding.couple_names);
+
+  const title = isCorporate
+    ? (wedding.schedule_title || "EVENT AGENDA").toUpperCase()
+    : isParty
+      ? (eventFields.scheduleTitle || wedding.schedule_title || "EVENT SCHEDULE").toUpperCase()
+      : (wedding.schedule_title || "WEDDING TIMELINE").toUpperCase();
+
+  const venue = isCorporate
+    ? (eventFields.eventVenueLabel || wedding.event_location || wedding.schedule_venue || inviteRows[0]?.hotel_name || "").toUpperCase()
+    : isParty
+      ? (wedding.event_location || wedding.schedule_venue || inviteRows[0]?.hotel_name || "").toUpperCase()
+      : (wedding.schedule_venue || inviteRows[0]?.hotel_name || "").toUpperCase();
+
+  const weddingDateLabel = isCorporate && eventFields.eventDateLabel
+    ? eventFields.eventDateLabel
+    : formatFooterDate(wedding.wedding_date);
+
   return {
-    coupleNames:
-      formatDisplayCoupleNames({
-        brideName: wedding.bride_name,
-        groomName: wedding.groom_name,
-        coupleNames: wedding.couple_names,
-      }) || wedding.couple_names,
-    weddingDateLabel: formatFooterDate(wedding.wedding_date),
-    title: (wedding.schedule_title || "WEDDING TIMELINE").toUpperCase(),
-    venue: (
-      wedding.schedule_venue ||
-      inviteRows[0]?.hotel_name ||
-      ""
-    ).toUpperCase(),
-    backgroundPath: resolveBackgroundPath(wedding.schedule_image_url),
+    isCorporate,
+    isParty,
+    coupleNames,
+    weddingDateLabel,
+    title,
+    venue,
+    backgroundPath: (isCorporate || isParty) ? null : resolveBackgroundPath(wedding.schedule_image_url),
     textStyle: mergeScheduleTextStyle(wedding.schedule_style_json),
     events,
   };
@@ -274,6 +334,35 @@ function drawPage(doc, context, pageEvents, fonts) {
     footerY2,
     colors,
   } = LAYOUT;
+
+  const isCorp = Boolean(context.isCorporate);
+  const isParty = Boolean(context.isParty);
+  const activeColors = isCorp
+    ? {
+        headerText: "#080480",
+        subtitleText: "#0084FF",
+        dark: "#0F172A",
+        line: "#5B61EA",
+        dot: "#0084FF",
+        bg: "#F8FAFC",
+      }
+    : isParty
+      ? {
+          headerText: "#081d64",
+          subtitleText: "#0174EF",
+          dark: "#0A1628",
+          line: "#1e75c8",
+          dot: "#0174EF",
+          bg: "#F4F8FD",
+        }
+      : {
+          headerText: colors.brown,
+          subtitleText: colors.brown,
+          dark: colors.dark,
+          line: colors.line,
+          dot: colors.line,
+          bg: "#F9F7F2",
+        };
 
   const style = context.textStyle || DEFAULT_SCHEDULE_TEXT_STYLE;
   const nameFontSize = style.name_font_size;
@@ -301,31 +390,34 @@ function drawPage(doc, context, pageEvents, fonts) {
       doc.restore();
     }
   } else {
-    doc.rect(0, 0, PAGE_WIDTH, PAGE_HEIGHT).fill("#F9F7F2");
+    doc.rect(0, 0, PAGE_WIDTH, PAGE_HEIGHT).fill(activeColors.bg);
   }
 
-  // Header — couple names in Bonheur Royale; second line indented past first
+  // Header — couple / org names
   const nameLines = splitCoupleNameLines(context.coupleNames);
-  doc.fillColor(colors.brown).font(fonts.script).fontSize(nameFontSize);
+  doc
+    .fillColor(activeColors.headerText)
+    .font((isCorp || isParty) ? fonts.eventSemi : fonts.script)
+    .fontSize((isCorp || isParty) ? 22 : nameFontSize);
 
   nameLines.forEach((line, index) => {
     const x =
-      index === 0 ? leftMargin : leftMargin + nameSecondLineIndent;
-    doc.text(line, x, nameTop + index * nameLineHeight, {
-      width: 220,
+      index === 0 || isCorp || isParty ? leftMargin : leftMargin + nameSecondLineIndent;
+    doc.text(line, x, nameTop + index * ((isCorp || isParty) ? 26 : nameLineHeight), {
+      width: 320,
       align: "left",
       lineBreak: false,
     });
   });
 
   const subtitleY =
-    nameTop + nameLines.length * nameLineHeight + subtitleTopOffset;
+    nameTop + ((isCorp || isParty) ? 32 : nameLines.length * nameLineHeight) + subtitleTopOffset;
   doc
-    .fillColor(colors.brown)
-    .font(fonts.subtitle)
-    .fontSize(subtitleFontSize)
+    .fillColor(activeColors.subtitleText)
+    .font((isCorp || isParty) ? fonts.eventSemi : fonts.subtitle)
+    .fontSize((isCorp || isParty) ? 13 : subtitleFontSize)
     .text(context.title, leftMargin, subtitleY, {
-      width: 220,
+      width: 320,
       align: "left",
       characterSpacing: subtitleTracking,
       lineBreak: false,
@@ -346,7 +438,7 @@ function drawPage(doc, context, pageEvents, fonts) {
   if (pageEvents.length > 0) {
     doc
       .save()
-      .strokeColor(colors.line)
+      .strokeColor(activeColors.line)
       .lineWidth(lineWidth)
       .moveTo(lineX, firstY)
       .lineTo(lineX, lastY)
@@ -356,13 +448,14 @@ function drawPage(doc, context, pageEvents, fonts) {
 
   pageEvents.forEach((event, index) => {
     const y = timelineTop + rowHeight * index;
-    const timeLabel = formatAmPm(event.startTime);
+    const rawTime = String(event.startTime || "");
+    const timeLabel = rawTime.includes("AM") || rawTime.includes("PM") ? rawTime : formatAmPm(rawTime);
     const title = String(event.title || "").toUpperCase();
 
-    doc.save().circle(lineX, y, dotRadius).fill(colors.line).restore();
+    doc.save().circle(lineX, y, dotRadius).fill(activeColors.dot).restore();
 
     doc
-      .fillColor(colors.dark)
+      .fillColor(isCorp ? activeColors.headerText : activeColors.dark)
       .font(fonts.time)
       .fontSize(eventTimeSize)
       .text(timeLabel, leftMargin, y - eventTimeSize / 2, {
@@ -372,7 +465,7 @@ function drawPage(doc, context, pageEvents, fonts) {
       });
 
     doc
-      .fillColor(colors.dark)
+      .fillColor(activeColors.dark)
       .font(fonts.eventSemi)
       .fontSize(eventTitleSize)
       .text(title, lineX + titleLeftGap, y - eventTitleSize / 2, {
@@ -381,26 +474,39 @@ function drawPage(doc, context, pageEvents, fonts) {
         lineBreak: false,
         ellipsis: true,
       });
+
+    if (event.note) {
+      doc
+        .fillColor(isCorp ? "#64748B" : activeColors.dark)
+        .font(fonts.footer)
+        .fontSize(9)
+        .text(event.note, lineX + titleLeftGap, y + eventTitleSize / 2 + 1, {
+          width: titleMaxWidth,
+          align: "left",
+          lineBreak: false,
+          ellipsis: true,
+        });
+    }
   });
 
   // Footer — date + venue, normal weight
   doc
-    .fillColor(colors.dark)
+    .fillColor(activeColors.headerText)
     .font(fonts.footer)
     .fontSize(footerFontSize)
     .text(context.weddingDateLabel || "", footerLeft, footerY1, {
-      width: 260,
+      width: 320,
       align: "left",
       lineBreak: false,
     });
 
   if (context.venue) {
     doc
-      .fillColor(colors.dark)
+      .fillColor(isCorp ? "#64748B" : activeColors.dark)
       .font(fonts.footer)
       .fontSize(footerFontSize)
       .text(context.venue, footerLeft, footerY2, {
-        width: 260,
+        width: 320,
         align: "left",
         lineBreak: false,
         ellipsis: true,

@@ -7,6 +7,7 @@ import {
   parseOptionList,
 } from "@/lib/partyLayoutMetrics";
 import { partyPageSurfaceStyle } from "@/lib/partyPageStyles";
+import { apiRequest } from "@/lib/api";
 
 const DEFAULT_QUESTIONS = [
   { label: "Full name", inputType: "text", options: "" },
@@ -45,6 +46,9 @@ export default function RsvpPage({
   onRsvpSuccess,
   contentScale = 1,
   previewBypassValidation = false,
+  guestToken = null,
+  maxGuests = 1,
+  guest = null,
 }) {
   const questions =
     Array.isArray(fields.rsvpQuestions) && fields.rsvpQuestions.length
@@ -60,18 +64,30 @@ export default function RsvpPage({
     const next = {};
     questions.forEach((q, i) => {
       const key = fieldKey(q, i);
+      const label = String(q?.label || "").toLowerCase();
       const type = String(q?.inputType || "text").toLowerCase();
       if (type === "radio") {
         const opts = parseOptionList(q?.options);
         next[key] = opts[0] || "";
+      } else if (/full\s*name|your\s*name|^name$/i.test(label) && guest?.fullName) {
+        next[key] = guest.fullName;
+      } else if (/email/i.test(label) && guest?.email) {
+        next[key] = guest.email;
+      } else if (/phone/i.test(label) && (guest?.whatsappNumber || guest?.phone)) {
+        next[key] = guest.whatsappNumber || guest.phone;
+      } else if (/number of guest|guests? count|how many guest/i.test(label)) {
+        next[key] = "1";
       } else {
         next[key] = "";
       }
     });
     return next;
-  }, [questions]);
+  }, [questions, guest]);
 
   const [answers, setAnswers] = useState(initialAnswers);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [rsvpError, setRsvpError] = useState("");
+  const [btnText, setBtnText] = useState("Submit RSVP");
 
   useEffect(() => {
     setAnswers(initialAnswers);
@@ -81,19 +97,125 @@ export default function RsvpPage({
     setAnswers((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const isDeclined = useMemo(() => {
+    const attendIndex = questions.findIndex((q) => looksLikeAttendance(q?.label || ""));
+    if (attendIndex < 0) return false;
+    const key = fieldKey(questions[attendIndex], attendIndex);
+    const val = String(answers[key] || "").toLowerCase();
+    return /can.?t|cannot|\bno\b|sorry|decline|won.?t|unable|not/i.test(val);
+  }, [questions, answers]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const payload = { ...answers };
-    const attendQ = questions.findIndex((q) => looksLikeAttendance(q.label));
-    if (attendQ >= 0) {
-      const key = fieldKey(questions[attendQ], attendQ);
+    setRsvpError("");
+
+    // Determine attendance
+    let status = "ATTENDING";
+    let attendanceVal = "yes";
+    const attendIndex = questions.findIndex((q) => looksLikeAttendance(q?.label || ""));
+    if (attendIndex >= 0) {
+      const key = fieldKey(questions[attendIndex], attendIndex);
       const val = String(answers[key] || "").toLowerCase();
-      payload.attendance = /can.?t|no|sorry/i.test(val) ? "no" : "yes";
-    } else {
-      payload.attendance = "yes";
+      if (/can.?t|cannot|\bno\b|sorry|decline|won.?t|unable|not/i.test(val)) {
+        status = "DECLINED";
+        attendanceVal = "no";
+      }
     }
-    if (typeof onRsvpSuccess === "function") {
-      onRsvpSuccess(payload);
+
+    // Determine guest count
+    let attendingCount = 0;
+    const limit = Math.max(1, Number(maxGuests) || 1);
+    if (status === "ATTENDING") {
+      const guestsIndex = questions.findIndex((q) =>
+        /number of guest|guests? count|how many guest|attendee/i.test(q?.label || "")
+      );
+      if (guestsIndex >= 0) {
+        const gKey = fieldKey(questions[guestsIndex], guestsIndex);
+        const digits = String(answers[gKey] || "").replace(/\D/g, "");
+        let n = Number(digits);
+        if (!digits || !Number.isInteger(n) || n < 1) {
+          n = 1;
+        }
+        if (n > limit) {
+          n = limit;
+        }
+        attendingCount = n;
+      } else {
+        attendingCount = 1;
+      }
+    }
+
+    // Format extra notes/wishes from non-attendance and non-guest fields
+    const notes = [];
+    questions.forEach((q, i) => {
+      const k = fieldKey(q, i);
+      const lbl = q?.label || `Field ${i + 1}`;
+      if (
+        /attend/i.test(lbl) ||
+        /number of guest|guest count|how many guest/i.test(lbl)
+      ) {
+        return;
+      }
+      const val = answers[k];
+      if (val && String(val).trim()) {
+        notes.push(`${lbl}: ${String(val).trim()}`);
+      }
+    });
+    const wishesPayload = notes.join("\n");
+
+    const mealQ = questions.find((q) => /meal/i.test(q?.label || ""));
+    const mealVal = mealQ ? answers[fieldKey(mealQ, questions.indexOf(mealQ))] : "";
+    const reqQ = questions.find((q) =>
+      /special requirement|dietary|wishes|note/i.test(q?.label || "")
+    );
+    const reqVal = reqQ ? answers[fieldKey(reqQ, questions.indexOf(reqQ))] : "";
+
+    const successPayload = {
+      ...answers,
+      attendance: attendanceVal,
+      attendingStatus: status === "ATTENDING" ? "confirmed" : "declined",
+      attendingCount,
+      guests: attendingCount,
+      meal: mealVal,
+      mealPreference: mealVal,
+      specialRequirements: reqVal,
+      requirements: reqVal,
+      wishes: wishesPayload,
+    };
+
+    if (!guestToken) {
+      setIsSubmitting(true);
+      setBtnText(status === "ATTENDING" ? "RSVP Confirmed ✓" : "RSVP Declined ✓");
+      setTimeout(() => {
+        if (typeof onRsvpSuccess === "function") onRsvpSuccess(successPayload);
+        setIsSubmitting(false);
+        setBtnText("Submit RSVP");
+      }, 350);
+      return;
+    }
+
+    setIsSubmitting(true);
+    setBtnText("Submitting...");
+    try {
+      await apiRequest(`/api/public/invite/${encodeURIComponent(guestToken)}/rsvp`, {
+        method: "POST",
+        body: {
+          status,
+          attendingCount,
+          wishes: wishesPayload,
+        },
+      });
+
+      setBtnText(status === "ATTENDING" ? "RSVP Confirmed ✓" : "RSVP Declined ✓");
+
+      setTimeout(() => {
+        if (typeof onRsvpSuccess === "function") onRsvpSuccess(successPayload);
+      }, 350);
+    } catch (err) {
+      setRsvpError(err?.message || "Could not save RSVP. Please try again.");
+      setBtnText("Submit RSVP");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -212,24 +334,60 @@ export default function RsvpPage({
               );
             }
 
+            const isGuestCount = /number of guest|guests? count|how many guest/i.test(label);
             return (
               <div className={styles.fieldGroup} key={key}>
                 <label className={styles.fieldLabel} htmlFor={key}>
                   {label}
+                  {isGuestCount && maxGuests > 1 ? (
+                    <span style={{ fontWeight: 400, fontSize: "11px", opacity: 0.8, marginLeft: "6px" }}>
+                      (Up to {maxGuests})
+                    </span>
+                  ) : null}
                 </label>
                 <input
                   id={key}
-                  type="text"
+                  type={isGuestCount ? "number" : "text"}
+                  min={isGuestCount ? 1 : undefined}
+                  max={isGuestCount ? maxGuests : undefined}
                   className={styles.inputField}
-                  value={answers[key] || ""}
-                  onChange={(e) => setAnswer(key, e.target.value)}
+                  placeholder={
+                    isGuestCount
+                      ? isDeclined
+                        ? "0 (Declined)"
+                        : `1 (Max: ${maxGuests})`
+                      : label
+                  }
+                  value={isDeclined && isGuestCount ? "0" : (answers[key] || "")}
+                  disabled={isDeclined && isGuestCount}
+                  onChange={(e) => {
+                    if (isGuestCount) {
+                      const digits = e.target.value.replace(/\D/g, "");
+                      let n = Number(digits);
+                      if (maxGuests && n > maxGuests) n = maxGuests;
+                      setAnswer(key, digits === "" ? "" : String(n));
+                    } else {
+                      setAnswer(key, e.target.value);
+                    }
+                  }}
+                  required={
+                    !previewBypassValidation &&
+                    !/optional/i.test(label) &&
+                    !(isDeclined && isGuestCount)
+                  }
                 />
               </div>
             );
           })}
 
-          <button type="submit" className={styles.submitButton}>
-            Submit RSVP
+          {rsvpError ? (
+            <div style={{ color: "#dc2626", backgroundColor: "#fef2f2", border: "1px solid #fee2e2", borderRadius: "8px", padding: "8px 12px", fontSize: "12px", textAlign: "center" }}>
+              {rsvpError}
+            </div>
+          ) : null}
+
+          <button type="submit" disabled={isSubmitting} className={styles.submitButton}>
+            {btnText}
           </button>
         </form>
       </div>

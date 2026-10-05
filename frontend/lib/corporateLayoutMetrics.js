@@ -108,7 +108,7 @@ export function estimateRsvpFormHeight(questions) {
   return total + RSVP_BUTTON_GAP + RSVP_BUTTON_H;
 }
 
-export function computeAgendaHeight(agendaItems) {
+export function computeAgendaHeight(agendaItems, isRsvpConfirmed = false) {
   const n = Array.isArray(agendaItems)
     ? agendaItems.length
     : AGENDA_BASE_ITEMS;
@@ -117,10 +117,12 @@ export function computeAgendaHeight(agendaItems) {
     count === 0
       ? 0
       : count * AGENDA_ITEM_H + Math.max(0, count - 1) * AGENDA_ITEM_GAP;
+  const buttonH = isRsvpConfirmed ? 58 : 0;
   const content =
     AGENDA_HEADER_H +
     AGENDA_LIST_TOP_PAD +
     listH +
+    buttonH +
     AGENDA_QUOTE_GAP +
     AGENDA_QUOTE_H +
     PAGE_AFTER_DECOR_GAP +
@@ -152,10 +154,10 @@ export function computeRsvpHeight(rsvpQuestions) {
   return Math.max(CORPORATE_BASE_HEIGHT, content);
 }
 
-export function computeCorporatePageHeight(pageId, fields = {}) {
+export function computeCorporatePageHeight(pageId, fields = {}, isRsvpConfirmed = false) {
   switch (pageId) {
     case "agenda":
-      return computeAgendaHeight(fields.agendaItems);
+      return computeAgendaHeight(fields.agendaItems, isRsvpConfirmed);
     case "resources":
       return computeResourcesHeight(fields.resourcesList);
     case "rsvp":
