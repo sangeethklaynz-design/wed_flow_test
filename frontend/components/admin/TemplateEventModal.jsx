@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Info, Plus, Trash2, Upload, X } from "lucide-react";
 import { apiRequest, getApiBaseUrl } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
@@ -323,12 +323,15 @@ export default function TemplateEventModal({ open, onClose, event, onSaved }) {
   const [error, setError] = useState("");
   const [manifest, setManifest] = useState(null);
   const [config, setConfig] = useState({ pages: {}, fields: {} });
+  const [savedConfigJson, setSavedConfigJson] = useState("");
   const [resources, setResources] = useState(null);
   const [selectedPageId, setSelectedPageId] = useState("");
   /** "page" | "schedule" | "thankYou" — post-RSVP flow, one screen at a time */
   const [previewFlow, setPreviewFlow] = useState("page");
 
   const resourcePackId = event?.resourcePackId || event?.id || "";
+  const configJson = useMemo(() => JSON.stringify(config), [config]);
+  const isDirty = Boolean(savedConfigJson) && configJson !== savedConfigJson;
 
   const load = useCallback(async () => {
     if (!event?.id) return;
@@ -367,13 +370,35 @@ export default function TemplateEventModal({ open, onClose, event, onSaved }) {
       setManifest(m);
       const defaults = emptyConfigFromManifest(m);
       const existing = event.templateConfig || {};
-      setConfig({
-        pages: { ...defaults.pages, ...(existing.pages || {}) },
-        fields: normalizeWeddingColorFields(
-          { ...defaults.fields, ...(existing.fields || {}) },
-          event.type
-        ),
+      const pages = { ...defaults.pages, ...(existing.pages || {}) };
+      const mergedFields = normalizeWeddingColorFields(
+        { ...defaults.fields, ...(existing.fields || {}) },
+        event.type
+      );
+      const savedSnapshot = JSON.stringify({
+        pages,
+        fields: structuredClone
+          ? structuredClone(mergedFields)
+          : JSON.parse(JSON.stringify(mergedFields)),
       });
+      // Seed landing names from the event when template fields are empty.
+      if (String(event.type || "").toLowerCase() === "wedding") {
+        const parts = String(event.name || "")
+          .split(/\s*&\s*|\s+and\s+/i)
+          .map((p) => p.trim())
+          .filter(Boolean);
+        if (!String(mergedFields.landingBrideName || "").trim()) {
+          mergedFields.landingBrideName = parts[0] || "";
+        }
+        if (!String(mergedFields.landingGroomName || "").trim()) {
+          mergedFields.landingGroomName = parts[1] || "";
+        }
+      }
+      setConfig({
+        pages,
+        fields: mergedFields,
+      });
+      setSavedConfigJson(savedSnapshot);
       setResources(resourcesRes);
       setSelectedPageId(defaultSelectedPageId(m, event.type));
       void packId;
@@ -471,7 +496,7 @@ export default function TemplateEventModal({ open, onClose, event, onSaved }) {
   };
 
   const handleSave = async () => {
-    if (!event?.id) return;
+    if (!event?.id || !isDirty || saving) return;
     setSaving(true);
     setError("");
     try {
@@ -483,8 +508,8 @@ export default function TemplateEventModal({ open, onClose, event, onSaved }) {
           resourcePackId,
         },
       });
+      setSavedConfigJson(JSON.stringify(config));
       onSaved?.();
-      onClose();
     } catch (err) {
       setError(err.message || "Failed to save template config");
     } finally {
@@ -840,15 +865,15 @@ export default function TemplateEventModal({ open, onClose, event, onSaved }) {
             onClick={onClose}
             className="flex-1 bg-[#e8e8e8] text-muted font-medium py-3.5 rounded-xl hover:bg-[#dedede] transition-colors"
           >
-            Cancel
+            Close
           </button>
           <button
             type="button"
-            disabled={saving || !manifest}
+            disabled={saving || !manifest || !isDirty}
             onClick={handleSave}
-            className="flex-1 bg-navy text-white font-medium py-3.5 rounded-xl hover:bg-navy/90 transition-colors disabled:opacity-60"
+            className="flex-1 bg-navy text-white font-medium py-3.5 rounded-xl hover:bg-navy/90 transition-colors disabled:bg-[#c5c5c5] disabled:text-white/80 disabled:hover:bg-[#c5c5c5] disabled:cursor-not-allowed"
           >
-            {saving ? "Saving…" : "Save template"}
+            {saving ? "Saving…" : "Save"}
           </button>
         </div>
         </div>
@@ -904,9 +929,9 @@ function FieldEditor({ field, value, onChange, resources, onUpload }) {
     const kind = field.mediaKind || "images";
     const files = resources?.[kind] || [];
     const selectedName =
-      typeof value === "string" && value
-        ? value
-        : files[0]?.filename || "";
+      typeof value === "string" && value.trim() ? value.trim() : "";
+    const selectedFile =
+      files.find((f) => f.filename === selectedName) || null;
 
     return (
       <div className="bg-white rounded-2xl border border-border p-4 space-y-3">
@@ -939,49 +964,79 @@ function FieldEditor({ field, value, onChange, resources, onUpload }) {
             />
           </label>
         </div>
-        {files.length === 0 ? (
-          <p className="text-xs text-muted">No files uploaded for this event yet.</p>
+
+        {selectedName ? (
+          <div className="rounded-xl border border-[#054380]/40 bg-[#EAF5FF] px-3 py-2.5 space-y-1">
+            <p className="text-[11px] font-medium text-[#054380] uppercase tracking-wide">
+              Added file
+            </p>
+            <p className="text-sm font-semibold text-navy break-all">
+              {selectedName}
+            </p>
+            {selectedFile?.url ? (
+              <a
+                href={mediaUrl(selectedFile.url)}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-block text-xs text-[#054380] hover:underline"
+              >
+                Open file
+              </a>
+            ) : null}
+          </div>
         ) : (
-          <ul className="space-y-2">
-            {files.map((file) => {
-              const isSelected = file.filename === selectedName;
-              return (
-                <li key={file.filename}>
-                  <button
-                    type="button"
-                    onClick={() => onChange(file.filename)}
-                    className={`w-full text-left text-xs break-all flex items-center gap-2 rounded-xl border px-3 py-2 transition-colors ${
-                      isSelected
-                        ? "border-[#054380] bg-[#EAF5FF] text-navy"
-                        : "border-border bg-white text-navy hover:bg-cream"
-                    }`}
-                  >
-                    <span
-                      className={`shrink-0 w-3.5 h-3.5 rounded-full border ${
-                        isSelected
-                          ? "border-[#054380] bg-[#054380]"
-                          : "border-border bg-white"
-                      }`}
-                      aria-hidden
-                    />
-                    <span className="flex-1">{file.filename}</span>
-                    {file.url ? (
-                      <a
-                        href={mediaUrl(file.url)}
-                        target="_blank"
-                        rel="noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-[#054380] hover:underline shrink-0"
-                      >
-                        Open
-                      </a>
-                    ) : null}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+          <p className="text-xs text-muted">
+            No {kind === "video" ? "video" : kind === "music" ? "music" : "image"}{" "}
+            added for this field yet.
+          </p>
         )}
+
+        {files.length > 0 ? (
+          <div className="space-y-2">
+            <p className="text-[11px] font-medium text-muted uppercase tracking-wide">
+              Uploaded for this event
+            </p>
+            <ul className="space-y-2">
+              {files.map((file) => {
+                const isSelected = file.filename === selectedName;
+                return (
+                  <li key={file.filename}>
+                    <button
+                      type="button"
+                      onClick={() => onChange(file.filename)}
+                      className={`w-full text-left text-xs break-all flex items-center gap-2 rounded-xl border px-3 py-2 transition-colors ${
+                        isSelected
+                          ? "border-[#054380] bg-[#EAF5FF] text-navy"
+                          : "border-border bg-white text-navy hover:bg-cream"
+                      }`}
+                    >
+                      <span
+                        className={`shrink-0 w-3.5 h-3.5 rounded-full border ${
+                          isSelected
+                            ? "border-[#054380] bg-[#054380]"
+                            : "border-border bg-white"
+                        }`}
+                        aria-hidden
+                      />
+                      <span className="flex-1 font-medium">{file.filename}</span>
+                      {file.url ? (
+                        <a
+                          href={mediaUrl(file.url)}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-[#054380] hover:underline shrink-0"
+                        >
+                          Open
+                        </a>
+                      ) : null}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ) : null}
       </div>
     );
   }

@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { InviteByType } from "@/lib/inviteRenderer";
 import InvitationPreviewBackButton from "@/components/invite/InvitationPreviewBackButton";
 import { apiRequest } from "@/lib/api";
 import { getAccessToken, clearAuthSession } from "@/lib/auth";
+import { useVisibilityPolling } from "@/lib/useVisibilityPolling";
 
 /**
  * Client full invitation template preview (scrollable).
@@ -17,39 +18,43 @@ export default function PublicInvitationPage() {
   const [error, setError] = useState("");
   const [templateData, setTemplateData] = useState(null);
 
-  useEffect(() => {
-    const token = getAccessToken();
-    if (!token) {
-      router.replace("/login");
-      return;
-    }
+  const loadTemplate = useCallback(
+    async ({ silent = false } = {}) => {
+      const token = getAccessToken();
+      if (!token) {
+        router.replace("/login");
+        return;
+      }
 
-    let cancelled = false;
+      if (!silent) setLoading(true);
 
-    (async () => {
       try {
-        const data = await apiRequest("/api/couple/invitation-template", { token });
-        if (!cancelled) {
-          setTemplateData(data);
-          setError("");
-        }
+        const data = await apiRequest("/api/couple/invitation-template", {
+          token,
+        });
+        setTemplateData(data);
+        setError("");
       } catch (err) {
-        if (cancelled) return;
         if (err.status === 401) {
           clearAuthSession();
           router.replace("/login");
           return;
         }
-        setError(err.message || "Failed to load invitation");
+        if (!silent) {
+          setError(err.message || "Failed to load invitation");
+        }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!silent) setLoading(false);
       }
-    })();
+    },
+    [router]
+  );
 
-    return () => {
-      cancelled = true;
-    };
-  }, [router]);
+  useEffect(() => {
+    loadTemplate();
+  }, [loadTemplate]);
+
+  useVisibilityPolling(() => loadTemplate({ silent: true }));
 
   const eventType =
     templateData?.static?.event?.type || templateData?.eventType || "wedding";

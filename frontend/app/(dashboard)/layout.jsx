@@ -17,25 +17,22 @@ const navItems = [
   { name: "Notifications", href: "/notifications", icon: Bell },
 ];
 
-function buildInitials(coupleNames) {
-  if (!coupleNames) return "W";
-  const parts = String(coupleNames)
-    .split("&")
+function buildInitials(name) {
+  if (!name) return "W";
+  const parts = String(name)
+    .split(/\s*&\s*|\s+/)
     .map((p) => p.trim())
     .filter(Boolean);
   if (parts.length >= 2) {
-    return `${parts[0][0] || ""}&${parts[1][0] || ""}`.toUpperCase();
+    return `${parts[0][0] || ""}${parts[1][0] || ""}`.toUpperCase();
   }
-  return coupleNames.slice(0, 2).toUpperCase();
+  return String(name).slice(0, 2).toUpperCase();
 }
 
-/** Prefer bride & groom when available so sidebar shows bride first. */
-function formatCoupleDisplay(user) {
-  const bride = String(user?.brideName || "").trim();
-  const groom = String(user?.groomName || "").trim();
-  if (bride && groom) return `${bride} & ${groom}`;
-  // Auth /me already returns coupleNames in bride-first display order
-  return user?.coupleNames || "Couple";
+function formatSidebarLabel(user) {
+  const eventName = String(user?.eventName || "").trim();
+  if (eventName) return eventName;
+  return user?.coupleNames || "Event";
 }
 
 export default function DashboardLayout({ children }) {
@@ -94,8 +91,8 @@ export default function DashboardLayout({ children }) {
   // Prevent dashboard “glimpse” for unauthenticated users.
   if (!authChecked || !isAuthorized) return null;
 
-  const coupleNames = formatCoupleDisplay(user);
-  const initials = user?.initials || buildInitials(coupleNames);
+  const displayName = formatSidebarLabel(user);
+  const initials = buildInitials(displayName);
 
   return (
     <div className="min-h-screen-zoom flex flex-col md:flex-row bg-[#EAF5FF]">
@@ -150,7 +147,7 @@ export default function DashboardLayout({ children }) {
               </div>
               <div>
                 <p className="font-serif font-bold text-white text-sm">
-                  {coupleNames}
+                  {displayName}
                 </p>
               </div>
             </div>

@@ -18,6 +18,7 @@ export default function EventsTable({
   onGuestPreviewEvent,
   onCredentialsEvent,
   emptyMessage = "No events match your search.",
+  showActions = true,
 }) {
   const [openId, setOpenId] = useState(null);
 
@@ -61,9 +62,11 @@ export default function EventsTable({
               <th className="px-6 py-4 text-xs font-medium text-muted uppercase tracking-wide text-center">
                 Status
               </th>
-              <th className="px-6 py-4 text-xs font-medium text-muted uppercase tracking-wide text-center">
-                Actions
-              </th>
+              {showActions ? (
+                <th className="px-6 py-4 text-xs font-medium text-muted uppercase tracking-wide text-center">
+                  Actions
+                </th>
+              ) : null}
             </tr>
           </thead>
           <tbody>
@@ -98,53 +101,55 @@ export default function EventsTable({
                     {formatEventStatus(event.status)}
                   </span>
                 </td>
-                <td className="px-6 py-4 text-center">
-                  <div className="inline-flex justify-center">
-                    <RowActionsMenu
-                      id={event.id}
-                      openId={openId}
-                      setOpenId={setOpenId}
-                      label={`Actions for ${event.name}`}
-                      items={[
-                        onViewEvent
-                          ? {
-                              label: "View event",
-                              onClick: () => onViewEvent(event),
-                            }
-                          : null,
-                        onEditEvent
-                          ? {
-                              label: "Edit event",
-                              onClick: () => onEditEvent(event),
-                            }
-                          : null,
-                        onTemplateEvent
-                          ? {
-                              label: "Template",
-                              onClick: () => onTemplateEvent(event),
-                            }
-                          : null,
-                        {
-                          label: "View guest view",
-                          onClick: () => handleGuestPreview(event),
-                        },
-                        onCredentialsEvent
-                          ? {
-                              label: "User credentials",
-                              onClick: () => onCredentialsEvent(event),
-                            }
-                          : null,
-                        onDeleteEvent
-                          ? {
-                              label: "Delete event",
-                              destructive: true,
-                              onClick: () => onDeleteEvent(event),
-                            }
-                          : null,
-                      ].filter(Boolean)}
-                    />
-                  </div>
-                </td>
+                {showActions ? (
+                  <td className="px-6 py-4 text-center">
+                    <div className="inline-flex justify-center">
+                      <RowActionsMenu
+                        id={event.id}
+                        openId={openId}
+                        setOpenId={setOpenId}
+                        label={`Actions for ${event.name}`}
+                        items={[
+                          onViewEvent
+                            ? {
+                                label: "View event",
+                                onClick: () => onViewEvent(event),
+                              }
+                            : null,
+                          onEditEvent
+                            ? {
+                                label: "Edit event",
+                                onClick: () => onEditEvent(event),
+                              }
+                            : null,
+                          onTemplateEvent
+                            ? {
+                                label: "Template",
+                                onClick: () => onTemplateEvent(event),
+                              }
+                            : null,
+                          {
+                            label: "View guest view",
+                            onClick: () => handleGuestPreview(event),
+                          },
+                          onCredentialsEvent
+                            ? {
+                                label: "User credentials",
+                                onClick: () => onCredentialsEvent(event),
+                              }
+                            : null,
+                          onDeleteEvent
+                            ? {
+                                label: "Delete event",
+                                destructive: true,
+                                onClick: () => onDeleteEvent(event),
+                              }
+                            : null,
+                        ].filter(Boolean)}
+                      />
+                    </div>
+                  </td>
+                ) : null}
               </tr>
             ))}
           </tbody>

@@ -107,7 +107,15 @@ export function buildAdminDummyGuest(event = {}) {
 export function buildAdminInvitePreviewData(event, config = {}, resources = null) {
   const fields = config.fields || {};
   const pages = config.pages || {};
-  const { brideName, groomName, coupleNames } = splitCoupleNames(event?.name);
+  const fromEvent = splitCoupleNames(event?.name);
+  const brideName =
+    String(fields.landingBrideName || "").trim() || fromEvent.brideName;
+  const groomName =
+    String(fields.landingGroomName || "").trim() || fromEvent.groomName;
+  const coupleNames =
+    brideName && groomName
+      ? `${brideName} & ${groomName}`
+      : fromEvent.coupleNames;
   const dateParts = formatWeddingDateParts(event?.eventDate);
 
   const videoFile = findFile(resources?.video, fields.openingVideo);

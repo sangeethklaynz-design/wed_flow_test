@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { InviteByType } from "@/lib/inviteRenderer";
 import { apiRequest } from "@/lib/api";
+import { useVisibilityPolling } from "@/lib/useVisibilityPolling";
 
 /**
  * Public guest invitation page (unique link per guest).
@@ -19,35 +20,38 @@ export default function PublicGuestInvitePage() {
   const [error, setError] = useState("");
   const [templateData, setTemplateData] = useState(null);
 
-  useEffect(() => {
-    if (!token) {
-      setError("Missing invitation link");
-      setLoading(false);
-      return;
-    }
+  const loadTemplate = useCallback(
+    async ({ silent = false } = {}) => {
+      if (!token) {
+        setError("Missing invitation link");
+        setLoading(false);
+        return;
+      }
 
-    let cancelled = false;
+      if (!silent) setLoading(true);
 
-    (async () => {
       try {
         const data = await apiRequest(
           `/api/public/invite/${encodeURIComponent(token)}/invitation-template`
         );
-        if (cancelled) return;
         setTemplateData(data);
         setError("");
       } catch (err) {
-        if (cancelled) return;
-        setError(err.message || "Invitation not found");
+        if (!silent) {
+          setError(err.message || "Invitation not found");
+        }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!silent) setLoading(false);
       }
-    })();
+    },
+    [token]
+  );
 
-    return () => {
-      cancelled = true;
-    };
-  }, [token]);
+  useEffect(() => {
+    loadTemplate();
+  }, [loadTemplate]);
+
+  useVisibilityPolling(() => loadTemplate({ silent: true }));
 
   const eventType =
     templateData?.static?.event?.type || templateData?.eventType || "wedding";

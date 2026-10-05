@@ -13,6 +13,25 @@ const TYPE_OPTIONS = [
   { value: "party", label: EVENT_TYPE_LABELS.party },
 ];
 
+function localDateInputValue(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function minSelectableEventDate(mode, initialEventDate) {
+  const today = localDateInputValue();
+  if (
+    mode === "edit" &&
+    initialEventDate &&
+    initialEventDate < today
+  ) {
+    return initialEventDate;
+  }
+  return today;
+}
+
 export default function AddEventModal({
   open,
   onClose,
@@ -106,6 +125,16 @@ export default function AddEventModal({
 
   const handleFormSubmit = async (data) => {
     setFormError("");
+    const today = localDateInputValue();
+    const initialDate = initialEvent?.eventDate?.slice?.(0, 10) || initialEvent?.eventDate || "";
+    if (
+      data.eventDate < today &&
+      !(mode === "edit" && data.eventDate === initialDate)
+    ) {
+      setFormError("Event date must be today or in the future.");
+      return;
+    }
+
     const payload = {
       id: initialEvent?.id,
       name: data.name.trim(),
@@ -220,11 +249,26 @@ export default function AddEventModal({
             </label>
             <input
               type="date"
-              {...register("eventDate", { required: true })}
+              min={minSelectableEventDate(mode, initialEvent?.eventDate?.slice?.(0, 10) || initialEvent?.eventDate || "")}
+              {...register("eventDate", {
+                required: true,
+                validate: (value) => {
+                  const today = localDateInputValue();
+                  const initialDate =
+                    initialEvent?.eventDate?.slice?.(0, 10) ||
+                    initialEvent?.eventDate ||
+                    "";
+                  if (value >= today) return true;
+                  if (mode === "edit" && value === initialDate) return true;
+                  return "Date must be today or in the future";
+                },
+              })}
               className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#054380]/50 transition-shadow"
             />
             {errors.eventDate ? (
-              <p className="text-xs text-red-500">Date is required</p>
+              <p className="text-xs text-red-500">
+                {errors.eventDate.message || "Date is required"}
+              </p>
             ) : null}
           </div>
 

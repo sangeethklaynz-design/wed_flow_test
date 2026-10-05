@@ -9,11 +9,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import StatCard from "@/components/dashboard/StatCard";
 import EventsTable from "@/components/admin/EventsTable";
-import AddEventModal from "@/components/admin/AddEventModal";
-import ViewEventModal from "@/components/admin/ViewEventModal";
-import TemplateEventModal from "@/components/admin/TemplateEventModal";
-import UserCredentialsModal from "@/components/admin/UserCredentialsModal";
-import ConfirmDeleteModal from "@/components/guests/ConfirmDeleteModal";
 import { apiRequest } from "@/lib/api";
 import { clearAuthSession, getAccessToken } from "@/lib/auth";
 
@@ -22,12 +17,6 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [dashboard, setDashboard] = useState(null);
-  const [viewEvent, setViewEvent] = useState(null);
-  const [editEvent, setEditEvent] = useState(null);
-  const [templateEvent, setTemplateEvent] = useState(null);
-  const [credentialsEvent, setCredentialsEvent] = useState(null);
-  const [deleteEvent, setDeleteEvent] = useState(null);
-  const [saving, setSaving] = useState(false);
 
   const loadDashboard = useCallback(async () => {
     const token = getAccessToken();
@@ -55,52 +44,6 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     loadDashboard();
   }, [loadDashboard]);
-
-  const handleSave = async (payload) => {
-    const token = getAccessToken();
-    if (!token) throw new Error("Not authenticated");
-
-    setSaving(true);
-    try {
-      if (payload.id) {
-        await apiRequest(`/api/admin/events/${payload.id}`, {
-          method: "PUT",
-          token,
-          body: payload,
-        });
-      } else {
-        await apiRequest("/api/admin/events", {
-          method: "POST",
-          token,
-          body: payload,
-        });
-      }
-      setEditEvent(null);
-      await loadDashboard();
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!deleteEvent?.id) return;
-    const token = getAccessToken();
-    if (!token) return;
-
-    setSaving(true);
-    try {
-      await apiRequest(`/api/admin/events/${deleteEvent.id}`, {
-        method: "DELETE",
-        token,
-      });
-      setDeleteEvent(null);
-      await loadDashboard();
-    } catch (err) {
-      setError(err.message || "Failed to delete event");
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const stats = dashboard?.stats;
   const fallback = dashboard ? "0" : "—";
@@ -170,59 +113,13 @@ export default function AdminDashboardPage() {
 
       <EventsTable
         events={dashboard?.recentEvents || []}
-        onViewEvent={setViewEvent}
-        onEditEvent={setEditEvent}
-        onTemplateEvent={setTemplateEvent}
-        onCredentialsEvent={setCredentialsEvent}
-        onDeleteEvent={setDeleteEvent}
+        showActions={false}
         emptyMessage={
           loading
             ? "Loading events…"
             : "No ongoing events yet. Add one from the Events tab."
         }
       />
-
-      <AddEventModal
-        open={!!editEvent}
-        onClose={() => setEditEvent(null)}
-        onSubmit={handleSave}
-        mode="edit"
-        initialEvent={editEvent}
-      />
-
-      <ViewEventModal
-        open={!!viewEvent}
-        onClose={() => setViewEvent(null)}
-        event={viewEvent}
-      />
-
-      <TemplateEventModal
-        open={!!templateEvent}
-        onClose={() => setTemplateEvent(null)}
-        event={templateEvent}
-        onSaved={loadDashboard}
-      />
-
-      <UserCredentialsModal
-        open={!!credentialsEvent}
-        onClose={() => setCredentialsEvent(null)}
-        event={credentialsEvent}
-      />
-
-      <ConfirmDeleteModal
-        open={!!deleteEvent}
-        onClose={() => setDeleteEvent(null)}
-        title="Delete Event"
-        itemName={deleteEvent?.name}
-        description="This will permanently remove the event from the admin catalogue."
-        onConfirm={handleDelete}
-      />
-
-      {saving ? (
-        <p className="sr-only" aria-live="polite">
-          Saving…
-        </p>
-      ) : null}
     </div>
   );
 }

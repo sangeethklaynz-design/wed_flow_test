@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Copy, Eye, EyeOff, RefreshCw } from "lucide-react";
 import { apiRequest } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 import ModalCloseButton from "@/components/ui/ModalCloseButton";
@@ -13,24 +13,19 @@ export default function UserCredentialsModal({ open, onClose, event }) {
   const [password, setPassword] = useState(null);
   const [note, setNote] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copiedKey, setCopiedKey] = useState("");
 
   useEffect(() => {
     if (!open || !event?.id) return;
-    setError("");
-    setShowPassword(Boolean(event.createdPassword));
-    setCopied(false);
-    setPassword(event.createdPassword || null);
-    setEmail(event.clientEmail || "");
-    setNote(
-      event.createdPassword
-        ? "Copy this password now if needed."
-        : "Loading current credentials…"
-    );
-
-    if (event.createdPassword && event.clientEmail) return;
 
     let cancelled = false;
+    setError("");
+    setCopiedKey("");
+    setShowPassword(false);
+    setEmail(event.clientEmail || event.createdEmail || "");
+    setPassword(event.createdPassword || null);
+    setNote("Loading saved credentials…");
+
     (async () => {
       setLoading(true);
       try {
@@ -39,12 +34,24 @@ export default function UserCredentialsModal({ open, onClose, event }) {
           { token: getAccessToken() }
         );
         if (cancelled) return;
-        setEmail(data.email || "");
-        setPassword(data.password || null);
-        setNote(data.note || "");
-        setShowPassword(false);
+        setEmail(data.email || event.clientEmail || "");
+        setPassword(
+          data.password || event.createdPassword || null
+        );
+        setNote(
+          data.note ||
+            (data.password
+              ? "Current client login for this event."
+              : "No saved password yet. Generate one to create login access.")
+        );
+        if (data.password || event.createdPassword) {
+          setShowPassword(true);
+        }
       } catch (err) {
-        if (!cancelled) setError(err.message || "Failed to load credentials");
+        if (!cancelled) {
+          setError(err.message || "Failed to load credentials");
+          setNote("");
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -57,10 +64,15 @@ export default function UserCredentialsModal({ open, onClose, event }) {
 
   if (!open || !event) return null;
 
+  const flashCopied = (key) => {
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(""), 2000);
+  };
+
   const handleRegenerate = async () => {
     setLoading(true);
     setError("");
-    setCopied(false);
+    setCopiedKey("");
     try {
       const data = await apiRequest(
         `/api/admin/events/${encodeURIComponent(event.id)}/credentials/regenerate`,
@@ -68,7 +80,7 @@ export default function UserCredentialsModal({ open, onClose, event }) {
       );
       setEmail(data.email || email);
       setPassword(data.password || null);
-      setNote(data.note || "New password generated.");
+      setNote(data.note || "New password generated. Copy it now.");
       setShowPassword(true);
     } catch (err) {
       setError(err.message || "Failed to regenerate password");
@@ -77,14 +89,13 @@ export default function UserCredentialsModal({ open, onClose, event }) {
     }
   };
 
-  const handleCopyPassword = async () => {
-    if (!password) return;
+  const copyText = async (text, key) => {
+    if (!text) return;
     try {
-      await navigator.clipboard.writeText(password);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(text);
+      flashCopied(key);
     } catch {
-      setError("Could not copy password to clipboard");
+      setError("Could not copy to clipboard");
     }
   };
 
@@ -120,69 +131,99 @@ export default function UserCredentialsModal({ open, onClose, event }) {
           </div>
         ) : null}
 
-        {loading && !email ? (
-          <p className="text-sm text-muted text-center">Loading…</p>
+        {loading && !email && !password ? (
+          <p className="text-sm text-muted text-center py-6">Loading credentials…</p>
         ) : (
           <div className="space-y-4">
-            <div>
-              <label className="text-xs font-medium text-muted block mb-1">
-                Email
-              </label>
-              <div className="px-4 py-3 rounded-xl border border-border bg-white text-navy text-sm break-all">
-                {email || "—"}
+            <div className="rounded-2xl border border-border bg-white p-4 space-y-4">
+              <p className="text-[11px] font-medium text-muted uppercase tracking-wide">
+                Current login
+              </p>
+
+              <div>
+                <label className="text-xs font-medium text-muted block mb-1">
+                  Email
+                </label>
+                <div className="flex gap-2">
+                  <div className="flex-1 px-3 py-2.5 rounded-xl border border-border bg-cream/40 text-navy text-sm break-all">
+                    {email || "—"}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={loading || !email}
+                    onClick={() => copyText(email, "email")}
+                    className="shrink-0 px-3 rounded-xl border border-border bg-white text-navy text-xs font-medium disabled:opacity-50 inline-flex items-center gap-1.5"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    {copiedKey === "email" ? "Copied" : "Copy"}
+                  </button>
+                </div>
               </div>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted block mb-1">
-                Password
-              </label>
-              <div className="px-4 py-3 rounded-xl border border-border bg-white text-navy text-sm font-mono break-all min-h-[48px] flex items-center">
-                {password
-                  ? showPassword
-                    ? password
-                    : "••••••••••••"
-                  : "No password stored"}
+
+              <div>
+                <label className="text-xs font-medium text-muted block mb-1">
+                  Password
+                </label>
+                <div className="flex gap-2">
+                  <div className="flex-1 px-3 py-2.5 rounded-xl border border-border bg-cream/40 text-navy text-sm font-mono break-all min-h-[42px] flex items-center">
+                    {password
+                      ? showPassword
+                        ? password
+                        : "••••••••••••"
+                      : "No password saved yet"}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={loading || !password}
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="shrink-0 px-3 rounded-xl border border-border bg-white text-navy text-xs font-medium disabled:opacity-50 inline-flex items-center gap-1.5"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-3.5 h-3.5" />
+                    ) : (
+                      <Eye className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={loading || !password}
+                    onClick={() => copyText(password, "password")}
+                    className="shrink-0 px-3 rounded-xl border border-border bg-white text-navy text-xs font-medium disabled:opacity-50 inline-flex items-center gap-1.5"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    {copiedKey === "password" ? "Copied" : "Copy"}
+                  </button>
+                </div>
               </div>
+
               {note ? (
-                <p className="text-[11px] text-muted mt-2">{note}</p>
+                <p className="text-[11px] text-muted">{note}</p>
               ) : null}
             </div>
+
+            <button
+              type="button"
+              disabled={loading || !email || !password}
+              onClick={() =>
+                copyText(`Email: ${email}\nPassword: ${password}`, "both")
+              }
+              className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy text-sm font-medium disabled:opacity-50"
+            >
+              {copiedKey === "both" ? "Login details copied" : "Copy email & password"}
+            </button>
+
+            <button
+              type="button"
+              disabled={loading || !email}
+              onClick={handleRegenerate}
+              className="w-full px-4 py-3 rounded-xl bg-navy text-white text-sm font-medium disabled:opacity-50 inline-flex items-center justify-center gap-2"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+              {password ? "Generate new password" : "Generate password"}
+            </button>
           </div>
         )}
-
-        <div className="mt-6 flex flex-col gap-3">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <button
-              type="button"
-              disabled={loading || !password}
-              onClick={() => setShowPassword((v) => !v)}
-              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-border bg-white text-navy text-sm font-medium disabled:opacity-50"
-            >
-              {showPassword ? (
-                <EyeOff className="w-4 h-4" strokeWidth={2.25} />
-              ) : (
-                <Eye className="w-4 h-4" strokeWidth={2.25} />
-              )}
-              {showPassword ? "Hide password" : "View password"}
-            </button>
-            <button
-              type="button"
-              disabled={loading || !password}
-              onClick={handleCopyPassword}
-              className="flex-1 px-4 py-3 rounded-xl border border-border bg-white text-navy text-sm font-medium disabled:opacity-50"
-            >
-              {copied ? "Copied" : "Copy password"}
-            </button>
-          </div>
-          <button
-            type="button"
-            disabled={loading || !email}
-            onClick={handleRegenerate}
-            className="w-full px-4 py-3 rounded-xl bg-navy text-white text-sm font-medium disabled:opacity-50"
-          >
-            Generate new password
-          </button>
-        </div>
       </div>
     </div>
   );

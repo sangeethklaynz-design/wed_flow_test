@@ -68,6 +68,15 @@ export default function InvitationPage({
 
   const theme = useMemo(() => resolveWeddingTheme(fieldsCfg), [fieldsCfg]);
 
+  const brideName =
+    String(fieldsCfg.landingBrideName || "").trim() || t.brideName;
+  const groomName =
+    String(fieldsCfg.landingGroomName || "").trim() || t.groomName;
+  const coupleNames =
+    brideName && groomName
+      ? `${brideName} & ${groomName}`
+      : t.coupleNames;
+
   const detailNodes = Array.isArray(fieldsCfg.detailNodes)
     ? fieldsCfg.detailNodes
     : null;
@@ -525,15 +534,18 @@ export default function InvitationPage({
         />
       </div>
 
-      <div className="absolute top-[277px] left-0 w-[390px] h-[178px] flex flex-col items-center justify-center z-10">
+      <div
+        className="absolute top-[277px] left-0 w-[390px] h-[178px] flex flex-col items-center justify-center z-10"
+        {...dynamicField("landingBrideName")}
+      >
         <h2 className="font-script-custom text-[68px] text-[var(--invite-landing-names)] leading-none mb-1">
-          {t.brideName}
+          {brideName}
         </h2>
         <span className="font-script-custom text-[42px] text-[var(--invite-landing-names)] leading-none my-1">
           &
         </span>
         <h2 className="font-script-custom text-[68px] text-[var(--invite-landing-names)] leading-none mt-1">
-          {t.groomName}
+          {groomName}
         </h2>
       </div>
 
@@ -1342,7 +1354,7 @@ export default function InvitationPage({
       {/* Kasun & Hiruni */}
       <div className="absolute top-[6565px] w-full flex items-center justify-center z-10">
         <p className="font-greatvibes-custom text-[34px] text-[var(--invite-subtitle)] text-center">
-          {t.coupleNames}
+          {coupleNames}
         </p>
       </div>
 

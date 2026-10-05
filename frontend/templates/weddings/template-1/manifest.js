@@ -76,6 +76,20 @@ export const WEDDING_TEMPLATE_1_MANIFEST = {
       "label": "Landing background image"
     },
     {
+      "id": "landingBrideName",
+      "pageId": "starting",
+      "type": "text",
+      "label": "Bride name",
+      "defaultValue": ""
+    },
+    {
+      "id": "landingGroomName",
+      "pageId": "starting",
+      "type": "text",
+      "label": "Groom name",
+      "defaultValue": ""
+    },
+    {
       "id": "colorLandingNames",
       "pageId": "starting",
       "type": "color",

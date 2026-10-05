@@ -129,6 +129,60 @@ function validatePayload(payload, { requireAll = true, requireClientEmail = fals
   return null;
 }
 
+function validateEventDateNotPast(eventDate, { existingEventDate } = {}) {
+  if (!eventDate || !/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) {
+    return "eventDate must be YYYY-MM-DD";
+  }
+  const today = todayDateOnly();
+  if (eventDate >= today) return null;
+  const existing = toDateOnly(existingEventDate);
+  if (existing && existing === eventDate) return null;
+  return "eventDate must be today or a future date";
+}
+
+function validatePayloadWithDate(payload, options = {}) {
+  const error = validatePayload(payload, options);
+  if (error) return error;
+  if (payload.eventDate !== undefined) {
+    return validateEventDateNotPast(payload.eventDate, {
+      existingEventDate: options.existingEventDate,
+    });
+  }
+  return null;
+}
+
+async function syncEventStaticDetailsToClient(eventId, payload) {
+  const names = splitEventDisplayNames(payload.name);
+  await sequelize.query(
+    `
+    UPDATE weddings
+    SET couple_names = ?, bride_name = ?, groom_name = ?, wedding_date = ?
+    WHERE event_id = ?;
+    `,
+    {
+      replacements: [
+        names.coupleNames,
+        names.brideName,
+        names.groomName,
+        payload.eventDate,
+        eventId,
+      ],
+    }
+  );
+
+  await sequelize.query(
+    `
+    UPDATE invitations i
+    INNER JOIN weddings w ON w.id = i.wedding_id
+    SET i.hotel_name = ?, i.google_maps_link = ?
+    WHERE w.event_id = ?;
+    `,
+    {
+      replacements: [payload.location, payload.googleMapsLink, eventId],
+    }
+  );
+}
+
 async function uniqueClientSlug(type, baseSlug, excludeEventId = null) {
   let slug = baseSlug || `event${Date.now()}`;
   let attempt = 0;
@@ -246,7 +300,7 @@ async function createEvent(req, res) {
   const transaction = await sequelize.transaction();
   try {
     const payload = parseBody(req.body);
-    const error = validatePayload(payload, {
+    const error = validatePayloadWithDate(payload, {
       requireAll: true,
       requireClientEmail: true,
     });
@@ -436,7 +490,10 @@ async function updateEvent(req, res) {
           : existing.resourcePackId,
     };
 
-    const error = validatePayload(payload, { requireAll: true });
+    const error = validatePayloadWithDate(payload, {
+      requireAll: true,
+      existingEventDate: existing.eventDate,
+    });
     if (error) {
       return res.status(400).json({ error: "Bad Request", message: error });
     }
@@ -465,6 +522,8 @@ async function updateEvent(req, res) {
         ],
       }
     );
+
+    await syncEventStaticDetailsToClient(id, payload);
 
     const [rows] = await sequelize.query(
       `SELECT * FROM events WHERE id = ? LIMIT 1;`,
