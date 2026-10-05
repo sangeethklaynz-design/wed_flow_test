@@ -80,7 +80,7 @@ export default function GuestRsvpForm({ token, guest, onSubmitted }) {
     return (
       <div className="bg-white rounded-[28px] border border-border card-shadow p-6 md:p-8 text-center">
         <div className="w-12 h-12 rounded-full bg-gold mx-auto mb-4 flex items-center justify-center">
-          <CheckCircle2 className="w-6 h-6 text-[#e69e46]" strokeWidth={2.25} />
+          <CheckCircle2 className="w-6 h-6 text-[#054380]" strokeWidth={2.25} />
         </div>
         <h3 className="font-serif font-bold text-2xl text-navy mb-2">
           Thank you
@@ -134,7 +134,7 @@ export default function GuestRsvpForm({ token, guest, onSubmitted }) {
                 className="sr-only peer"
                 {...register("status", { required: true })}
               />
-              <span className="block text-center px-4 py-3 rounded-xl border border-border bg-cream peer-checked:bg-gold peer-checked:border-[#e69e46]/40 peer-checked:text-navy font-medium text-sm transition-colors">
+              <span className="block text-center px-4 py-3 rounded-xl border border-border bg-cream peer-checked:bg-gold peer-checked:border-[#054380]/40 peer-checked:text-navy font-medium text-sm transition-colors">
                 Joyfully accept
               </span>
             </label>
@@ -145,7 +145,7 @@ export default function GuestRsvpForm({ token, guest, onSubmitted }) {
                 className="sr-only peer"
                 {...register("status", { required: true })}
               />
-              <span className="block text-center px-4 py-3 rounded-xl border border-border bg-cream peer-checked:bg-gold peer-checked:border-[#e69e46]/40 peer-checked:text-navy font-medium text-sm transition-colors">
+              <span className="block text-center px-4 py-3 rounded-xl border border-border bg-cream peer-checked:bg-gold peer-checked:border-[#054380]/40 peer-checked:text-navy font-medium text-sm transition-colors">
                 Regretfully decline
               </span>
             </label>
@@ -164,7 +164,7 @@ export default function GuestRsvpForm({ token, guest, onSubmitted }) {
                 min: 1,
                 max: maxGuests,
               })}
-              className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#e69e46]/50"
+              className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#054380]/50"
             >
               {Array.from({ length: maxGuests }, (_, i) => i + 1).map((n) => (
                 <option key={n} value={n}>
@@ -188,7 +188,7 @@ export default function GuestRsvpForm({ token, guest, onSubmitted }) {
             rows={3}
             placeholder="Share a short wish for the couple…"
             {...register("wishes")}
-            className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#e69e46]/50 resize-none placeholder:text-gray-300"
+            className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#054380]/50 resize-none placeholder:text-gray-300"
           />
         </div>
 

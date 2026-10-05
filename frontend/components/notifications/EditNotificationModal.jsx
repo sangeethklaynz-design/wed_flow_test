@@ -96,7 +96,7 @@ export default function EditNotificationModal({ open, onClose, notification, onS
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full bg-white border border-[#eef0f3] rounded-xl px-4 py-3 text-sm text-navy font-medium focus:outline-none focus:border-[#7732A4] transition-colors placeholder:text-muted/50"
+              className="w-full bg-white border border-[#eef0f3] rounded-xl px-4 py-3 text-sm text-navy font-medium focus:outline-none focus:border-[#054380] transition-colors placeholder:text-muted/50"
               placeholder="e.g. New RSVP received"
             />
           </div>
@@ -108,7 +108,7 @@ export default function EditNotificationModal({ open, onClose, notification, onS
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              className="w-full bg-white border border-[#eef0f3] rounded-xl px-4 py-3 text-sm text-navy font-medium focus:outline-none focus:border-[#7732A4] transition-colors placeholder:text-muted/50 resize-none h-28"
+              className="w-full bg-white border border-[#eef0f3] rounded-xl px-4 py-3 text-sm text-navy font-medium focus:outline-none focus:border-[#054380] transition-colors placeholder:text-muted/50 resize-none h-28"
               placeholder="Enter notification details..."
             />
           </div>

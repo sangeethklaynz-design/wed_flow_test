@@ -159,7 +159,7 @@ export default function InvitationVideoIntro({
         <button
           type="button"
           onClick={handleTapToPlay}
-          className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-[#1c2333]/35 pointer-events-auto"
+          className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-[#7732A4]/35 pointer-events-auto"
         >
           <span className="bg-white/95 text-navy font-serif font-bold text-base px-6 py-3 rounded-full shadow-md">
             {loadError ? "Tap to play invitation video" : "Tap to open invitation"}
@@ -174,7 +174,7 @@ export default function InvitationVideoIntro({
         <button
           type="button"
           onClick={handleSkip}
-          className="absolute right-4 bottom-4 z-50 inline-flex items-center justify-center w-11 h-11 rounded-xl bg-white/95 backdrop-blur-sm border border-border card-shadow hover:bg-cream transition-colors pointer-events-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e69e46]/60"
+          className="absolute right-4 bottom-4 z-50 inline-flex items-center justify-center w-11 h-11 rounded-xl bg-white/95 backdrop-blur-sm border border-border card-shadow hover:bg-cream transition-colors pointer-events-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7732A4]/60"
           aria-label="Skip invitation video"
         >
           <FastForward className="w-5 h-5 text-gold-text" strokeWidth={2.4} />

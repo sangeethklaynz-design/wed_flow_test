@@ -9,7 +9,12 @@ import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { getAccessToken, setAuthSession } from "@/lib/auth";
+import {
+  getAccessToken,
+  getStoredUser,
+  setAuthSession,
+  getHomePathForUser,
+} from "@/lib/auth";
 import { apiRequest } from "@/lib/api";
 
 export default function LoginPage() {
@@ -24,7 +29,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (getAccessToken()) {
-      router.replace("/dashboard");
+      router.replace(getHomePathForUser(getStoredUser()));
     }
   }, [router]);
 
@@ -45,7 +50,7 @@ export default function LoginPage() {
         refreshToken: result.refreshToken,
         user: result.user,
       });
-      router.push("/dashboard");
+      router.push(getHomePathForUser(result.user));
     } catch (err) {
       setSubmitError(err.message || "Invalid email or password");
     } finally {
@@ -55,19 +60,21 @@ export default function LoginPage() {
 
   return (
     <div className="flex flex-col items-center">
-      <div className="w-16 h-16 rounded-full flex items-center justify-center mb-6 shadow-md overflow-hidden bg-navy">
+      <div className="w-20 h-20 flex items-center justify-center mb-6">
         <Image
-          src="/app-logo.png"
+          src="/wedflow-logo.png"
           alt="Wed Flow Logo"
-          width={64}
-          height={64}
-          className="object-cover"
+          width={80}
+          height={80}
+          className="object-contain"
+          priority
+          unoptimized
         />
       </div>
 
       <h1 className="font-serif text-4xl font-bold text-navy mb-2">Wed Flow</h1>
       <p className="text-muted text-sm mb-10 text-center">
-        Your wedding, beautifully organized
+        Events. People. Possibilities.
       </p>
 
       <form
@@ -80,7 +87,7 @@ export default function LoginPage() {
             type="email"
             placeholder="couple@email.com"
             {...register("email", { required: true })}
-            className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#e69e46]/50 transition-shadow placeholder:text-gray-300"
+            className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#054380]/50 transition-shadow placeholder:text-gray-300"
           />
           {errors.email && (
             <p className="text-xs text-red-500">Email is required</p>
@@ -93,7 +100,7 @@ export default function LoginPage() {
             type="password"
             placeholder="••••••••"
             {...register("password", { required: true })}
-            className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#e69e46]/50 transition-shadow placeholder:text-gray-300 tracking-widest"
+            className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#054380]/50 transition-shadow placeholder:text-gray-300 tracking-widest"
           />
           {errors.password && (
             <p className="text-xs text-red-500">Password is required</p>

@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fdfcf9;
-  --foreground: #1c2333;
+  --background: #EAF5FF;
+  --foreground: #054380;
   /* UI was designed at 70% browser zoom; scale so 100% zoom matches that UX */
   --ui-scale: 0.7;
 }
@@ -10,7 +10,7 @@
 html {
   zoom: var(--ui-scale);
   /* Fill any viewport leftover after zoom (otherwise browser default white shows) */
-  background-color: #f5efe6;
+  background-color: #EAF5FF;
   min-height: 100%;
 }
 
@@ -35,11 +35,14 @@ html.invite-no-ui-scale {
   --font-quattrocento: var(--font-quattrocento);
   --font-pinyon: var(--font-pinyon-script);
   --font-cormorant-garamond: var(--font-cormorant);
+  --font-petrona: var(--font-petrona), Georgia, serif;
+  --font-instrument: var(--font-instrument), ui-sans-serif, sans-serif;
+  --font-inter: var(--font-inter), ui-sans-serif, sans-serif;
 
-  --color-cream: #fdfcf9;
-  --color-navy: #1c2333;
-  --color-gold: #fcecd4;
-  --color-gold-text: #e69e46;
+  --color-cream: #EAF5FF;
+  --color-navy: #054380;
+  --color-gold: #EAF5FF;
+  --color-gold-text: #054380;
   --color-green: #22c55e;
   --color-orange: #f97316;
   --color-red: #ef4444;
@@ -97,8 +100,182 @@ body {
     font-family: var(--font-cormorant), serif !important;
   }
 
+  .font-petrona {
+    font-family: var(--font-petrona), Georgia, serif;
+  }
+  .font-instrument {
+    font-family: var(--font-instrument), ui-sans-serif, sans-serif;
+  }
+  .font-inter {
+    font-family: var(--font-inter), ui-sans-serif, sans-serif;
+  }
+
+  /* Corporate template-1 gradients (from temp-corpo) */
+  .bg-event-details-grad {
+    background: linear-gradient(
+      180deg,
+      #080480 0%,
+      #042047 14%,
+      #B7DBFE 18%,
+      #FEFEFE 18%,
+      #F2F8FD 20%,
+      #E2F0FE 23%,
+      #7BC3FF 25%,
+      #EAF3FB 38%,
+      #F4FAFE 48%,
+      #DCEEFE 60%,
+      #A3D4FE 69%,
+      #7AC1FD 75%,
+      #0550C0 84%,
+      #071F51 90%,
+      #143B70 100%
+    );
+  }
+  .bg-rsvp-grad {
+    background: linear-gradient(
+      180deg,
+      #FFFFFF 0%,
+      #FFFFFF 12%,
+      #F4F9FD 28%,
+      #E8F2FC 50%,
+      #D9E7F9 72%,
+      #C2D2F2 90%,
+      #B5C6ED 100%
+    );
+  }
+  .bg-agenda-grad {
+    background: linear-gradient(
+      180deg,
+      #D4E0F7 0%,
+      #E6EDFC 8%,
+      #F5F8FE 16%,
+      #FFFFFF 25%,
+      #FFFFFF 62%,
+      #E9F4FE 74%,
+      #CEE8FD 87%,
+      #A5DBFD 100%
+    );
+  }
+  .bg-location-grad {
+    background: linear-gradient(
+      180deg,
+      #D6E6FA 0%,
+      #EBF2FC 10%,
+      #F8FAFE 20%,
+      #FFFFFF 28%,
+      #FFFFFF 60%,
+      #EDF6FE 72%,
+      #CDE7FD 86%,
+      #A8DCFE 100%
+    );
+  }
+  .bg-resources-grad {
+    background: linear-gradient(
+      180deg,
+      #D6E6FA 0%,
+      #EBF2FC 10%,
+      #F8FAFE 20%,
+      #FFFFFF 28%,
+      #FFFFFF 62%,
+      #EDF6FE 74%,
+      #CDE7FD 87%,
+      #A8DCFE 100%
+    );
+  }
+  .bg-calendar-grad {
+    background: linear-gradient(
+      180deg,
+      #FFFFFF 0%,
+      #FFFFFF 26%,
+      #F2F7FD 44%,
+      #DCEEFF 54%,
+      #0E59C7 68%,
+      #0047BA 78%,
+      #00368C 100%
+    );
+  }
+  .bg-confirm-grad {
+    background: linear-gradient(
+      180deg,
+      #FFFFFF 0%,
+      #F5F9FE 28%,
+      #EAF3FC 58%,
+      #DEECF9 88%,
+      #D6E7F8 100%
+    );
+  }
+  .bg-ticket-grad {
+    background: linear-gradient(
+      180deg,
+      #0C428B 0%,
+      #0A4F9E 6%,
+      #0F62BD 12%,
+      #1264C1 16%,
+      #EDF7FF 22%,
+      #F4FAFF 32%,
+      #F0F9FD 44%,
+      #E5F6FE 56%,
+      #E2F2FD 68%,
+      #D1EBFE 78%,
+      #DBEFFF 88%,
+      #5376A7 96%,
+      #2E64AB 100%
+    );
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Corporate RSVP radio */
+  .custom-radio-input:checked + .radio-custom-indicator {
+    border-color: #080480;
+  }
+  .custom-radio-input:checked + .radio-custom-indicator::after {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #080480;
+  }
+
+  .shadow-card {
+    box-shadow: 0 25px 60px -15px rgba(2, 24, 60, 0.22),
+      0 0 0 1px rgba(255, 255, 255, 0.7);
+  }
+  .animate-chevron-float {
+    animation: chevronFloat 2.2s infinite ease-in-out;
+  }
+  .animate-tick-pop-in {
+    animation: tickPopIn 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+
   .unread-blink {
     animation: unread-blink 2.8s ease-in-out infinite;
+  }
+}
+
+@keyframes chevronFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(4px);
+  }
+}
+
+@keyframes tickPopIn {
+  0% {
+    transform: scale(0.65);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
   }
 }
 

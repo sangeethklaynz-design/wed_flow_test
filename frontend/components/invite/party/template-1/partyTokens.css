@@ -1,0 +1,15 @@
+/* Party template-1 scoped design tokens (does not alter global app chrome). */
+
+.partyInviteRoot {
+  --desktop-bg: #eae4dc;
+  --font-pinyon: var(--font-pinyon-script), cursive;
+  --font-vujahday: var(--font-pinyon-script), cursive;
+  --font-inria: var(--font-cormorant), Georgia, serif;
+  --font-cinzel: var(--font-petrona), Georgia, serif;
+  --font-jakarta: var(--font-instrument), ui-sans-serif, sans-serif;
+}
+
+.partyInviteRoot,
+.partyInviteRoot * {
+  box-sizing: border-box;
+}

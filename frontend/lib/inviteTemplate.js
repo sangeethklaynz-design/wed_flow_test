@@ -114,12 +114,20 @@ export function normalizeInvitationTemplate(raw) {
 
   const weatherNote = invitation?.weatherNote || DEFAULTS.weatherNote;
   const weatherLower = String(weatherNote).toLowerCase();
-  let ceremonySetting = DEFAULTS.ceremonySetting;
-  if (/\bindoor\b/.test(weatherLower)) {
-    ceremonySetting = "Indoor ceremony";
-  } else if (/\boutdoor\b/.test(weatherLower)) {
-    ceremonySetting = "Outdoor ceremony";
+  let ceremonySetting =
+    invitation?.ceremonySetting || DEFAULTS.ceremonySetting;
+  if (!invitation?.ceremonySetting) {
+    if (/\bindoor\b/.test(weatherLower)) {
+      ceremonySetting = "Indoor ceremony";
+    } else if (/\boutdoor\b/.test(weatherLower)) {
+      ceremonySetting = "Outdoor ceremony";
+    }
   }
+
+  const templateConfig = raw.templateConfig || staticBlock.templateConfig || null;
+  const eventMeta = staticBlock.event || {};
+  const eventType = raw.eventType || eventMeta.type || "wedding";
+  const templateKey = raw.templateKey || eventMeta.templateKey || "template-1";
 
   return {
     groomName,
@@ -152,6 +160,9 @@ export function normalizeInvitationTemplate(raw) {
     background: staticBlock.background || raw.background || null,
     /** Our Journey photos from assets/couple_images (via API) */
     images,
+    templateConfig,
+    eventType,
+    templateKey,
   };
 }
 

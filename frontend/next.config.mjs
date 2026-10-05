@@ -21,6 +21,18 @@ const nextConfig = {
       },
     ],
   },
+  async rewrites() {
+    const api = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000").replace(
+      /\/$/,
+      ""
+    );
+    return [
+      {
+        source: "/assets/events/:path*",
+        destination: `${api}/assets/events/:path*`,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

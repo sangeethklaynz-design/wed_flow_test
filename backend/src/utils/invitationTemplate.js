@@ -11,6 +11,7 @@ const {
   resolveCoupleMusicFromDisk,
   resolveCoupleBackgroundFromDisk,
 } = require("./invitationMedia");
+const { listPackFiles, publicChromeUrl } = require("./eventTemplates");
 
 function splitCoupleNames(coupleNames) {
   const raw = String(coupleNames || "").trim();
@@ -43,13 +44,23 @@ async function loadWeddingRow(weddingId) {
   const [rows] = await sequelize.query(
     `
     SELECT
-      id,
-      couple_names,
-      bride_name,
-      groom_name,
-      wedding_date
-    FROM weddings
-    WHERE id = ?
+      w.id,
+      w.couple_names,
+      w.bride_name,
+      w.groom_name,
+      w.wedding_date,
+      w.event_id,
+      e.id AS linked_event_id,
+      e.type AS event_type,
+      e.template_key AS template_key,
+      e.template_config AS template_config,
+      e.name AS event_name,
+      e.resource_pack_id AS resource_pack_id,
+      e.location AS event_location,
+      e.google_maps_link AS event_google_maps_link
+    FROM weddings w
+    LEFT JOIN events e ON e.id = w.event_id
+    WHERE w.id = ?
     LIMIT 1;
     `,
     { replacements: [weddingId] }
@@ -296,6 +307,37 @@ async function loadStaticInvitationBundle(weddingId) {
   const musicUrl = (diskMusic && diskMusic.url) || null;
   const backgroundUrl = (diskBackground && diskBackground.url) || null;
 
+  let templateConfig = null;
+  if (wedding.template_config) {
+    try {
+      templateConfig =
+        typeof wedding.template_config === "string"
+          ? JSON.parse(wedding.template_config)
+          : wedding.template_config;
+    } catch {
+      templateConfig = null;
+    }
+  }
+
+  let documents = [];
+  const eventTypeForDocs = String(wedding.event_type || "").toLowerCase();
+  if (
+    (eventTypeForDocs === "corporate" || eventTypeForDocs === "party") &&
+    wedding.resource_pack_id
+  ) {
+    documents = listPackFiles(
+      wedding.event_type,
+      wedding.resource_pack_id,
+      "documents"
+    );
+  }
+
+  const chromeBaseUrl = publicChromeUrl(
+    wedding.event_type || "wedding",
+    wedding.template_key || "template-1",
+    ""
+  );
+
   return {
     wedding: {
       id: wedding.id,
@@ -306,6 +348,18 @@ async function loadStaticInvitationBundle(weddingId) {
       weddingDate,
       formattedDate: formatTemplateDate(wedding.wedding_date),
     },
+    event: {
+      id: wedding.linked_event_id || wedding.event_id || null,
+      type: wedding.event_type || "wedding",
+      templateKey: wedding.template_key || "template-1",
+      name: wedding.event_name || parsed.coupleNames || null,
+      resourcePackId: wedding.resource_pack_id || null,
+      location: wedding.event_location || null,
+      googleMapsLink: wedding.event_google_maps_link || null,
+    },
+    templateConfig,
+    chromeBaseUrl: chromeBaseUrl || null,
+    documents,
     video: {
       url: openingVideoUrl,
       hasVideo: Boolean(openingVideoUrl),
@@ -323,9 +377,12 @@ async function loadStaticInvitationBundle(weddingId) {
           id: invitation.id,
           specialText: invitation.special_text,
           poruwaTime: formatTime(invitation.poruwa_time),
-          hotelName: invitation.hotel_name,
+          hotelName: invitation.hotel_name || wedding.event_location || null,
           hotelAddress: invitation.hotel_address,
-          googleMapsLink: invitation.google_maps_link,
+          googleMapsLink:
+            invitation.google_maps_link ||
+            wedding.event_google_maps_link ||
+            null,
           weatherNote: invitation.weather_note,
           parkingNote: invitation.parking_note,
           thankYouNote: invitation.thank_you_note,
@@ -412,6 +469,12 @@ function mapGuestTemplateBlock(row) {
 function buildTemplateResponse(staticBundle, guestRow = null) {
   return {
     static: {
+      event: staticBundle.event || {
+        id: null,
+        type: "wedding",
+        templateKey: "template-1",
+        name: null,
+      },
       wedding: staticBundle.wedding,
       video: staticBundle.video,
       music: staticBundle.music || { url: null, hasMusic: false },
@@ -421,7 +484,14 @@ function buildTemplateResponse(staticBundle, guestRow = null) {
       milestones: staticBundle.milestones,
       scheduleEvents: staticBundle.scheduleEvents || [],
       contacts: staticBundle.contacts,
+      documents: staticBundle.documents || [],
+      templateConfig: staticBundle.templateConfig || null,
+      chromeBaseUrl: staticBundle.chromeBaseUrl || null,
     },
+    eventType: staticBundle.event?.type || "wedding",
+    templateKey: staticBundle.event?.templateKey || "template-1",
+    templateConfig: staticBundle.templateConfig || null,
+    chromeBaseUrl: staticBundle.chromeBaseUrl || null,
     guest: guestRow ? mapGuestTemplateBlock(guestRow) : null,
   };
 }

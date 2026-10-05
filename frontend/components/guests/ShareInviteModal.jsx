@@ -49,7 +49,7 @@ function ShareChannel({ label, onClick, children }) {
     <button
       type="button"
       onClick={onClick}
-      className="flex flex-col items-center gap-2.5 min-w-0 w-full group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e69e46]/50 rounded-xl py-0.5"
+      className="flex flex-col items-center gap-2.5 min-w-0 w-full group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#054380]/50 rounded-xl py-0.5"
     >
       <span className="w-12 h-12 rounded-2xl bg-cream border border-border flex items-center justify-center transition-colors group-hover:bg-gold group-hover:border-[#f3dcc0]">
         {children}

@@ -239,6 +239,102 @@ async function ensureNotificationsTable() {
   }
 }
 
+async function ensureEventsTable() {
+  if (!(await tableExists("events"))) {
+    await sequelize.query(`
+      CREATE TABLE events (
+        id VARCHAR(36) NOT NULL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        type VARCHAR(50) NOT NULL,
+        template_key VARCHAR(255) NOT NULL,
+        resource_pack_id VARCHAR(36) NOT NULL,
+        template_config JSON NULL,
+        event_date DATE NOT NULL,
+        location VARCHAR(255) NULL,
+        google_maps_link TEXT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_events_date (event_date),
+        INDEX idx_events_type (type)
+      );
+    `);
+  }
+
+  if (!(await columnExists("events", "resource_pack_id"))) {
+    await sequelize.query(`
+      ALTER TABLE events
+      ADD COLUMN resource_pack_id VARCHAR(36) NULL AFTER template_key;
+    `);
+    await sequelize.query(`
+      UPDATE events
+      SET resource_pack_id = id
+      WHERE resource_pack_id IS NULL OR resource_pack_id = '';
+    `);
+  }
+
+  if (!(await columnExists("events", "template_config"))) {
+    await sequelize.query(`
+      ALTER TABLE events
+      ADD COLUMN template_config JSON NULL AFTER resource_pack_id;
+    `);
+  }
+
+  if (!(await columnExists("events", "user_id"))) {
+    await sequelize.query(`
+      ALTER TABLE events
+      ADD COLUMN user_id VARCHAR(36) NULL AFTER id,
+      ADD INDEX idx_events_user (user_id);
+    `);
+  }
+
+  if (!(await columnExists("events", "client_slug"))) {
+    await sequelize.query(`
+      ALTER TABLE events
+      ADD COLUMN client_slug VARCHAR(255) NULL AFTER name,
+      ADD INDEX idx_events_slug (client_slug);
+    `);
+  }
+
+  if (!(await columnExists("events", "client_password"))) {
+    await sequelize.query(`
+      ALTER TABLE events
+      ADD COLUMN client_password VARCHAR(255) NULL AFTER client_slug;
+    `);
+  }
+
+  if (!(await columnExists("weddings", "event_id"))) {
+    await sequelize.query(`
+      ALTER TABLE weddings
+      ADD COLUMN event_id VARCHAR(36) NULL AFTER id,
+      ADD INDEX idx_weddings_event (event_id);
+    `);
+  }
+
+  if (!(await columnExists("guests", "event_id"))) {
+    await sequelize.query(`
+      ALTER TABLE guests
+      ADD COLUMN event_id VARCHAR(36) NULL AFTER wedding_id,
+      ADD INDEX idx_guests_event (event_id);
+    `);
+  }
+
+  if (!(await columnExists("schedule_events", "event_id"))) {
+    await sequelize.query(`
+      ALTER TABLE schedule_events
+      ADD COLUMN event_id VARCHAR(36) NULL AFTER wedding_id,
+      ADD INDEX idx_schedule_events_event (event_id);
+    `);
+  }
+
+  if (!(await columnExists("notifications", "event_id"))) {
+    await sequelize.query(`
+      ALTER TABLE notifications
+      ADD COLUMN event_id VARCHAR(36) NULL AFTER wedding_id,
+      ADD INDEX idx_notifications_event (event_id);
+    `);
+  }
+}
+
 async function ensureCoreSchema() {
   await ensureScheduleSchema();
   await ensureInvitationRelatedTables();
@@ -246,6 +342,7 @@ async function ensureCoreSchema() {
   await ensureInvitationTemplateColumns();
   await ensureRsvpChangeRequestsTable();
   await ensureNotificationsTable();
+  await ensureEventsTable();
 }
 
 module.exports = { ensureCoreSchema };

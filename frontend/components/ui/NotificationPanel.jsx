@@ -115,7 +115,7 @@ function NotificationDropdown({ open, onClose, onUnreadCountChange }) {
               <button
                 type="button"
                 onClick={handleMarkAllRead}
-                className="text-xs text-[#7732A4] font-medium hover:underline"
+                className="text-xs text-[#054380] font-medium hover:underline"
               >
                 Mark all read
               </button>
@@ -145,7 +145,7 @@ function NotificationDropdown({ open, onClose, onUnreadCountChange }) {
                 <div
                   key={notif.id}
                   className={`relative flex items-start gap-4 p-4 pb-8 rounded-xl border ${config.border} ${config.bg} ${
-                    !notif.isRead ? "ring-1 ring-[#e69e46]/30" : ""
+                    !notif.isRead ? "ring-1 ring-[#054380]/30" : ""
                   }`}
                 >
                   <div className={`shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${config.bg}`}>
@@ -160,7 +160,7 @@ function NotificationDropdown({ open, onClose, onUnreadCountChange }) {
                   </div>
                   {!notif.isRead && (
                     <span
-                      className="absolute top-3 right-3 w-2.5 h-2.5 rounded-full bg-[#e69e46] unread-blink"
+                      className="absolute top-3 right-3 w-2.5 h-2.5 rounded-full bg-[#054380] unread-blink"
                       aria-label="Unread"
                       title="Unread"
                     />
@@ -215,7 +215,7 @@ export function NotificationBell() {
       >
         <Bell className="w-7 h-7" />
         {unreadCount > 0 && (
-          <span className="absolute top-0 right-0 w-5 h-5 bg-[#e69e46] text-white text-[11px] font-bold rounded-full flex items-center justify-center border-2 border-white">
+          <span className="absolute top-0 right-0 w-5 h-5 bg-[#054380] text-white text-[11px] font-bold rounded-full flex items-center justify-center border-2 border-white">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}

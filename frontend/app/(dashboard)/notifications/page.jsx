@@ -236,14 +236,14 @@ export default function NotificationsPage() {
     switch (type) {
       case "change_request":
         return (
-          <div className="w-10 h-10 rounded-full bg-[#fdf8eb] text-[#e69e46] flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full bg-[#fdf8eb] text-[#054380] flex items-center justify-center">
             <RefreshCw className="w-5 h-5" />
           </div>
         );
       case "rsvp_submitted":
       case "guest_added":
         return (
-          <div className="w-10 h-10 rounded-full bg-[#f8f5fb] text-[#7732A4] flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full bg-[#EAF5FF] text-[#054380] flex items-center justify-center">
             <UserPlus className="w-5 h-5" />
           </div>
         );
@@ -292,13 +292,13 @@ export default function NotificationsPage() {
     switch (type) {
       case "change_request":
         return (
-          <span className="px-3 py-1 bg-[#fdf8eb] text-[#e69e46] text-xs font-bold rounded-full">
+          <span className="px-3 py-1 bg-[#fdf8eb] text-[#054380] text-xs font-bold rounded-full">
             RSVP Change Request
           </span>
         );
       case "rsvp_submitted":
         return (
-          <span className="px-3 py-1 bg-[#f8f5fb] text-[#7732A4] text-xs font-bold rounded-full">
+          <span className="px-3 py-1 bg-[#EAF5FF] text-[#054380] text-xs font-bold rounded-full">
             New RSVP
           </span>
         );
@@ -367,7 +367,7 @@ export default function NotificationsPage() {
     }
     if (s === "pending") {
       return (
-        <span className="px-3 py-1 bg-[#fdf8eb] text-[#e69e46] text-xs font-bold rounded-full">
+        <span className="px-3 py-1 bg-[#fdf8eb] text-[#054380] text-xs font-bold rounded-full">
           Pending
         </span>
       );
@@ -405,7 +405,7 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="flex-1 bg-[#fdfcf9] min-h-screen p-6 md:p-8 w-full">
+    <div className="flex-1 bg-[#EAF5FF] min-h-screen p-6 md:p-8 w-full">
       {/* Header */}
       <div className="md:hidden mb-6">
         <h1 className="font-serif font-bold text-3xl text-navy mb-1">
@@ -430,7 +430,7 @@ export default function NotificationsPage() {
         <div className="flex items-center gap-4">
           <button
             onClick={handleMarkAllRead}
-            className="flex items-center gap-2 px-4 py-2 border border-[#d6c7e6] text-[#7732A4] rounded-xl text-sm font-medium hover:bg-[#f8f5fb] transition-colors bg-white shadow-sm"
+            className="flex items-center gap-2 px-4 py-2 border border-[#054380] text-[#054380] rounded-xl text-sm font-medium hover:bg-[#EAF5FF] transition-colors bg-white shadow-sm"
           >
             <Check className="w-4 h-4" />
             Mark all as read
@@ -449,7 +449,7 @@ export default function NotificationsPage() {
       <div className="bg-white rounded-[20px] p-6 mb-6 shadow-sm border border-[#eef0f3]">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-2 text-navy font-bold">
-            <Filter className="w-5 h-5 text-[#7732A4]" />
+            <Filter className="w-5 h-5 text-[#054380]" />
             Filters
           </div>
           <div className="flex items-center gap-4">
@@ -478,7 +478,7 @@ export default function NotificationsPage() {
                 className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors flex-1
                 ${
                   rsvpChangeRequest === "requested"
-                    ? "bg-[#f8f5fb] border-[#7732A4] text-[#7732A4]"
+                    ? "bg-[#EAF5FF] border-[#054380] text-[#054380]"
                     : "bg-white border-[#eef0f3] text-navy hover:bg-gray-50"
                 }`}
               >
@@ -500,7 +500,7 @@ export default function NotificationsPage() {
                 className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors flex-1
                 ${
                   rsvpChangeRequest === "not_requested"
-                    ? "bg-[#f8f5fb] border-[#7732A4] text-[#7732A4]"
+                    ? "bg-[#EAF5FF] border-[#054380] text-[#054380]"
                     : "bg-white border-[#eef0f3] text-navy hover:bg-gray-50"
                 }`}
               >
@@ -525,7 +525,7 @@ export default function NotificationsPage() {
                 <select
                   value={guestStatus}
                   onChange={(e) => setGuestStatus(e.target.value)}
-                  className="w-full appearance-none bg-white border border-[#eef0f3] rounded-lg px-4 py-2.5 text-sm font-medium text-navy focus:outline-none focus:border-[#7732A4]"
+                  className="w-full appearance-none bg-white border border-[#eef0f3] rounded-lg px-4 py-2.5 text-sm font-medium text-navy focus:outline-none focus:border-[#054380]"
                 >
                   <option>All status</option>
                   <option>Confirmed</option>
@@ -545,7 +545,7 @@ export default function NotificationsPage() {
                 <select
                   value={notificationType}
                   onChange={(e) => setNotificationType(e.target.value)}
-                  className="w-full appearance-none bg-white border border-[#eef0f3] rounded-lg px-4 py-2.5 text-sm font-medium text-navy focus:outline-none focus:border-[#7732A4]"
+                  className="w-full appearance-none bg-white border border-[#eef0f3] rounded-lg px-4 py-2.5 text-sm font-medium text-navy focus:outline-none focus:border-[#054380]"
                 >
                   <option>All types</option>
                   <option>RSVP Change Request</option>
@@ -568,7 +568,7 @@ export default function NotificationsPage() {
                 <select
                   value={dateRange}
                   onChange={(e) => setDateRange(e.target.value)}
-                  className="w-full appearance-none bg-white border border-[#eef0f3] rounded-lg pl-9 pr-10 py-2.5 text-sm font-medium text-muted focus:outline-none focus:border-[#7732A4]"
+                  className="w-full appearance-none bg-white border border-[#eef0f3] rounded-lg pl-9 pr-10 py-2.5 text-sm font-medium text-muted focus:outline-none focus:border-[#054380]"
                 >
                   <option>Select date range</option>
                   <option>Last 7 days</option>
@@ -587,7 +587,7 @@ export default function NotificationsPage() {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="w-full appearance-none bg-white border border-[#eef0f3] rounded-lg px-4 py-2.5 text-sm font-medium text-navy focus:outline-none focus:border-[#7732A4]"
+                  className="w-full appearance-none bg-white border border-[#eef0f3] rounded-lg px-4 py-2.5 text-sm font-medium text-navy focus:outline-none focus:border-[#054380]"
                 >
                   <option>Newest first</option>
                   <option>Oldest first</option>
@@ -636,7 +636,7 @@ export default function NotificationsPage() {
                 currentItems.map((notif) => (
                   <tr
                     key={notif.id}
-                    className={`border-b border-[#eef0f3] last:border-0 hover:bg-[#fdfcf9] transition-colors ${
+                    className={`border-b border-[#eef0f3] last:border-0 hover:bg-[#EAF5FF] transition-colors ${
                       !notif.isRead ? "bg-[#fbf8ff]" : ""
                     }`}
                   >
@@ -647,7 +647,7 @@ export default function NotificationsPage() {
                           <p className="text-[15px] font-bold text-navy leading-tight flex items-center gap-2">
                             {notif.title}
                             {!notif.isRead ? (
-                              <span className="w-2 h-2 rounded-full bg-[#7732A4] shrink-0" />
+                              <span className="w-2 h-2 rounded-full bg-[#054380] shrink-0" />
                             ) : null}
                           </p>
                           <p className="text-[13px] text-muted mt-1 leading-snug max-w-[250px]">
@@ -758,7 +758,7 @@ export default function NotificationsPage() {
                   className={`w-8 h-8 rounded text-[13px] font-bold flex items-center justify-center transition-colors
                   ${
                     safePage === i + 1
-                      ? "bg-[#7732A4] text-white"
+                      ? "bg-[#054380] text-white"
                       : "border border-[#eef0f3] text-muted hover:bg-gray-50"
                   }`}
                 >

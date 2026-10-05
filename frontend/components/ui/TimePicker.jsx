@@ -67,7 +67,7 @@ function TimeColumn({
 
       <div
         ref={listRef}
-        className="h-[132px] w-full overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:#e69e46_transparent]"
+        className="h-[132px] w-full overflow-y-auto overscroll-contain [scrollbar-width:thin] [scrollbar-color:#054380_transparent]"
       >
         {items.map((item) => {
           const isSelected = showSelection && item === selected;
@@ -178,8 +178,8 @@ export default function TimePicker({
           "w-full px-4 py-3 rounded-xl border bg-white text-left text-navy transition-shadow flex items-center justify-between gap-2",
           hasError ? "border-red-400" : "border-border",
           open
-            ? "ring-2 ring-[#e69e46]/50"
-            : "focus:outline-none focus:ring-2 focus:ring-[#e69e46]/50"
+            ? "ring-2 ring-[#054380]/50"
+            : "focus:outline-none focus:ring-2 focus:ring-[#054380]/50"
         )}
       >
         <span className={clsx("tabular-nums", !display && "text-gray-300")}>

@@ -7,19 +7,30 @@ import InvitationVideoIntro, {
   INVITE_FRAME_W,
 } from "@/components/invite/InvitationVideoIntro";
 import InvitationBackgroundMusic from "@/components/invite/InvitationBackgroundMusic";
+import { invitePage, dynamicField } from "@/templates/weddings/template-1/manifest";
 
 /**
  * Shared phone shell: video and invitation share the exact 390x844 frame.
  *
  * Crossfade handoff: video fades out and template fades in for a smooth transition.
+ * Pages: openingVideo (this shell) then InvitationPage sections.
+ *
+ * Admin preview extras:
+ * - skipIntro: jump straight to invitation pages
+ * - previewMuted: keep intro muted for autoplay in admin modal
  */
 export default function InvitationExperience({
   templateData,
   guestToken = null,
   interactive = false,
+  skipIntro = false,
+  previewMuted = false,
+  templateConfig = null,
 }) {
   const hasVideo = Boolean(
-    templateData?.static?.video?.hasVideo && templateData?.static?.video?.url
+    !skipIntro &&
+      templateData?.static?.video?.hasVideo &&
+      templateData?.static?.video?.url
   );
   const musicUrl =
     templateData?.static?.music?.hasMusic && templateData?.static?.music?.url
@@ -36,6 +47,16 @@ export default function InvitationExperience({
   );
 
   useEffect(() => {
+    if (skipIntro || !hasVideo) {
+      setVideoState("done");
+      setTemplateVisible(true);
+      return;
+    }
+    setVideoState("playing");
+    setTemplateVisible(false);
+  }, [skipIntro, hasVideo, templateData?.static?.video?.url]);
+
+  useEffect(() => {
     if (!hasVideo || !guestVideoSeenKey || typeof window === "undefined") return;
     const seenBefore = window.localStorage.getItem(guestVideoSeenKey) === "1";
     setGuestCanSkip(seenBefore);
@@ -46,7 +67,6 @@ export default function InvitationExperience({
 
   const handleFadeStart = useCallback(() => {
     setVideoState("fading");
-    // Reveal template under the fading video (clipped to the 390×844 frame)
     setTemplateVisible(true);
   }, []);
 
@@ -59,8 +79,13 @@ export default function InvitationExperience({
 
   const isVideoActive = videoState === "playing" || videoState === "fading";
   const showTemplate = videoState !== "playing";
-  const showSkipButton = hasVideo && (!isGuestView || guestCanSkip);
-  const musicActive = videoState === "done";
+  const showSkipButton = hasVideo && (previewMuted || !isGuestView || guestCanSkip);
+  const musicActive = videoState === "done" && !previewMuted;
+
+  const accent =
+    templateConfig?.fields?.colorAccent ||
+    templateData?.templateConfig?.fields?.colorAccent ||
+    "#FAF6F0";
 
   return (
     <main
@@ -70,17 +95,15 @@ export default function InvitationExperience({
       style={{
         width: INVITE_FRAME_W,
         height: isVideoActive ? INVITE_FRAME_H : undefined,
-        backgroundColor: "#FAF6F0",
+        backgroundColor: accent,
         backgroundImage: isVideoActive
           ? "none"
           : "radial-gradient(at 20% 20%, rgba(181, 74, 182, 0.12) 0%, transparent 60%), radial-gradient(at 80% 80%, rgba(119, 50, 164, 0.12) 0%, transparent 60%)",
       }}
+      {...invitePage("openingVideo")}
+      {...dynamicField("openingVideo")}
     >
       <InvitationBackgroundMusic musicUrl={musicUrl} active={musicActive} />
-      {/*
-        While the video plays, keep the tall invitation out of document flow
-        (absolute + clipped) so it cannot create a white strip below the frame.
-      */}
       <div
         className={
           isVideoActive
@@ -99,6 +122,9 @@ export default function InvitationExperience({
               guestToken={guestToken}
               interactive={interactive && !isVideoActive}
               embedded
+              templateConfig={
+                templateConfig || templateData?.templateConfig || null
+              }
             />
           </div>
         ) : null}
@@ -117,5 +143,3 @@ export default function InvitationExperience({
     </main>
   );
 }
-
-

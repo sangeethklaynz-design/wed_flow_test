@@ -15,6 +15,7 @@ export default function InvitationBackgroundMusic({
   musicUrl,
   active = false,
   showMuteButton = true,
+  usePortal = true,
 }) {
   const resolvedUrl = resolveMediaUrl(musicUrl);
   const audioRef = useRef(null);
@@ -69,25 +70,31 @@ export default function InvitationBackgroundMusic({
 
   if (!resolvedUrl) return null;
 
+  const muteControl =
+    active && showMuteButton ? (
+      <button
+        type="button"
+        onClick={() => setMuted((prev) => !prev)}
+        className={`${
+          usePortal ? "fixed right-4 bottom-4 z-[100]" : "absolute right-3 top-3 z-30"
+        } inline-flex items-center justify-center w-11 h-11 rounded-xl bg-white/95 backdrop-blur-sm border border-border card-shadow hover:bg-cream transition-colors pointer-events-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-[#054380]/60`}
+        aria-label={muted ? "Unmute background music" : "Mute background music"}
+        aria-pressed={muted}
+      >
+        {muted ? (
+          <VolumeX className="w-5 h-5 text-gold-text" strokeWidth={2.4} />
+        ) : (
+          <Volume2 className="w-5 h-5 text-gold-text" strokeWidth={2.4} />
+        )}
+      </button>
+    ) : null;
+
   const muteButton =
-    active && showMuteButton && portalReady
-      ? createPortal(
-          <button
-            type="button"
-            onClick={() => setMuted((prev) => !prev)}
-            className="fixed right-4 bottom-4 z-[100] inline-flex items-center justify-center w-11 h-11 rounded-xl bg-white/95 backdrop-blur-sm border border-border card-shadow hover:bg-cream transition-colors pointer-events-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-[#e69e46]/60"
-            aria-label={muted ? "Unmute background music" : "Mute background music"}
-            aria-pressed={muted}
-          >
-            {muted ? (
-              <VolumeX className="w-5 h-5 text-gold-text" strokeWidth={2.4} />
-            ) : (
-              <Volume2 className="w-5 h-5 text-gold-text" strokeWidth={2.4} />
-            )}
-          </button>,
-          document.body
-        )
-      : null;
+    muteControl && usePortal && portalReady
+      ? createPortal(muteControl, document.body)
+      : muteControl && !usePortal
+        ? muteControl
+        : null;
 
   return (
     <>

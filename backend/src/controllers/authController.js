@@ -6,6 +6,13 @@ const {
   verifyRefreshToken,
 } = require("../utils/jwt");
 const { formatDisplayCoupleNames, buildInitials } = require("../utils/wedding");
+const {
+  matchAdminCredentials,
+  formatAdminUser,
+  isAdminSubject,
+  loadAdminCredentials,
+  ADMIN_ID,
+} = require("../utils/adminCredentials");
 
 async function findUserWithWeddingByEmail(email) {
   const [rows] = await sequelize.query(
@@ -19,9 +26,15 @@ async function findUserWithWeddingByEmail(email) {
       w.couple_names,
       w.bride_name,
       w.groom_name,
-      w.wedding_date
+      w.wedding_date,
+      e.id AS event_id,
+      e.type AS event_type,
+      e.template_key AS template_key,
+      e.name AS event_name,
+      e.client_slug AS client_slug
     FROM users u
     LEFT JOIN weddings w ON w.user_id = u.id
+    LEFT JOIN events e ON e.user_id = u.id
     WHERE u.email = ?
     LIMIT 1;
     `,
@@ -41,9 +54,15 @@ async function findUserWithWeddingById(userId) {
       w.couple_names,
       w.bride_name,
       w.groom_name,
-      w.wedding_date
+      w.wedding_date,
+      e.id AS event_id,
+      e.type AS event_type,
+      e.template_key AS template_key,
+      e.name AS event_name,
+      e.client_slug AS client_slug
     FROM users u
     LEFT JOIN weddings w ON w.user_id = u.id
+    LEFT JOIN events e ON e.user_id = u.id
     WHERE u.id = ?
     LIMIT 1;
     `,
@@ -60,7 +79,7 @@ function formatUser(row) {
       brideName,
       groomName,
       coupleNames: row.couple_names,
-    }) || null;
+    }) || row.event_name || null;
 
   return {
     id: row.user_id,
@@ -74,6 +93,11 @@ function formatUser(row) {
     weddingDate: row.wedding_date
       ? String(row.wedding_date).slice(0, 10)
       : null,
+    eventId: row.event_id || null,
+    eventType: row.event_type || null,
+    templateKey: row.template_key || null,
+    eventName: row.event_name || null,
+    clientSlug: row.client_slug || null,
   };
 }
 
@@ -83,6 +107,8 @@ function issueTokens(row) {
     email: row.email,
     role: row.role,
     weddingId: row.wedding_id || null,
+    eventId: row.event_id || null,
+    eventType: row.event_type || null,
   };
 
   return {
@@ -90,6 +116,23 @@ function issueTokens(row) {
     refreshToken: signRefreshToken({
       sub: row.user_id,
       role: row.role,
+    }),
+  };
+}
+
+function issueAdminTokens(email) {
+  const payload = {
+    sub: ADMIN_ID,
+    email,
+    role: "ADMIN",
+    weddingId: null,
+  };
+
+  return {
+    accessToken: signAccessToken(payload),
+    refreshToken: signRefreshToken({
+      sub: ADMIN_ID,
+      role: "ADMIN",
     }),
   };
 }
@@ -105,6 +148,15 @@ async function login(req, res) {
       return res.status(400).json({
         error: "Bad Request",
         message: "email and password are required",
+      });
+    }
+
+    const admin = matchAdminCredentials(email, password);
+    if (admin) {
+      const tokens = issueAdminTokens(admin.email);
+      return res.status(200).json({
+        ...tokens,
+        user: formatAdminUser(admin.email),
       });
     }
 
@@ -160,6 +212,21 @@ async function refresh(req, res) {
       });
     }
 
+    if (decoded.role === "ADMIN" || isAdminSubject(decoded.sub)) {
+      const creds = loadAdminCredentials();
+      if (!creds) {
+        return res.status(401).json({
+          error: "Unauthorized",
+          message: "Admin credentials are not configured",
+        });
+      }
+      const tokens = issueAdminTokens(creds.email);
+      return res.status(200).json({
+        ...tokens,
+        user: formatAdminUser(creds.email),
+      });
+    }
+
     const row = await findUserWithWeddingById(decoded.sub);
     if (!row) {
       return res.status(401).json({
@@ -185,6 +252,13 @@ async function refresh(req, res) {
 
 async function me(req, res) {
   try {
+    if (req.user?.role === "ADMIN" || isAdminSubject(req.user?.id)) {
+      const creds = loadAdminCredentials();
+      return res.status(200).json({
+        user: formatAdminUser(creds?.email || req.user.email),
+      });
+    }
+
     const row = await findUserWithWeddingById(req.user.id);
     if (!row) {
       return res.status(404).json({

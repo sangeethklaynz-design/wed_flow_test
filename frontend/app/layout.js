@@ -6,6 +6,8 @@ import {
   Quattrocento,
   Pinyon_Script,
   Cormorant_Garamond,
+  Petrona,
+  Instrument_Sans,
 } from "next/font/google";
 import "./globals.css";
 
@@ -49,16 +51,28 @@ const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
 });
 
+const petrona = Petrona({
+  weight: ["400", "600", "700", "800"],
+  variable: "--font-petrona",
+  subsets: ["latin"],
+});
+
+const instrumentSans = Instrument_Sans({
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-instrument",
+  subsets: ["latin"],
+});
+
 export const metadata = {
-  title: "Wed Flow - Your wedding, beautifully organized",
-  description: "Manage your wedding invitations digitally.",
+  title: "Wed Flow - Events. People. Possibilities.",
+  description: "Events. People. Possibilities.",
 };
 
 export default function RootLayout({ children }) {
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${playfair.variable} ${alexBrush.variable} ${greatVibes.variable} ${quattrocento.variable} ${pinyonScript.variable} ${cormorant.variable} h-full antialiased`}
+      className={`${inter.variable} ${playfair.variable} ${alexBrush.variable} ${greatVibes.variable} ${quattrocento.variable} ${pinyonScript.variable} ${cormorant.variable} ${petrona.variable} ${instrumentSans.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans bg-cream text-navy">
         {children}

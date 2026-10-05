@@ -1,0 +1,397 @@
+{
+  "id": "template-1",
+  "type": "party",
+  "label": "Party Template 1 — Gala Night",
+  "pages": [
+    {
+      "id": "landing",
+      "label": "Landing",
+      "defaultEnabled": true
+    },
+    {
+      "id": "about",
+      "label": "About the event",
+      "defaultEnabled": true
+    },
+    {
+      "id": "rsvp",
+      "label": "RSVP",
+      "defaultEnabled": true
+    },
+    {
+      "id": "schedule",
+      "label": "Event schedule",
+      "defaultEnabled": true
+    },
+    {
+      "id": "location",
+      "label": "Location",
+      "defaultEnabled": true
+    },
+    {
+      "id": "details",
+      "label": "Important details",
+      "defaultEnabled": true
+    },
+    {
+      "id": "saveTheDate",
+      "label": "Save the date",
+      "defaultEnabled": true
+    }
+  ],
+  "dynamicFields": [
+    {
+      "id": "openingVideo",
+      "pageId": "landing",
+      "type": "media",
+      "mediaKind": "video",
+      "label": "Landing / opening video"
+    },
+    {
+      "id": "backgroundMusic",
+      "pageId": "landing",
+      "type": "media",
+      "mediaKind": "music",
+      "label": "Background music"
+    },
+    {
+      "id": "landingBackground",
+      "pageId": "landing",
+      "type": "media",
+      "mediaKind": "background",
+      "label": "Landing background image"
+    },
+    {
+      "id": "colorLandingEyebrow",
+      "pageId": "landing",
+      "type": "color",
+      "label": "Landing — eyebrow line",
+      "defaultValue": "#F5F9FF"
+    },
+    {
+      "id": "colorPageTitle",
+      "pageId": "landing",
+      "type": "color",
+      "label": "Page titles & headings",
+      "defaultValue": "#0c1e48"
+    },
+    {
+      "id": "colorPageAccent",
+      "pageId": "landing",
+      "type": "color",
+      "label": "Accent text & links",
+      "defaultValue": "#1e75c8"
+    },
+    {
+      "id": "colorBodyText",
+      "pageId": "landing",
+      "type": "color",
+      "label": "Body text",
+      "defaultValue": "#162646"
+    },
+    {
+      "id": "gradientTop",
+      "pageId": "landing",
+      "type": "color",
+      "label": "Page gradient — top",
+      "defaultValue": "#588dcf"
+    },
+    {
+      "id": "gradientMid",
+      "pageId": "landing",
+      "type": "color",
+      "label": "Page gradient — middle",
+      "defaultValue": "#e5f2fd"
+    },
+    {
+      "id": "gradientBottom",
+      "pageId": "landing",
+      "type": "color",
+      "label": "Page gradient — bottom",
+      "defaultValue": "#4377bd"
+    },
+    {
+      "id": "inviteEyebrow",
+      "pageId": "landing",
+      "type": "text",
+      "label": "Invite eyebrow",
+      "defaultValue": "YOU ARE INVITED"
+    },
+    {
+      "id": "eventScriptTitle",
+      "pageId": "landing",
+      "type": "text",
+      "label": "Script title (e.g. Annual)",
+      "defaultValue": "Annual"
+    },
+    {
+      "id": "eventMainTitle",
+      "pageId": "landing",
+      "type": "text",
+      "label": "Main title",
+      "defaultValue": "GALA NIGHT"
+    },
+    {
+      "id": "eventSubtitle",
+      "pageId": "landing",
+      "type": "textarea",
+      "label": "Subtitle",
+      "defaultValue": "An Evening To Celebrate, Connect & Create\nLasting Memories"
+    },
+    {
+      "id": "eventTimeLabel",
+      "pageId": "landing",
+      "type": "text",
+      "label": "Time label (e.g. 06:00 PM Onwards)",
+      "defaultValue": "06:00 PM Onwards"
+    },
+    {
+      "id": "aboutFeatures",
+      "pageId": "about",
+      "type": "list",
+      "label": "Feature highlights",
+      "itemSchema": {
+        "title": { "type": "text", "label": "Title" },
+        "description": { "type": "text", "label": "Description" },
+        "icon": {
+          "type": "select",
+          "label": "Icon",
+          "options": [
+            { "value": "group", "label": "Network / Group" },
+            { "value": "celebrate", "label": "Celebrate" },
+            { "value": "cam", "label": "Memories / Camera" }
+          ]
+        }
+      },
+      "defaultValue": [
+        {
+          "title": "Network",
+          "description": "Meet & connect with great people",
+          "icon": "group"
+        },
+        {
+          "title": "Celebrate",
+          "description": "Enjoy food, music and entertainment",
+          "icon": "celebrate"
+        },
+        {
+          "title": "Create Memories",
+          "description": "Be part of a special evening together",
+          "icon": "cam"
+        }
+      ]
+    },
+    {
+      "id": "rsvpHeading",
+      "pageId": "rsvp",
+      "type": "text",
+      "label": "RSVP heading",
+      "defaultValue": "Be Our Guest"
+    },
+    {
+      "id": "rsvpScript",
+      "pageId": "rsvp",
+      "type": "text",
+      "label": "RSVP script title",
+      "defaultValue": "RSVP"
+    },
+    {
+      "id": "rsvpTagline",
+      "pageId": "rsvp",
+      "type": "text",
+      "label": "RSVP tagline",
+      "defaultValue": "We'd love to celebrate with you!"
+    },
+    {
+      "id": "rsvpQuestions",
+      "pageId": "rsvp",
+      "type": "list",
+      "label": "RSVP questions",
+      "itemSchema": {
+        "label": {
+          "type": "text",
+          "label": "Question label"
+        },
+        "inputType": {
+          "type": "select",
+          "label": "Field type",
+          "options": [
+            { "value": "text", "label": "Text" },
+            { "value": "textarea", "label": "Text field" },
+            { "value": "dropdown", "label": "Dropdown menu" },
+            { "value": "radio", "label": "Radio buttons" }
+          ]
+        },
+        "options": {
+          "type": "dropdownItems",
+          "label": "Choices",
+          "showWhen": {
+            "field": "inputType",
+            "in": ["dropdown", "radio"]
+          }
+        }
+      },
+      "defaultValue": [
+        { "label": "Full name", "inputType": "text", "options": "" },
+        { "label": "Email", "inputType": "text", "options": "" },
+        { "label": "Phone Number", "inputType": "text", "options": "" },
+        {
+          "label": "Will you attend?",
+          "inputType": "radio",
+          "options": "Yes I'll attend, Sorry I can't attend"
+        },
+        { "label": "Number of Guests", "inputType": "text", "options": "" },
+        {
+          "label": "Meal Preference",
+          "inputType": "dropdown",
+          "options": "Vegetarian, Non-Vegetarian"
+        },
+        {
+          "label": "Any Special Requirements (Optional)",
+          "inputType": "textarea",
+          "options": ""
+        }
+      ]
+    },
+    {
+      "id": "scheduleTitle",
+      "pageId": "schedule",
+      "type": "text",
+      "label": "Schedule title",
+      "defaultValue": "Event Schedule"
+    },
+    {
+      "id": "scheduleItems",
+      "pageId": "schedule",
+      "type": "list",
+      "label": "Schedule items",
+      "itemSchema": {
+        "time": { "type": "text", "label": "Time" },
+        "title": { "type": "text", "label": "Title" },
+        "icon": {
+          "type": "select",
+          "label": "Icon",
+          "options": [
+            { "value": "drink", "label": "Drinks" },
+            { "value": "mic", "label": "Microphone" },
+            { "value": "food", "label": "Food" },
+            { "value": "music", "label": "Music" },
+            { "value": "celebrate", "label": "Celebrate" },
+            { "value": "dj", "label": "DJ" }
+          ]
+        }
+      },
+      "defaultValue": [
+        { "time": "06:00 PM", "title": "Guest Arrival & Welcome Drinks", "icon": "drink" },
+        { "time": "06:30 PM", "title": "Opening & Welcome", "icon": "mic" },
+        { "time": "07:00 PM", "title": "Dinner Service", "icon": "food" },
+        { "time": "08:30 PM", "title": "Live Music & Entertainment", "icon": "music" },
+        { "time": "09:30 PM", "title": "Games & Activities", "icon": "celebrate" },
+        { "time": "10:30 PM", "title": "DJ Night & Dance", "icon": "dj" }
+      ]
+    },
+    {
+      "id": "locationTitle",
+      "pageId": "location",
+      "type": "text",
+      "label": "Location title",
+      "defaultValue": "Event Location"
+    },
+    {
+      "id": "areaLabel",
+      "pageId": "location",
+      "type": "text",
+      "label": "Area label (optional)",
+      "defaultValue": ""
+    },
+    {
+      "id": "detailsTitle",
+      "pageId": "details",
+      "type": "text",
+      "label": "Details title",
+      "defaultValue": "Important Details"
+    },
+    {
+      "id": "detailItems",
+      "pageId": "details",
+      "type": "list",
+      "label": "Detail items",
+      "itemSchema": {
+        "title": { "type": "text", "label": "Title" },
+        "body": { "type": "textarea", "label": "Body (one line per row)" },
+        "kind": {
+          "type": "select",
+          "label": "Kind",
+          "options": [
+            { "value": "text", "label": "Text" },
+            { "value": "phone", "label": "Phone" },
+            { "value": "email", "label": "Email" }
+          ]
+        },
+        "icon": {
+          "type": "select",
+          "label": "Icon",
+          "options": [
+            { "value": "info", "label": "Info (standard)" },
+            { "value": "parking", "label": "Parking" },
+            { "value": "dress", "label": "Dress code" },
+            { "value": "table", "label": "Table" },
+            { "value": "cam", "label": "Camera / Photos" },
+            { "value": "contact", "label": "Contact" }
+          ]
+        }
+      },
+      "defaultValue": [
+        { "title": "Parking", "body": "Available at venue", "kind": "text", "icon": "parking" },
+        { "title": "Dress Code", "body": "Smart Casual", "kind": "text", "icon": "dress" },
+        { "title": "Table Number", "body": "No 05", "kind": "text", "icon": "table" },
+        {
+          "title": "Photos",
+          "body": "Professional photography\nwill be taken",
+          "kind": "text",
+          "icon": "cam"
+        },
+        {
+          "title": "Contact",
+          "body": "+94 77 123 4567\n+94 71 789 4512",
+          "kind": "phone",
+          "icon": "contact"
+        },
+        {
+          "title": "For Any Questions",
+          "body": "Get in touch with us\n(galanight@gmail.com)",
+          "kind": "email",
+          "icon": "info"
+        }
+      ]
+    },
+    {
+      "id": "calendarLinks",
+      "pageId": "saveTheDate",
+      "type": "list",
+      "label": "Calendar options",
+      "itemSchema": {
+        "provider": {
+          "type": "select",
+          "label": "Provider",
+          "options": [
+            { "value": "google", "label": "Google Calendar" },
+            { "value": "apple", "label": "Apple Calendar" },
+            { "value": "outlook", "label": "Outlook" },
+            { "value": "custom", "label": "Custom link" }
+          ]
+        },
+        "label": { "type": "text", "label": "Button label" },
+        "url": {
+          "type": "text",
+          "label": "Link URL (required for custom; optional override)"
+        }
+      },
+      "defaultValue": [
+        { "provider": "google", "label": "Google Calendar", "url": "" },
+        { "provider": "apple", "label": "Apple Calendar", "url": "" },
+        { "provider": "outlook", "label": "Outlook", "url": "" }
+      ]
+    }
+  ]
+}

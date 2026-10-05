@@ -61,7 +61,7 @@ export default function ScheduleEventCard({
       className={clsx(
         "bg-white rounded-2xl px-5 py-4 border flex items-start gap-4",
         isLive
-          ? "border-[#e69e46]/40 shadow-[0_4px_24px_rgba(230,158,70,0.18)]"
+          ? "border-[#054380]/40 shadow-[0_4px_24px_rgba(5,67,128,0.18)]"
           : "border-border card-shadow"
       )}
     >

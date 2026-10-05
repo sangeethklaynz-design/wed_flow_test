@@ -314,7 +314,7 @@ export default function GuestsPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search guests..."
-              className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-white text-navy text-sm focus:outline-none focus:ring-2 focus:ring-[#e69e46]/50 transition-shadow placeholder:text-gray-300"
+              className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-white text-navy text-sm focus:outline-none focus:ring-2 focus:ring-[#054380]/50 transition-shadow placeholder:text-gray-300"
             />
           </div>
 
@@ -347,7 +347,7 @@ export default function GuestsPage() {
                 type="button"
                 onClick={() => setAddOpen(true)}
                 aria-label="Add guest"
-                className="w-11 h-11 rounded-full bg-navy text-white flex items-center justify-center hover:bg-navy/90 transition-colors shadow-sm md:hidden focus:outline-none focus:ring-2 focus:ring-[#e69e46]"
+                className="w-11 h-11 rounded-full bg-navy text-white flex items-center justify-center hover:bg-navy/90 transition-colors shadow-sm md:hidden focus:outline-none focus:ring-2 focus:ring-[#054380]"
               >
                 <Plus className="w-5 h-5" strokeWidth={2.5} />
               </button>
@@ -355,7 +355,7 @@ export default function GuestsPage() {
               <button
                 type="button"
                 onClick={() => setAddOpen(true)}
-                className="hidden md:inline-flex items-center gap-2 bg-navy text-white font-medium px-4 py-2.5 rounded-xl hover:bg-navy/90 transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-[#e69e46]"
+                className="hidden md:inline-flex items-center gap-2 bg-navy text-white font-medium px-4 py-2.5 rounded-xl hover:bg-navy/90 transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-[#054380]"
               >
                 <Plus className="w-4 h-4" strokeWidth={2.5} />
                 Add guest

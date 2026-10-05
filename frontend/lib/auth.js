@@ -42,3 +42,8 @@ export function clearAuthSession() {
 export function logout() {
   clearAuthSession();
 }
+
+export function getHomePathForUser(user) {
+  if (user?.role === "ADMIN") return "/admin/dashboard";
+  return "/dashboard";
+}

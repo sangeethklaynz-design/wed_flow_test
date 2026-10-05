@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { Lock } from "lucide-react";
-import { apiRequest } from "@/lib/api";
+import { apiRequest, resolveMediaUrl } from "@/lib/api";
 
 export default function RsvpChangeRequestForm({ guestToken, rsvp, maxGuests }) {
   const [reason, setReason] = useState("");

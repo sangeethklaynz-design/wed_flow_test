@@ -1,0 +1,375 @@
+.pageContainer {
+  position: relative;
+  width: 100%;
+  height: 844px;
+  min-height: 844px;
+  overflow: hidden;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  background-color: #060e1d;
+  color: #ffffff;
+  user-select: none;
+  -webkit-user-select: none;
+  flex-shrink: 0;
+}
+
+/* Background image - full bleed on any screen */
+.bgImage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Atmospheric Contrast Overlay */
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    rgba(6, 15, 32, 0.38) 0%,
+    rgba(6, 15, 32, 0.12) 30%,
+    rgba(6, 15, 32, 0.2) 55%,
+    rgba(6, 15, 32, 0.65) 85%,
+    rgba(6, 15, 32, 0.95) 100%
+  );
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Scaled Stage Layer - exactly 390 x 844 reference canvas */
+.stage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 390px;
+  height: 844px;
+  transform-origin: center center;
+  z-index: 5;
+  pointer-events: auto;
+}
+
+/* 1. "YOU ARE INVITED" - Figma: X: 69, Y: 66, W: 252, H: 22, Fill: #F5F9FF */
+.invitedText {
+  position: absolute;
+  top: 66px;
+  left: 69px;
+  width: 252px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-cinzel), serif;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.26em;
+  color: var(--party-landing-eyebrow, #F5F9FF);
+  text-transform: uppercase;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8), 0 0 15px rgba(245, 249, 255, 0.3);
+  z-index: 10;
+  white-space: nowrap;
+}
+
+/* 2. Underline Deco - Figma: X: 101, Y: 70, W: 188, H: 63 */
+.underlineDeco {
+  position: absolute;
+  top: 70px;
+  left: 101px;
+  width: 188px;
+  height: 63px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 9;
+}
+
+.underlineDeco img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
+}
+
+/* 3. "Annual" - Figma: X: 26, Y: 125, W: 337, H: 66, Pinyon Script Regular 65 */
+.annualText {
+  position: absolute;
+  top: 125px;
+  left: 26px;
+  width: 337px;
+  height: 66px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-pinyon), cursive;
+  font-size: 65px;
+  font-weight: 400;
+  color: #f0c567;
+  background: linear-gradient(135deg, #FFF0B8 0%, #ECC369 45%, #D4A738 80%, #F5DE95 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 3px 12px rgba(0, 0, 0, 0.7);
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.6));
+  z-index: 11;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* 4. "GALA NIGHT" - Figma: X: 26, Y: 191, W: 337, H: 41, Petrona Bold 36 */
+.galaNightText {
+  position: absolute;
+  top: 191px;
+  left: 26px;
+  width: 337px;
+  height: 41px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-petrona), serif;
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #ffffff;
+  text-transform: uppercase;
+  text-align: center;
+  text-shadow: 0 3px 16px rgba(0, 0, 0, 0.9), 0 0 20px rgba(255, 255, 255, 0.25);
+  white-space: nowrap;
+  z-index: 10;
+}
+
+/* 5. Subtitle - Increased size and letter-spacing for high clarity */
+.subtitleContainer {
+  position: absolute;
+  top: 230px;
+  left: 20px;
+  width: 350px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  z-index: 10;
+}
+
+.subtitle {
+  font-family: var(--font-instrument), var(--font-sans), sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: 0.05em;
+  color: #F5F9FF;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.85);
+  margin: 0;
+}
+
+/* 6. Calendar Icon Circle - Figma: X: 66, Y: 290, W: 35, H: 35, Fill: #ECDAAB */
+.calendarCircle {
+  position: absolute;
+  top: 290px;
+  left: 66px;
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  background-color: #ECDAAB;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+}
+
+.calendarCircle svg {
+  width: 18px;
+  height: 18px;
+  color: #11223e;
+}
+
+/* Text "Thursday, 12 November 2026" - Increased size & letter spacing */
+.dateText {
+  position: absolute;
+  top: 298px;
+  left: 118px;
+  width: 235px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  font-family: var(--font-instrument), var(--font-sans), sans-serif;
+  font-size: 14.5px;
+  font-weight: 500;
+  color: #FFFFFF;
+  letter-spacing: 0.03em;
+  line-height: 20px;
+  white-space: nowrap;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.85);
+  z-index: 10;
+}
+
+/* 7. Clock Icon Circle - Figma: X: 66, Y: 333, W: 35, H: 35, Fill: #ECDAAB */
+.clockCircle {
+  position: absolute;
+  top: 333px;
+  left: 66px;
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  background-color: #ECDAAB;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+}
+
+.clockCircle svg {
+  width: 18px;
+  height: 18px;
+  color: #11223e;
+}
+
+/* Text "06:00 PM Onwards" - Increased size & letter spacing */
+.timeText {
+  position: absolute;
+  top: 341px;
+  left: 118px;
+  width: 235px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  font-family: var(--font-instrument), var(--font-sans), sans-serif;
+  font-size: 14.5px;
+  font-weight: 500;
+  color: #FFFFFF;
+  letter-spacing: 0.03em;
+  line-height: 20px;
+  white-space: nowrap;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.85);
+  z-index: 10;
+}
+
+/* 8. Location Icon Circle - Figma: X: 66, Y: 375, W: 35, H: 35, Fill: #ECDAAB */
+.locationCircle {
+  position: absolute;
+  top: 375px;
+  left: 66px;
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  background-color: #ECDAAB;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+}
+
+.locationCircle svg {
+  width: 18px;
+  height: 18px;
+  color: #11223e;
+}
+
+/* Text "Cinnamon Lakeside Colombo" - Increased size & letter spacing */
+.locationText {
+  position: absolute;
+  top: 383px;
+  left: 118px;
+  width: 245px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  font-family: var(--font-instrument), var(--font-sans), sans-serif;
+  font-size: 14.5px;
+  font-weight: 500;
+  color: #FFFFFF;
+  letter-spacing: 0.03em;
+  line-height: 20px;
+  white-space: nowrap;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.85);
+  z-index: 10;
+}
+
+/* 9. Scroll Down Group - Figma: X: 136, Y: 764, W: 117, H: 62 */
+.scrollGroup {
+  position: absolute;
+  top: 764px;
+  left: 136px;
+  width: 117px;
+  height: 62px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 10;
+  cursor: pointer;
+}
+
+.scrollButton {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.75);
+  background: rgba(11, 23, 48, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 12px rgba(255, 255, 255, 0.15);
+  transition: all 0.3s ease;
+  animation: floatBounce 2.4s ease-in-out infinite;
+}
+
+.scrollGroup:hover .scrollButton {
+  border-color: #ECDAAB;
+  color: #ECDAAB;
+  transform: translateY(3px) scale(1.05);
+  box-shadow: 0 6px 20px rgba(236, 218, 171, 0.35);
+}
+
+.scrollButton svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
+}
+
+/* Text "SCROLL  TO  EXPLORE" - Figma: X: 136, Y: 815, W: 117, H: 11, Instrument Sans Regular 8 */
+.scrollText {
+  width: 117px;
+  height: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-instrument), var(--font-sans), sans-serif;
+  font-size: 8px;
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  color: #FFFFFF;
+  text-transform: uppercase;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
+  transition: color 0.3s ease;
+  white-space: nowrap;
+}
+
+.scrollGroup:hover .scrollText {
+  color: #ECDAAB;
+}
+
+@keyframes floatBounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(4px);
+  }
+}

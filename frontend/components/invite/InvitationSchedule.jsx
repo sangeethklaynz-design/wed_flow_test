@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { resolveMediaUrl } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 
 function formatTime12(time24) {

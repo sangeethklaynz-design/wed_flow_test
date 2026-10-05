@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ExternalLink } from "lucide-react";
 import { NotificationBell } from "@/components/ui/NotificationPanel";
-import InvitationPage from "@/components/invite/InvitationPage";
+import { InviteByType } from "@/lib/inviteRenderer";
 import { apiRequest } from "@/lib/api";
 import { getAccessToken, clearAuthSession } from "@/lib/auth";
 
@@ -44,7 +44,7 @@ function ResponsivePhone({ children, onClick }) {
           }
         }}
         style={{ transform: `scale(${scale})` }}
-        className="group origin-center w-[418px] h-[872px] shrink-0 rounded-[48px] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] border-[14px] border-slate-900 bg-[#FAF6F0] overflow-hidden flex flex-col relative text-left cursor-pointer focus:outline-none focus-visible:ring-4 focus-visible:ring-[#e69e46] transition-transform"
+        className="group origin-center w-[418px] h-[872px] shrink-0 rounded-[48px] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] border-[14px] border-slate-900 bg-[#EAF5FF] overflow-hidden flex flex-col relative text-left cursor-pointer focus:outline-none focus-visible:ring-4 focus-visible:ring-[#054380] transition-transform"
         aria-label="Open full wedding invitation template"
       >
         {children}
@@ -147,13 +147,33 @@ export default function InvitePage() {
               <div className="w-2 h-2 bg-slate-800 rounded-full ml-3 mb-1" />
             </div>
 
-            <div className="flex-1 overflow-y-auto scrollbar-none pointer-events-none select-none relative bg-[#FAF6F0] flex justify-center">
-              <InvitationPage data={templateData} interactive={false} />
+            <div className="flex-1 overflow-y-auto scrollbar-none pointer-events-none select-none relative bg-[#EAF5FF] flex justify-center">
+              {templateData ? (
+                <InviteByType
+                  eventType={
+                    templateData?.static?.event?.type ||
+                    templateData?.eventType ||
+                    "wedding"
+                  }
+                  templateKey={
+                    templateData?.static?.event?.templateKey ||
+                    templateData?.templateKey ||
+                    "template-1"
+                  }
+                  templateData={templateData}
+                  templateConfig={
+                    templateData?.static?.templateConfig ||
+                    templateData?.templateConfig
+                  }
+                  embedded
+                  interactive={false}
+                />
+              ) : null}
             </div>
 
             <div className="absolute inset-x-0 bottom-0 z-40 bg-gradient-to-t from-navy/90 via-navy/40 to-transparent px-6 pb-8 pt-20 pointer-events-none flex justify-center">
               <span className="inline-flex items-center gap-2 rounded-full bg-white/95 px-5 py-2.5 text-sm font-semibold text-navy shadow-lg group-hover:bg-white group-hover:scale-105 transition-all">
-                <ExternalLink className="w-4 h-4 text-[#e69e46]" />
+                <ExternalLink className="w-4 h-4 text-[#054380]" />
                 Tap to open full invitation
               </span>
             </div>

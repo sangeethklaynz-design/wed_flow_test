@@ -1,0 +1,314 @@
+.pageContainer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  overflow: hidden;
+  background: linear-gradient(
+    180deg,
+    #588dcf 0%,
+    #8fbcee 14%,
+    #e5f2fd 34%,
+    #f6faff 55%,
+    #dbeafc 80%,
+    #7aa8e4 100%
+  );
+  color: #0a1c44;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Top Decorative Foliage Banner - Figma: W: 390, H: 205, Rotation: 180° */
+.topDeco {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: clamp(140px, 24.3%, 205px);
+  object-fit: cover;
+  object-position: top center;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Bottom Decorative Foliage Banner - Figma: W: 390, H: 205, Rotation: 0° */
+.bottomDeco {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: clamp(140px, 24.3%, 205px);
+  object-fit: cover;
+  object-position: top center;
+  transform: rotate(180deg);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Scaled Stage Container - exactly 390 x 844 reference canvas */
+.stage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 390px;
+  height: 844px;
+  transform-origin: center center;
+  z-index: 5;
+  pointer-events: auto;
+}
+
+/* 1. Tick Icon Inside Circle - Figma: X: 154, Y: 101, W: 81, H: 74 */
+.tickContainer {
+  position: absolute;
+  top: 101px;
+  left: 154px;
+  width: 81px;
+  height: 74px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.tickImg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 10px rgba(11, 99, 229, 0.2));
+}
+
+/* 2. Heading "THANK YOU!" - Figma: X: 13, Y: 183, W: 364, H: 44, Plus Jakarta Sans Bold 35 */
+.headingTitle {
+  position: absolute;
+  top: 183px;
+  left: 13px;
+  width: 364px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-jakarta), sans-serif;
+  font-size: 35px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: #081d64;
+  text-align: center;
+  margin: 0;
+  padding: 0;
+  letter-spacing: -0.2px;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.6);
+}
+
+/* 3. Subtitle Primary - Figma: X: 54, Y: 237, W: 283, H: 44, Inter Regular 18 */
+.subtitlePrimary {
+  position: absolute;
+  top: 237px;
+  left: 54px;
+  width: 283px;
+  height: 44px;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 18px;
+  font-weight: 400;
+  color: #1e3a7a;
+  text-align: center;
+  line-height: 22px;
+  margin: 0;
+  padding: 0;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+}
+
+/* 4. Highlight text - Figma: X: 53, Y: 304, W: 283, H: 22, Inter Bold 18 */
+.subtitleHighlight {
+  position: absolute;
+  top: 304px;
+  left: 53px;
+  width: 283px;
+  height: 22px;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: #0174EF;
+  text-align: center;
+  margin: 0;
+  padding: 0;
+  letter-spacing: -0.1px;
+}
+
+/* 5. Next Step Section - Figma: Circle at X: 47, Y: 401; Title at X: 129, Y: 396; Desc at X: 129, Y: 426 */
+.nextStepIconGroup {
+  position: absolute;
+  top: 401px;
+  left: 47px;
+  width: 68px;
+  height: 67px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.nextStepCircle {
+  width: 68px;
+  height: 67px;
+  border-radius: 50%;
+  background: #d4e7fc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nextStepTickImg {
+  width: 44px;
+  height: 40px;
+  object-fit: contain;
+  display: block;
+}
+
+.nextStepTitle {
+  position: absolute;
+  top: 396px;
+  left: 129px;
+  width: 213px;
+  height: 23px;
+  font-family: var(--font-jakarta), sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: #081d64;
+  margin: 0;
+  padding: 0;
+  line-height: 23px;
+  text-align: left;
+}
+
+.nextStepDesc {
+  position: absolute;
+  top: 426px;
+  left: 129px;
+  width: 261px;
+  height: 34px;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: #1e3a7a;
+  line-height: 17px;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+}
+
+/* 6. Action Buttons Container */
+.buttonsContainer {
+  position: absolute;
+  top: 494px;
+  left: 45px;
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Primary Button: Proceed to Payment */
+.btnPrimary {
+  width: 100%;
+  height: 50px;
+  border-radius: 12px;
+  background: #081368;
+  color: #ffffff;
+  border: none;
+  font-family: var(--font-inter), var(--font-jakarta), sans-serif;
+  font-size: 15.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+  box-shadow: 0 4px 14px rgba(8, 19, 104, 0.25);
+  outline: none;
+}
+
+.btnPrimary:hover {
+  transform: translateY(-2px);
+  background: #0a187a;
+  box-shadow: 0 8px 20px rgba(8, 19, 104, 0.35);
+}
+
+.btnPrimary:active {
+  transform: translateY(0);
+}
+
+.arrowIcon {
+  width: 18px;
+  height: 18px;
+  stroke: #ffffff;
+}
+
+/* Secondary Button: Back to Invitation / Save the Schedule */
+.btnSecondary {
+  width: 100%;
+  height: 50px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #081368;
+  border: 1.5px solid #081368;
+  font-family: var(--font-inter), var(--font-jakarta), sans-serif;
+  font-size: 15.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+  box-shadow: 0 3px 10px rgba(10, 35, 90, 0.06);
+  outline: none;
+}
+
+.btnSecondary:hover {
+  transform: translateY(-2px);
+  background: #f0f6ff;
+  box-shadow: 0 6px 16px rgba(10, 35, 90, 0.12);
+}
+
+.btnSecondary:active {
+  transform: translateY(0);
+}
+
+/* Disabled State for Payment Button */
+.btnDisabled {
+  opacity: 0.38 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+  filter: grayscale(80%) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.btnDisabled:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Loading Spinner State */
+.btnLoading {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.spinner {
+  width: 17px;
+  height: 17px;
+  animation: spin 0.85s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertTriangle, Trash2 } from "lucide-react";
+import ModalCloseButton from "@/components/ui/ModalCloseButton";
 
 export default function ConfirmDeleteModal({
   open,
@@ -29,7 +30,8 @@ export default function ConfirmDeleteModal({
       />
 
       <div className="relative w-full sm:max-w-md bg-cream sm:rounded-[28px] rounded-t-[28px] p-6 sm:p-8 card-shadow max-h-[92vh] overflow-y-auto">
-        <div className="flex items-start gap-3 mb-5 sm:mb-6">
+        <ModalCloseButton onClick={onClose} />
+        <div className="flex items-start gap-3 mb-5 sm:mb-6 pr-12">
           <div className="w-10 h-10 rounded-2xl bg-gold text-gold-text flex items-center justify-center border border-[#f3dcc0]">
             <AlertTriangle className="w-5 h-5" strokeWidth={2.25} />
           </div>

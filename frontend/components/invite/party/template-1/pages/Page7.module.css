@@ -1,0 +1,179 @@
+.pageContainer {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  color: #0a1c44;
+  user-select: none;
+  -webkit-user-select: none;
+  flex-shrink: 0;
+}
+
+.topDeco {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 168px;
+  object-fit: cover;
+  object-position: top center;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.contentColumn {
+  position: relative;
+  z-index: 5;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 0 0 auto;
+  padding: 110px 20px 96px;
+  box-sizing: border-box;
+}
+
+.pageTitle {
+  width: 235px;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-jakarta), sans-serif;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: #081d64;
+  text-align: center;
+  margin: 0;
+  letter-spacing: -0.3px;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.6);
+}
+
+.calendarLogoContainer {
+  position: relative;
+  width: 104px;
+  height: 97px;
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.calendarSvg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 4px 8px rgba(11, 99, 229, 0.15));
+}
+
+.calendarTickImg {
+  position: absolute;
+  top: 43.5px;
+  left: 28.3px;
+  width: 46.61px;
+  height: 31.07px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.subtitle {
+  width: 295px;
+  max-width: 100%;
+  margin: 16px 0 0;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 18px;
+  font-weight: 400;
+  color: #1e3a7a;
+  text-align: center;
+  line-height: 22px;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+}
+
+.buttonsContainer {
+  width: 308px;
+  max-width: 100%;
+  margin-top: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  flex-shrink: 0;
+}
+
+.actionButton {
+  position: relative;
+  width: 100%;
+  height: 58px;
+  border-radius: 12px;
+  background: rgba(240, 245, 252, 0.88);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1.5px solid rgba(195, 215, 240, 0.85);
+  box-shadow: 0 4px 14px rgba(10, 35, 90, 0.08);
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.18s ease, background 0.18s ease,
+    border-color 0.18s ease, box-shadow 0.18s ease;
+  outline: none;
+  box-sizing: border-box;
+  padding: 0;
+}
+
+.actionButton:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.98);
+  border-color: rgba(140, 185, 245, 0.95);
+  box-shadow: 0 8px 22px rgba(10, 35, 90, 0.14);
+}
+
+.actionButton:active {
+  transform: translateY(0);
+}
+
+.iconWrapper {
+  position: absolute;
+  left: 48px;
+  width: 60px;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.buttonLogoImg {
+  max-width: 44px;
+  max-height: 44px;
+  object-fit: contain;
+}
+
+.buttonLabel {
+  position: absolute;
+  left: 122px;
+  font-family: var(--font-inter), var(--font-jakarta), sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  color: #0174ef;
+  letter-spacing: -0.1px;
+  white-space: nowrap;
+}
+
+/* Bottom décor stays in document flow below calendar buttons — never cropped */
+.bottomBg {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  object-position: bottom center;
+  pointer-events: none;
+  flex-shrink: 0;
+  margin-top: auto;
+}

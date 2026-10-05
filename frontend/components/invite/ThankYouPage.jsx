@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
+import { resolveMediaUrl } from "@/lib/api";
 import { useSearchParams } from "next/navigation";
 import { getAccessToken } from "@/lib/auth";
 

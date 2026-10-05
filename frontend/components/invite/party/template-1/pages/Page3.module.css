@@ -1,0 +1,426 @@
+.pageContainer {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  color: #0a1c44;
+  user-select: none;
+  -webkit-user-select: none;
+  flex-shrink: 0;
+}
+
+.topDeco {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  object-position: top center;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.contentColumn {
+  position: relative;
+  z-index: 5;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 0 0 auto;
+  padding: 91px 20px 28px;
+  box-sizing: border-box;
+}
+
+.headerBlock {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 100%;
+}
+
+.headerBlock .beOurGuest,
+.headerBlock .rsvpText,
+.headerBlock .underlineDeco,
+.headerBlock .celebrateWithYou {
+  position: relative;
+  top: auto;
+  left: auto;
+}
+
+.headerBlock .underlineDeco {
+  margin-top: -28px;
+}
+
+.headerBlock .celebrateWithYou {
+  margin-top: 4px;
+  width: auto;
+  max-width: 320px;
+  white-space: normal;
+}
+
+.formContainerFlow {
+  position: relative;
+  width: 306px;
+  max-width: 100%;
+  margin: 16px auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+/* Scaled Stage Container - exactly 390 x 844 reference canvas */
+.stage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 390px;
+  height: 844px;
+  transform-origin: center center;
+  z-index: 5;
+  pointer-events: auto;
+}
+
+/* 1. "Be Our Guest" - Figma: X: 5, Y: 91, W: 364, H: 32, Petrona Bold 28 */
+.beOurGuest {
+  position: absolute;
+  top: 91px;
+  left: 5px;
+  width: 364px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-family: var(--font-petrona), serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--party-text-title, var(--party-text-title, #0c1e48));
+  line-height: 32px;
+  letter-spacing: -0.01em;
+  text-shadow: 0 1px 4px rgba(255, 255, 255, 0.7);
+  z-index: 10;
+}
+
+/* 2. "RSVP" - Figma: X: 51, Y: 114, W: 270, H: 69, Vujahday Script Regular 50 */
+.rsvpText {
+  position: absolute;
+  top: 114px;
+  left: 51px;
+  width: 270px;
+  height: 69px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-family: var(--font-vujahday), cursive;
+  font-size: 50px;
+  font-weight: 400;
+  color: #c99d34;
+  line-height: 69px;
+  letter-spacing: 0.02em;
+  z-index: 10;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8), 0 0 12px rgba(201, 157, 52, 0.2);
+}
+
+/* 3. Underline Deco - Figma: X: 93, Y: 150, W: 188, H: 63 */
+.underlineDeco {
+  position: absolute;
+  top: 150px;
+  left: 93px;
+  width: 188px;
+  height: 63px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 9;
+}
+
+.underlineDeco img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(10, 28, 68, 0.2));
+}
+
+/* 4. "We'd love to celebrate with you!" - Figma: X: 45, Y: 196, W: 283, H: 14, Inria Serif Regular 12, Letter Spacing 10% */
+.celebrateWithYou {
+  position: absolute;
+  top: 196px;
+  left: 45px;
+  width: 283px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-family: var(--font-inria), serif;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  color: var(--party-text-title, var(--party-text-title, #0c1e48));
+  line-height: 14px;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+/* RSVP Form Container - with increased spacing between each component */
+.formContainer {
+  position: absolute;
+  top: 228px;
+  left: 42px;
+  width: 306px;
+  display: flex;
+  flex-direction: column;
+  gap: 13px; /* increased spacing between components */
+  z-index: 10;
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fieldLabel {
+  font-family: var(--font-instrument), var(--font-sans), sans-serif;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--party-text-title, var(--party-text-title, #0c1e48));
+  letter-spacing: -0.01em;
+}
+
+.inputField {
+  width: 100%;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1.2px solid #b4cef4;
+  background-color: #ffffff;
+  font-family: var(--font-instrument), var(--font-sans), sans-serif;
+  font-size: 12.5px;
+  color: var(--party-text-body, #162646);
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 1px 2px rgba(12, 30, 72, 0.04);
+}
+
+.inputField:focus {
+  border-color: var(--party-text-accent, #1e75c8);
+  box-shadow: 0 0 0 2px rgba(30, 117, 200, 0.2);
+}
+
+.inputField::placeholder {
+  color: #92a4bc;
+  font-weight: 400;
+}
+
+/* Radio Group */
+.radioGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 3px;
+  margin-bottom: 2px;
+}
+
+.radioOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.radioCircle {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.8px solid #b4cef4;
+  background-color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.radioSelected .radioCircle {
+  border-color: var(--party-text-title, #080480);
+  background-color: #ffffff;
+}
+
+.radioDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--party-text-title, #080480);
+}
+
+.radioText {
+  font-family: var(--font-instrument), var(--font-sans), sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4b5f82;
+  user-select: none;
+}
+
+.radioSelected .radioText {
+  color: var(--party-text-title, var(--party-text-title, #0c1e48));
+}
+
+/* Select Dropdown */
+.selectWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.selectField {
+  width: 100%;
+  height: 34px;
+  padding: 0 32px 0 12px;
+  border-radius: 8px;
+  border: 1.2px solid #b4cef4;
+  background-color: #ffffff;
+  font-family: var(--font-instrument), var(--font-sans), sans-serif;
+  font-size: 12.5px;
+  color: var(--party-text-accent, #1e75c8);
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(12, 30, 72, 0.04);
+}
+
+.selectField:focus {
+  border-color: var(--party-text-accent, #1e75c8);
+  box-shadow: 0 0 0 2px rgba(30, 117, 200, 0.2);
+}
+
+.selectPlaceholder {
+  color: #92a4bc !important;
+}
+
+.selectArrow {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  width: 14px;
+  height: 14px;
+  stroke: var(--party-text-title, #080480);
+}
+
+/* Submit Button - Figma: X: ~58, Y: ~768, W: 274, H: 42 */
+.submitButton {
+  margin-top: 8px;
+  width: 100%;
+  height: 42px;
+  border-radius: 10px;
+  background: var(--party-text-title, #080480);
+  color: #ffffff;
+  font-family: var(--font-instrument), var(--font-sans), sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 14px rgba(8, 4, 128, 0.35);
+}
+
+.submitButton:hover {
+  background: #0d06a8;
+  box-shadow: 0 6px 18px rgba(8, 4, 128, 0.45);
+  transform: translateY(-1px);
+}
+
+.submitButton:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 8px rgba(8, 4, 128, 0.3);
+}
+
+/* Toast/Success overlay */
+.successOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  animation: fadeIn 0.3s ease-out;
+  padding: 24px;
+  text-align: center;
+}
+
+.successIcon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #e8f4fd;
+  color: var(--party-text-accent, #1e75c8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  box-shadow: 0 6px 20px rgba(30, 117, 200, 0.2);
+}
+
+.successIcon svg {
+  width: 36px;
+  height: 36px;
+}
+
+.successTitle {
+  font-family: var(--font-petrona), serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--party-text-title, var(--party-text-title, #0c1e48));
+  margin-bottom: 8px;
+}
+
+.successText {
+  font-family: var(--font-instrument), sans-serif;
+  font-size: 13px;
+  color: #274378;
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+.resetButton {
+  padding: 8px 20px;
+  border-radius: 8px;
+  background: var(--party-text-title, #080480);
+  color: #ffffff;
+  font-family: var(--font-instrument), sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

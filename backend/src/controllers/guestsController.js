@@ -197,15 +197,16 @@ async function createGuest(req, res) {
     await sequelize.query(
       `
       INSERT INTO guests (
-        id, wedding_id, full_name, whatsapp_number, invited_count,
+        id, wedding_id, event_id, full_name, whatsapp_number, invited_count,
         invitation_note, table_number, unique_token, rsvp_status
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDING');
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING');
       `,
       {
         replacements: [
           guestId,
           wedding.id,
+          wedding.event_id || null,
           name,
           phone,
           guestCount,

@@ -4,9 +4,24 @@ const { getWeddingForUser } = require("../utils/wedding");
 
 async function createNotification(weddingId, type, title, message, guestId = null) {
   const id = crypto.randomUUID();
+  const [weddingRows] = await sequelize.query(
+    `SELECT event_id FROM weddings WHERE id = ? LIMIT 1;`,
+    { replacements: [weddingId] }
+  );
+  const eventId = weddingRows[0]?.event_id || null;
   await sequelize.query(
-    `INSERT INTO notifications (id, wedding_id, guest_id, type, title, message) VALUES (?, ?, ?, ?, ?, ?);`,
-    { replacements: [id, weddingId, guestId, type, title, message || null] }
+    `INSERT INTO notifications (id, wedding_id, event_id, guest_id, type, title, message) VALUES (?, ?, ?, ?, ?, ?, ?);`,
+    {
+      replacements: [
+        id,
+        weddingId,
+        eventId,
+        guestId,
+        type,
+        title,
+        message || null,
+      ],
+    }
   );
   return id;
 }

@@ -7,15 +7,27 @@ async function getWeddingForUser(userId, weddingIdFromToken) {
 
   const sql = weddingIdFromToken
     ? `
-      SELECT id, user_id, couple_names, bride_name, groom_name, wedding_date
-      FROM weddings
-      WHERE user_id = ? AND id = ?
+      SELECT
+        w.id, w.user_id, w.couple_names, w.bride_name, w.groom_name, w.wedding_date,
+        w.event_id,
+        e.type AS event_type,
+        e.template_key AS template_key,
+        e.client_slug AS client_slug
+      FROM weddings w
+      LEFT JOIN events e ON e.id = w.event_id
+      WHERE w.user_id = ? AND w.id = ?
       LIMIT 1;
     `
     : `
-      SELECT id, user_id, couple_names, bride_name, groom_name, wedding_date
-      FROM weddings
-      WHERE user_id = ?
+      SELECT
+        w.id, w.user_id, w.couple_names, w.bride_name, w.groom_name, w.wedding_date,
+        w.event_id,
+        e.type AS event_type,
+        e.template_key AS template_key,
+        e.client_slug AS client_slug
+      FROM weddings w
+      LEFT JOIN events e ON e.id = w.event_id
+      WHERE w.user_id = ?
       LIMIT 1;
     `;
 

@@ -55,7 +55,15 @@ export default function DashboardLayout({ children }) {
       return;
     }
 
-    setUser(getStoredUser());
+    const stored = getStoredUser();
+    if (stored?.role === "ADMIN") {
+      router.replace("/admin/dashboard");
+      setIsAuthorized(false);
+      setAuthChecked(true);
+      return;
+    }
+
+    setUser(stored);
     setIsAuthorized(true);
     setAuthChecked(true);
 
@@ -64,6 +72,11 @@ export default function DashboardLayout({ children }) {
       try {
         const data = await apiRequest("/api/auth/me", { token });
         if (data?.user) {
+          if (data.user.role === "ADMIN") {
+            setAuthSession({ user: data.user });
+            router.replace("/admin/dashboard");
+            return;
+          }
           setAuthSession({ user: data.user });
           setUser(data.user);
         }
@@ -85,16 +98,24 @@ export default function DashboardLayout({ children }) {
   const initials = user?.initials || buildInitials(coupleNames);
 
   return (
-    <div className="min-h-screen-zoom flex flex-col md:flex-row bg-[#fdfcf9]">
+    <div className="min-h-screen-zoom flex flex-col md:flex-row bg-[#EAF5FF]">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex flex-col w-64 border-r border-[#eef0f3] bg-white sticky top-0 h-screen-zoom shrink-0">
+      <aside className="hidden md:flex flex-col w-64 border-r border-white/10 bg-[#054380] sticky top-0 h-screen-zoom shrink-0">
         <div className="p-8 pb-4">
           <div className="flex flex-col items-center">
-            <div className="w-12 h-12 rounded-full flex items-center justify-center mb-4 shadow-sm overflow-hidden bg-navy">
-              <Image src="/app-logo.png" alt="Wed Flow" width={48} height={48} className="object-cover" />
+            <div className="w-14 h-14 flex items-center justify-center mb-4">
+              <Image
+                src="/wedflow-logo.png"
+                alt="Wed Flow"
+                width={56}
+                height={56}
+                className="object-contain"
+                priority
+                unoptimized
+              />
             </div>
-            <h1 className="font-serif text-3xl font-bold text-navy">Wed Flow</h1>
-            <p className="text-xs text-muted mt-2 text-center">Your wedding, beautifully organized</p>
+            <h1 className="font-serif text-3xl font-bold text-white">Wed Flow</h1>
+            <p className="text-xs text-white/80 mt-2 text-center">Events. People. Possibilities.</p>
           </div>
         </div>
 
@@ -108,8 +129,8 @@ export default function DashboardLayout({ children }) {
                 className={clsx(
                   "flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 outline-none focus:outline-none focus-visible:outline-none",
                   isActive
-                    ? "bg-[#fcecd4] text-[#e69e46] font-medium"
-                    : "text-navy hover:bg-[#fdfcf9]"
+                    ? "bg-[#EAF5FF] text-[#054380] font-medium"
+                    : "text-white hover:bg-white/10"
                 )}
               >
                 <item.icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 2} />
@@ -119,29 +140,25 @@ export default function DashboardLayout({ children }) {
           })}
         </nav>
 
-        <div className="p-4 border-t border-[#eef0f3]">
+        <div className="p-4 border-t border-white/20">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-[#1A1D2E] border-2 border-[#e69e46] shadow-sm"
-                title="Premium member"
-              >
-                <span className="font-serif font-bold text-[#e69e46] text-[11px] leading-none tracking-tight">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-white shadow-sm">
+                <span className="font-serif font-bold text-[#054380] text-[11px] leading-none tracking-tight">
                   {initials}
                 </span>
               </div>
               <div>
-                <p className="font-serif font-bold text-navy text-sm">
+                <p className="font-serif font-bold text-white text-sm">
                   {coupleNames}
                 </p>
-                <span className="text-[10px] bg-[#fcecd4] text-[#e69e46] px-2 py-0.5 rounded-full font-medium">Premium Membership</span>
               </div>
             </div>
             <button
               type="button"
               onClick={handleLogout}
               aria-label="Log out"
-              className="text-muted hover:text-red-500 transition-colors"
+              className="text-white/70 hover:text-white transition-colors"
             >
               <LogOut className="w-5 h-5" />
             </button>
@@ -164,7 +181,7 @@ export default function DashboardLayout({ children }) {
               href={item.href}
               className={clsx(
                 "flex flex-col items-center justify-center space-y-1 w-16",
-                isActive ? "text-[#e69e46]" : "text-muted"
+                isActive ? "text-[#054380]" : "text-muted"
               )}
             >
               <item.icon className="w-6 h-6" strokeWidth={isActive ? 2.5 : 2} />

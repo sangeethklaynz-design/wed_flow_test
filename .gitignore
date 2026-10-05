@@ -78,6 +78,14 @@ template_page/
 backend/couple-registrations/*
 !backend/couple-registrations/example.txt
 
+# Admin login credentials (may contain passwords) — keep the example template
+backend/admin-credentials.txt
+!backend/admin-credentials.example.txt
+
+# Local scratch / extracted invitation dumps (not for git)
+backend/temp/
+backend/temp-corpo/
+
 # Runtime uploads / generated PDFs
 backend/uploads/
 

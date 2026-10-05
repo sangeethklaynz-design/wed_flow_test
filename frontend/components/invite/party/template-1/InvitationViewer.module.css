@@ -1,0 +1,241 @@
+.desktopShell {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--desktop-bg);
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+/* Mobile Shell: pure full-screen, no desktop background */
+.mobileShell {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+  background-color: #060e1d;
+  margin: 0;
+  padding: 0;
+}
+
+/* Floating "Back to invite" pill button (Desktop outer area) */
+.backButtonDesktop {
+  position: fixed;
+  top: 24px;
+  left: 28px;
+  z-index: 100;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 22px;
+  border-radius: 9999px;
+  background: #ffffff;
+  color: #1e293b;
+  font-family: var(--font-sans), sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: all 0.25s ease;
+  cursor: pointer;
+}
+
+.backButtonDesktop:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  color: #0f172a;
+}
+
+.backButtonDesktop svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  fill: none;
+  transition: transform 0.2s ease;
+}
+
+.backButtonDesktop:hover svg {
+  transform: translateX(-3px);
+}
+
+/* Floating "Back to invite" for Mobile (only when scrolled down on Page 2) */
+.backButtonMobile {
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 100;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  background: rgba(11, 23, 48, 0.75);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #f0c567;
+  border: 1px solid rgba(236, 218, 171, 0.35);
+  font-family: var(--font-sans), sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  animation: fadeIn 0.3s ease forwards;
+  cursor: pointer;
+}
+
+.backButtonMobile svg {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  fill: none;
+}
+
+/* Floating Audio Toggle Button (Desktop outer area) */
+.audioButtonDesktop {
+  position: fixed;
+  bottom: 24px;
+  right: 28px;
+  z-index: 100;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #64748b;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.audioButtonDesktop:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+  color: #1e293b;
+}
+
+.audioButtonDesktop.playing {
+  color: #d4af37;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.audioButtonDesktop svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+/* Floating Audio Toggle Button (Mobile mode) */
+.audioButtonMobile {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 100;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(11, 23, 48, 0.65);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #f0c567;
+  border: 1px solid rgba(236, 218, 171, 0.3);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.audioButtonMobile.playing {
+  color: #ffeaa7;
+  border-color: #f0c567;
+}
+
+.audioButtonMobile svg {
+  width: 17px;
+  height: 17px;
+  fill: currentColor;
+}
+
+/* Central Mobile/Card Device Container (Desktop/Tablet) */
+.deviceFrame {
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 25px 60px -15px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(0, 0, 0, 0.06),
+    0 10px 20px -5px rgba(0, 0, 0, 0.1);
+  background-color: #060e1d;
+  display: flex;
+  flex-direction: column;
+  transition: width 0.2s ease, height 0.2s ease;
+}
+
+/* Mobile Frame (fills screen) */
+.mobileFrame {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+  background-color: #060e1d;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scroll Viewport */
+.scrollViewport {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollViewport::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .desktopShell {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100dvh;
+    background-color: #060e1d;
+    padding: 0;
+  }
+  .deviceFrame {
+    width: 100vw !important;
+    height: 100dvh !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

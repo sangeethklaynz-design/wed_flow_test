@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
+import ModalCloseButton from "@/components/ui/ModalCloseButton";
 
 export default function AddGuestModal({
   open,
@@ -84,7 +85,8 @@ export default function AddGuestModal({
       />
 
       <div className="relative w-full sm:max-w-md bg-cream sm:rounded-[28px] rounded-t-[28px] p-6 sm:p-8 card-shadow max-h-[92vh] overflow-y-auto">
-        <div className="text-center mb-6 sm:mb-7">
+        <ModalCloseButton onClick={onClose} />
+        <div className="text-center mb-6 sm:mb-7 pr-12">
           <h2
             id="add-guests-title"
             className="font-serif font-bold text-xl text-navy mb-2"
@@ -107,7 +109,7 @@ export default function AddGuestModal({
               type="text"
               placeholder="e.g. Tharindu Silva"
               {...register("name", { required: true })}
-              className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#e69e46]/50 transition-shadow placeholder:text-gray-300"
+              className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#054380]/50 transition-shadow placeholder:text-gray-300"
             />
             {errors.name && (
               <p className="text-xs text-red-500">Full name is required</p>
@@ -137,7 +139,7 @@ export default function AddGuestModal({
                   return "Number must start with 0 or +94";
                 }
               })}
-              className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#e69e46]/50 transition-shadow placeholder:text-gray-300"
+              className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#054380]/50 transition-shadow placeholder:text-gray-300"
             />
             {errors.phone && (
               <p className="text-xs text-red-500">{errors.phone.message}</p>
@@ -153,7 +155,7 @@ export default function AddGuestModal({
               min={1}
               {...register("invitees", { required: true, min: 1 })}
               placeholder="e.g. 2"
-              className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#e69e46]/50 transition-shadow placeholder:text-gray-300"
+              className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#054380]/50 transition-shadow placeholder:text-gray-300"
             />
             {errors.invitees && (
               <p className="text-xs text-red-500">Enter at least 1 invitee</p>
@@ -170,7 +172,7 @@ export default function AddGuestModal({
                 type="text"
                 placeholder="e.g. A1"
                 {...register("tableNo")}
-                className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#e69e46]/50 transition-shadow placeholder:text-gray-300"
+                className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#054380]/50 transition-shadow placeholder:text-gray-300"
               />
               {errors.tableNo && (
                 <p className="text-xs text-red-500">{errors.tableNo.message}</p>
@@ -186,7 +188,7 @@ export default function AddGuestModal({
               rows={3}
               placeholder="e.g. You and your family"
               {...register("note", { required: "Invitation note is required" })}
-              className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#e69e46]/50 transition-shadow placeholder:text-gray-300 resize-none"
+              className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#054380]/50 transition-shadow placeholder:text-gray-300 resize-none"
             />
             {errors.note && (
               <p className="text-xs text-red-500">{errors.note.message}</p>

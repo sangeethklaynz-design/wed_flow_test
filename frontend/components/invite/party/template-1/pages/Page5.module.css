@@ -1,0 +1,275 @@
+.pageContainer {
+  position: relative;
+  width: 100%;
+  height: 844px;
+  min-height: 844px;
+  overflow: hidden;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  color: #0a1c44;
+  user-select: none;
+  -webkit-user-select: none;
+  flex-shrink: 0;
+}
+
+/* Top Decorative Foliage Banner - full-bleed responsive */
+.topDeco {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: clamp(130px, 23%, 205px);
+  object-fit: cover;
+  object-position: top center;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Bottom Colombo Skyline Scene - Figma: X: 0, Y: 3969 (552), W: 390, H: 280 */
+.bottomBg {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: clamp(230px, 33.1%, 280px);
+  object-fit: cover;
+  object-position: bottom center;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Scaled Stage Container - exactly 390 x 844 reference canvas */
+.stage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 390px;
+  height: 844px;
+  transform-origin: center center;
+  z-index: 5;
+  pointer-events: auto;
+}
+
+/* 1. "Event Location" - Figma: X: 13, Y: 3511 (94), W: 364, H: 32, Petrona Bold 28 */
+.titleLocation {
+  position: absolute;
+  top: 94px;
+  left: 13px;
+  width: 364px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-family: var(--font-petrona), serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--party-text-title, #080480);
+  line-height: 32px;
+  letter-spacing: -0.01em;
+  text-shadow: 0 1px 4px rgba(255, 255, 255, 0.7);
+  z-index: 10;
+}
+
+/* 2. Underline Deco - Figma: X: 101, Y: 3520 (103), W: 188, H: 63 */
+.underlineDeco {
+  position: absolute;
+  top: 103px;
+  left: 101px;
+  width: 188px;
+  height: 63px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 9;
+}
+
+.underlineDeco img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(10, 28, 68, 0.2));
+}
+
+/* 3. Location Illustration Icon - Figma: X: 103, Y: 3576 (159), W: 177, H: 100 */
+.hotelIconContainer {
+  position: absolute;
+  top: 159px;
+  left: 103px;
+  width: 177px;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.hotelIconContainer img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 8px rgba(37, 99, 235, 0.18));
+}
+
+/* 4. Hotel Title "Cinnamon Lakeside Colombo" - Figma: X: 46, Y: 3686 (269), W: 298, H: 23, Plus Jakarta Sans Bold 18 */
+.venueTitle {
+  position: absolute;
+  top: 269px;
+  left: 46px;
+  width: 298px;
+  height: 23px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-family: var(--font-jakarta), sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--party-text-title, #080480);
+  letter-spacing: -0.01em;
+  line-height: 23px;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+/* 5. Location Pin Icon - Figma: X: 69, Y: 3734 (317), W: 26, H: 26 */
+.pinIcon {
+  position: absolute;
+  top: 317px;
+  left: 69px;
+  width: 26px;
+  height: 26px;
+  color: var(--party-text-accent, #1e75c8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.pinIcon svg {
+  width: 26px;
+  height: 26px;
+}
+
+/* 6. Address Text - Figma: X: 107, Y: 3733 (316), W: 262, H: 54, Inter Regular 15 */
+.addressText {
+  position: absolute;
+  top: 316px;
+  left: 107px;
+  width: 262px;
+  height: 54px;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  color: #334155;
+  line-height: 1.25;
+  margin: 0;
+  z-index: 10;
+}
+
+/* 7. AREA Section - Figma: X: 107, Y: 3808 (391), W: 72, H: 18, Inter Bold 15 */
+.areaLabel {
+  position: absolute;
+  top: 391px;
+  left: 107px;
+  width: 72px;
+  height: 18px;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--party-text-title, #080480);
+  line-height: 18px;
+  letter-spacing: 0;
+  z-index: 10;
+}
+
+/* Colombo - Figma: X: 107, Y: 3829 (412), W: 72, H: 18, Inter Regular 15 */
+.areaValue {
+  position: absolute;
+  top: 412px;
+  left: 107px;
+  width: 72px;
+  height: 18px;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  color: #475569;
+  line-height: 18px;
+  letter-spacing: 0;
+  z-index: 10;
+}
+
+/* 8. GET DIRECTIONS Section - Figma: X: 107, Y: 3869 (452), W: 179, H: 18, Inter Bold 15 */
+.directionsLabel {
+  position: absolute;
+  top: 452px;
+  left: 107px;
+  width: 179px;
+  height: 18px;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--party-text-title, #080480);
+  line-height: 18px;
+  letter-spacing: 0;
+  z-index: 10;
+}
+
+/* Find the fastest route to the events - Figma: X: 107, Y: 3890 (473), W: 210, H: 36, Inter Regular 15 */
+.directionsValue {
+  position: absolute;
+  top: 473px;
+  left: 107px;
+  width: 210px;
+  height: 36px;
+  font-family: var(--font-inter), sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  color: #475569;
+  line-height: 18px;
+  letter-spacing: 0;
+  z-index: 10;
+}
+
+/* 9. "Open in Google Maps" Button - Figma: X: 55, Y: 3956 (539), W: 280, H: 40, Radius: 12 */
+.mapsButton {
+  position: absolute;
+  top: 539px;
+  left: 55px;
+  width: 280px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--party-text-title, #080480);
+  color: #ffffff;
+  font-family: var(--font-jakarta), var(--font-sans), sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.15s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 14px rgba(8, 4, 128, 0.35);
+  z-index: 10;
+}
+
+.mapsButton:hover {
+  background: #0d06a8;
+  box-shadow: 0 6px 18px rgba(8, 4, 128, 0.45);
+  transform: translateY(-1px);
+}
+
+.mapsButton:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 8px rgba(8, 4, 128, 0.3);
+}
+
+.mapsButton svg {
+  width: 17px;
+  height: 17px;
+  fill: currentColor;
+}

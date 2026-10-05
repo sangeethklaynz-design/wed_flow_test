@@ -18,6 +18,8 @@ function requireAuth(req, res, next) {
       email: decoded.email,
       role: decoded.role,
       weddingId: decoded.weddingId || null,
+      eventId: decoded.eventId || null,
+      eventType: decoded.eventType || null,
     };
     return next();
   } catch (err) {

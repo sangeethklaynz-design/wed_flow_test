@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import TimePicker from "@/components/ui/TimePicker";
+import ModalCloseButton from "@/components/ui/ModalCloseButton";
 
 export default function AddScheduleEventModal({
   open,
@@ -100,7 +101,8 @@ export default function AddScheduleEventModal({
       />
 
       <div className="relative w-full sm:max-w-md bg-cream sm:rounded-[28px] rounded-t-[28px] p-6 sm:p-8 card-shadow max-h-[92vh] overflow-y-auto">
-        <div className="text-center mb-6 sm:mb-7">
+        <ModalCloseButton onClick={onClose} />
+        <div className="text-center mb-6 sm:mb-7 pr-12">
           <h2
             id="schedule-event-title"
             className="font-serif font-bold text-xl text-navy mb-2"
@@ -129,7 +131,7 @@ export default function AddScheduleEventModal({
               type="text"
               placeholder="e.g. Lunch Reception"
               {...register("title", { required: true })}
-              className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#e69e46]/50 transition-shadow placeholder:text-gray-300"
+              className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#054380]/50 transition-shadow placeholder:text-gray-300"
             />
             {errors.title && (
               <p className="text-xs text-red-500">Event name is required</p>
@@ -192,7 +194,7 @@ export default function AddScheduleEventModal({
               rows={3}
               placeholder="e.g. Ballroom · Galle Face"
               {...register("specialNotes")}
-              className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#e69e46]/50 transition-shadow placeholder:text-gray-300 resize-none"
+              className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#054380]/50 transition-shadow placeholder:text-gray-300 resize-none"
             />
           </div>
 
@@ -201,7 +203,7 @@ export default function AddScheduleEventModal({
               <input
                 type="checkbox"
                 {...register("notificationEnabled")}
-                className="mt-1 h-4 w-4 rounded border-border text-navy focus:ring-[#e69e46]/50"
+                className="mt-1 h-4 w-4 rounded border-border text-navy focus:ring-[#054380]/50"
               />
               <span>
                 <span className="block text-sm font-medium text-navy">

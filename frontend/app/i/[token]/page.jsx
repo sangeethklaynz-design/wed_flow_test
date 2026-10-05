@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import InvitationExperienceSafe from "@/components/invite/InvitationExperienceSafe";
+import { InviteByType } from "@/lib/inviteRenderer";
 import { apiRequest } from "@/lib/api";
 
 /**
@@ -10,7 +10,6 @@ import { apiRequest } from "@/lib/api";
  * APIs:
  * - GET  /api/public/invite/:token/invitation-template
  * - POST /api/public/invite/:token/rsvp
- * Flow: 390×844 intro video freezes on last frame → instant cut to invitation cover.
  */
 export default function PublicGuestInvitePage() {
   const params = useParams();
@@ -50,8 +49,18 @@ export default function PublicGuestInvitePage() {
     };
   }, [token]);
 
+  const eventType =
+    templateData?.static?.event?.type || templateData?.eventType || "wedding";
+  const templateKey =
+    templateData?.static?.event?.templateKey ||
+    templateData?.templateKey ||
+    "template-1";
+  const isCorporate = String(eventType).toLowerCase() === "corporate";
+  const isParty = String(eventType).toLowerCase() === "party";
+  const useEmbeddedInvite = isCorporate || isParty;
+
   return (
-    <div className="min-h-screen-zoom w-full relative flex flex-col items-stretch md:items-center bg-[#FAF6F0] md:bg-gradient-to-br md:from-[#F5EFE6] md:via-[#E8DFD8] md:to-[#DCD3CB] overflow-x-hidden md:py-10">
+    <div className="min-h-screen-zoom w-full relative flex flex-col items-stretch md:items-center bg-[#EAF5FF] md:bg-gradient-to-br md:from-[#EAF5FF] md:via-[#E8DFD8] md:to-[#DCD3CB] overflow-x-hidden md:py-10">
       {error ? (
         <div className="mb-4 w-[390px] bg-red-50 border border-red-100 text-red-600 text-sm rounded-2xl px-4 py-3 text-center">
           {error}
@@ -63,20 +72,23 @@ export default function PublicGuestInvitePage() {
       ) : null}
 
       {templateData ? (
-        <InvitationExperienceSafe
+        <InviteByType
+          eventType={eventType}
+          templateKey={templateKey}
           templateData={templateData}
           guestToken={token}
           interactive
+          embedded={useEmbeddedInvite}
         />
       ) : null}
 
       {!loading && !templateData && error ? (
-        <div className="w-[390px] min-h-[40vh] rounded-2xl bg-[#FAF6F0] flex flex-col items-center justify-center px-6 text-center">
+        <div className="w-[390px] min-h-[40vh] rounded-2xl bg-[#EAF5FF] flex flex-col items-center justify-center px-6 text-center">
           <p className="font-serif font-bold text-2xl text-navy mb-2">
             Invitation unavailable
           </p>
           <p className="text-muted text-sm">
-            This link may be invalid or expired. Please contact the couple for
+            This link may be invalid or expired. Please contact the hosts for
             a new invitation.
           </p>
         </div>

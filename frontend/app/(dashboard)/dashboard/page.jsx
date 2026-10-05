@@ -141,15 +141,9 @@ export default function DashboardPage() {
           <h1 className="font-serif font-bold text-2xl text-navy">
             {coupleNames}
           </h1>
-          <span className="inline-block mt-2 text-[10px] bg-[#fcecd4] text-[#e69e46] px-3 py-1 rounded-full font-medium">
-            Premium Membership
-          </span>
         </div>
-        <div
-          className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 bg-[#1A1D2E] border-2 border-[#e69e46] shadow-sm"
-          title="Premium member"
-        >
-          <span className="font-serif font-bold text-[#e69e46] text-xs leading-none tracking-tight">
+        <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 bg-[#054380] shadow-sm">
+          <span className="font-serif font-bold text-white text-xs leading-none tracking-tight">
             {initials}
           </span>
         </div>

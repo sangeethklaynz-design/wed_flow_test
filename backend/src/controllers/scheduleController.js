@@ -245,15 +245,16 @@ async function createScheduleEvent(req, res) {
     await sequelize.query(
       `
       INSERT INTO schedule_events (
-        id, wedding_id, event_time, end_time, title, location, special_notes,
+        id, wedding_id, event_id, event_time, end_time, title, location, special_notes,
         status, display_order, notification_enabled, notification_sent_at
       )
-      VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, NULL);
+      VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, NULL);
       `,
       {
         replacements: [
           eventId,
           wedding.id,
+          wedding.event_id || null,
           payload.startTime,
           payload.endTime,
           payload.title,

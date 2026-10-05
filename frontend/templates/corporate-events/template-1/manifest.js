@@ -1,0 +1,365 @@
+/**
+ * Auto-synced from backend/events/corporate-events/templates/template-1/manifest.json
+ */
+
+export const CORPORATE_TEMPLATE_1_MANIFEST = {
+  "id": "template-1",
+  "type": "corporate",
+  "label": "Corporate Template 1",
+  "pages": [
+    {
+      "id": "landing",
+      "label": "Landing",
+      "defaultEnabled": true
+    },
+    {
+      "id": "eventDetails",
+      "label": "Event details",
+      "defaultEnabled": true
+    },
+    {
+      "id": "rsvp",
+      "label": "RSVP",
+      "defaultEnabled": true
+    },
+    {
+      "id": "agenda",
+      "label": "Event agenda",
+      "defaultEnabled": true
+    },
+    {
+      "id": "location",
+      "label": "Location",
+      "defaultEnabled": true
+    },
+    {
+      "id": "resources",
+      "label": "Resources",
+      "defaultEnabled": true
+    },
+    {
+      "id": "addToCalendar",
+      "label": "Add to calendar",
+      "defaultEnabled": true
+    }
+  ],
+  "dynamicFields": [
+    {
+      "id": "openingVideo",
+      "pageId": "landing",
+      "type": "media",
+      "mediaKind": "video",
+      "label": "Landing / opening video"
+    },
+    {
+      "id": "backgroundMusic",
+      "pageId": "landing",
+      "type": "media",
+      "mediaKind": "music",
+      "label": "Background music"
+    },
+    {
+      "id": "landingBackground",
+      "pageId": "landing",
+      "type": "media",
+      "mediaKind": "background",
+      "label": "Landing background image"
+    },
+    {
+      "id": "orgName",
+      "pageId": "landing",
+      "type": "text",
+      "label": "Organization name",
+      "defaultValue": "NEXORA"
+    },
+    {
+      "id": "orgTagline",
+      "pageId": "landing",
+      "type": "text",
+      "label": "Organization tagline",
+      "defaultValue": "BUSINESS BEYOND BORDERS"
+    },
+    {
+      "id": "eventTitle",
+      "pageId": "landing",
+      "type": "textarea",
+      "label": "Event title",
+      "defaultValue": "Annual Business\nSummit 2026"
+    },
+    {
+      "id": "eventSubtitle",
+      "pageId": "landing",
+      "type": "text",
+      "label": "Event subtitle",
+      "defaultValue": "Ideas Today, A Smart Tomorrow."
+    },
+    {
+      "id": "eventDateLabel",
+      "pageId": "landing",
+      "type": "text",
+      "label": "Date label",
+      "defaultValue": "Thursday, 12 November 2026"
+    },
+    {
+      "id": "eventTimeLabel",
+      "pageId": "landing",
+      "type": "text",
+      "label": "Time label",
+      "defaultValue": "9.00 AM - 5.00PM"
+    },
+    {
+      "id": "eventVenueLabel",
+      "pageId": "landing",
+      "type": "text",
+      "label": "Venue label",
+      "defaultValue": "Shangri-La, Colombo"
+    },
+    {
+      "id": "colorTextPrimary",
+      "pageId": "landing",
+      "type": "color",
+      "label": "Headings & primary text",
+      "defaultValue": "#080480"
+    },
+    {
+      "id": "colorTextHighlight",
+      "pageId": "landing",
+      "type": "color",
+      "label": "Highlight text (agenda quotes)",
+      "defaultValue": "#0084FF"
+    },
+    {
+      "id": "gradientTop",
+      "pageId": "landing",
+      "type": "color",
+      "label": "Page gradient — top",
+      "defaultValue": "#D4E0F7"
+    },
+    {
+      "id": "gradientMid",
+      "pageId": "landing",
+      "type": "color",
+      "label": "Page gradient — middle",
+      "defaultValue": "#FFFFFF"
+    },
+    {
+      "id": "gradientBottom",
+      "pageId": "landing",
+      "type": "color",
+      "label": "Page gradient — bottom",
+      "defaultValue": "#A5DBFD"
+    },
+    {
+      "id": "dressCode",
+      "pageId": "eventDetails",
+      "type": "text",
+      "label": "Dress code",
+      "defaultValue": "Smart Casual /professional Attire"
+    },
+    {
+      "id": "rsvpQuestions",
+      "pageId": "rsvp",
+      "type": "list",
+      "label": "RSVP questions",
+      "itemSchema": {
+        "label": {
+          "type": "text",
+          "label": "Question label"
+        },
+        "inputType": {
+          "type": "select",
+          "label": "Field type",
+          "options": [
+            {
+              "value": "text",
+              "label": "Text"
+            },
+            {
+              "value": "textarea",
+              "label": "Text field"
+            },
+            {
+              "value": "dropdown",
+              "label": "Dropdown menu"
+            },
+            {
+              "value": "radio",
+              "label": "Radio buttons"
+            }
+          ]
+        },
+        "options": {
+          "type": "dropdownItems",
+          "label": "Choices",
+          "showWhen": {
+            "field": "inputType",
+            "in": [
+              "dropdown",
+              "radio"
+            ]
+          }
+        }
+      },
+      "defaultValue": [
+        {
+          "label": "Full name",
+          "inputType": "text",
+          "options": ""
+        },
+        {
+          "label": "Email",
+          "inputType": "text",
+          "options": ""
+        },
+        {
+          "label": "Phone Number",
+          "inputType": "text",
+          "options": ""
+        },
+        {
+          "label": "Will you attend?",
+          "inputType": "radio",
+          "options": "Yes, I'll attend, Sorry, I can't attend"
+        },
+        {
+          "label": "Number of Guests",
+          "inputType": "text",
+          "options": ""
+        },
+        {
+          "label": "Meal Preference",
+          "inputType": "dropdown",
+          "options": "Vegetarian, Non- Vegetarian"
+        },
+        {
+          "label": "Any Special Requirements (Optional)",
+          "inputType": "textarea",
+          "options": ""
+        }
+      ]
+    },
+    {
+      "id": "agendaItems",
+      "pageId": "agenda",
+      "type": "list",
+      "label": "Agenda items",
+      "itemSchema": {
+        "time": {
+          "type": "text",
+          "label": "Time"
+        },
+        "title": {
+          "type": "text",
+          "label": "Title"
+        },
+        "location": {
+          "type": "text",
+          "label": "Location / note"
+        }
+      },
+      "defaultValue": [
+        {
+          "time": "09:00 AM",
+          "title": "Registration & Welcome Tea",
+          "location": "Ocean View Lobby"
+        },
+        {
+          "time": "09:30 AM",
+          "title": "Opening Remarks",
+          "location": "Grand Ballroom"
+        },
+        {
+          "time": "10:00 AM",
+          "title": "Keynote Session",
+          "location": "The Future of Business"
+        },
+        {
+          "time": "11:30 AM",
+          "title": "Panel Discussion",
+          "location": "Industry Trends"
+        },
+        {
+          "time": "01:00 PM",
+          "title": "Networking Lunch",
+          "location": "Sapphire Lawn"
+        },
+        {
+          "time": "02:30 PM",
+          "title": "Breakout Sessions",
+          "location": "Multiple Rooms"
+        },
+        {
+          "time": "04:00 PM",
+          "title": "Closing Ceremony",
+          "location": "Main Ballroom"
+        },
+        {
+          "time": "05:00 PM",
+          "title": "Cocktail & Networking",
+          "location": "Garden View"
+        }
+      ]
+    },
+    {
+      "id": "resourcesList",
+      "pageId": "resources",
+      "type": "list",
+      "label": "Resources",
+      "itemSchema": {
+        "name": {
+          "type": "text",
+          "label": "Display name"
+        },
+        "desc": {
+          "type": "textarea",
+          "label": "Description"
+        },
+        "filename": {
+          "type": "fileRef",
+          "label": "Document",
+          "mediaKind": "documents"
+        },
+        "size": {
+          "type": "readonly",
+          "label": "Size"
+        }
+      },
+      "defaultValue": [
+        {
+          "name": "Event Agenda.pdf",
+          "desc": "Detailed schedule of the event sessions, timings and activities",
+          "filename": "",
+          "size": ""
+        },
+        {
+          "name": "Venue & Directions.pdf",
+          "desc": "Venue details, map, parking informations.",
+          "filename": "",
+          "size": ""
+        },
+        {
+          "name": "Speaker Profiles.pdf",
+          "desc": "Learn more about our keynote speakers and panelists.",
+          "filename": "",
+          "size": ""
+        },
+        {
+          "name": "Event Information.pdf",
+          "desc": "Important guidelines, venue policies & useful informations.",
+          "filename": "",
+          "size": ""
+        }
+      ]
+    }
+  ]
+};
+
+export function invitePage(pageId) {
+  return { "data-invite-page": pageId };
+}
+
+export function dynamicField(id) {
+  return { "data-dynamic-field": id };
+}
+
+export default CORPORATE_TEMPLATE_1_MANIFEST;

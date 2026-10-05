@@ -2,15 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import InvitationExperienceSafe from "@/components/invite/InvitationExperienceSafe";
+import { InviteByType } from "@/lib/inviteRenderer";
 import InvitationPreviewBackButton from "@/components/invite/InvitationPreviewBackButton";
 import { apiRequest } from "@/lib/api";
 import { getAccessToken, clearAuthSession } from "@/lib/auth";
 
 /**
- * Couple full invitation template preview (scrollable).
+ * Client full invitation template preview (scrollable).
  * API: GET /api/couple/invitation-template
- * Flow: 390×844 intro video freezes on last frame → instant cut to invitation cover.
  */
 export default function PublicInvitationPage() {
   const router = useRouter();
@@ -52,8 +51,18 @@ export default function PublicInvitationPage() {
     };
   }, [router]);
 
+  const eventType =
+    templateData?.static?.event?.type || templateData?.eventType || "wedding";
+  const templateKey =
+    templateData?.static?.event?.templateKey ||
+    templateData?.templateKey ||
+    "template-1";
+  const isCorporate = String(eventType).toLowerCase() === "corporate";
+  const isParty = String(eventType).toLowerCase() === "party";
+  const useEmbeddedInvite = isCorporate || isParty;
+
   return (
-    <div className="min-h-screen-zoom w-full relative flex flex-col items-stretch md:items-center bg-[#FAF6F0] md:bg-gradient-to-br md:from-[#F5EFE6] md:via-[#E8DFD8] md:to-[#DCD3CB] overflow-x-hidden md:py-10">
+    <div className="min-h-screen-zoom w-full relative flex flex-col items-stretch md:items-center bg-[#EAF5FF] md:bg-gradient-to-br md:from-[#EAF5FF] md:via-[#E8DFD8] md:to-[#DCD3CB] overflow-x-hidden md:py-10">
       <InvitationPreviewBackButton />
 
       {error ? (
@@ -67,9 +76,12 @@ export default function PublicInvitationPage() {
       ) : null}
 
       {templateData ? (
-        <InvitationExperienceSafe
+        <InviteByType
+          eventType={eventType}
+          templateKey={templateKey}
           templateData={templateData}
           interactive={false}
+          embedded={useEmbeddedInvite}
         />
       ) : null}
     </div>
