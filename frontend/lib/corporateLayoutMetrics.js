@@ -48,6 +48,7 @@ export const RSVP_FIELD_GAP = 20;
 export const RSVP_BUTTON_H = 40;
 export const RSVP_BUTTON_GAP = 24;
 export const RSVP_BOTTOM_PAD = 28;
+export const RSVP_EXPLORE_H = 76;
 
 const DEFAULT_RSVP_QUESTIONS = [
   { label: "Full name", inputType: "text", options: "" },
@@ -117,7 +118,7 @@ export function computeAgendaHeight(agendaItems, isRsvpConfirmed = false) {
     count === 0
       ? 0
       : count * AGENDA_ITEM_H + Math.max(0, count - 1) * AGENDA_ITEM_GAP;
-  const buttonH = isRsvpConfirmed ? 58 : 0;
+  const buttonH = 62;
   const content =
     AGENDA_HEADER_H +
     AGENDA_LIST_TOP_PAD +
@@ -150,7 +151,7 @@ export function computeResourcesHeight(resourcesList) {
 export function computeRsvpHeight(rsvpQuestions) {
   const formH = estimateRsvpFormHeight(rsvpQuestions);
   const content =
-    RSVP_HEADER_H + formH + RSVP_BOTTOM_PAD;
+    RSVP_HEADER_H + formH + RSVP_BOTTOM_PAD + RSVP_EXPLORE_H;
   return Math.max(CORPORATE_BASE_HEIGHT, content);
 }
 

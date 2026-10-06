@@ -190,6 +190,7 @@ export default function RsvpPage({
       attendance: attendanceVal,
       attendingStatus: status === "ATTENDING" ? "confirmed" : "declined",
       attendingCount,
+      guestCount: attendingCount,
       guests: attendingCount,
       meal: mealVal,
       mealPreference: mealVal,
