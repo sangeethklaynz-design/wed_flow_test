@@ -9,9 +9,9 @@ export const PARTY_PAGE_WIDTH = 390;
 export const PAGE_AFTER_DECOR_GAP = 96;
 
 export const PARTY_PAGE_ORDER = [
+  "rsvp",
   "landing",
   "about",
-  "rsvp",
   "schedule",
   "location",
   "details",

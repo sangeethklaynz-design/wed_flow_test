@@ -15,9 +15,9 @@ export const PARTY_PAGE_WIDTH = 390;
 export const PARTY_PAGE_HEIGHT = 844;
 
 export const PARTY_PAGE_ORDER = [
+  "rsvp",
   "landing",
   "about",
-  "rsvp",
   "schedule",
   "location",
   "details",

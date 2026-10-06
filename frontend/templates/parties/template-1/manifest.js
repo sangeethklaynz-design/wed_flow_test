@@ -8,6 +8,11 @@ export const PARTY_TEMPLATE_1_MANIFEST = {
   "label": "Party Template 1 — Gala Night",
   "pages": [
     {
+      "id": "rsvp",
+      "label": "RSVP",
+      "defaultEnabled": true
+    },
+    {
       "id": "landing",
       "label": "Landing",
       "defaultEnabled": true
@@ -15,11 +20,6 @@ export const PARTY_TEMPLATE_1_MANIFEST = {
     {
       "id": "about",
       "label": "About the event",
-      "defaultEnabled": true
-    },
-    {
-      "id": "rsvp",
-      "label": "RSVP",
       "defaultEnabled": true
     },
     {

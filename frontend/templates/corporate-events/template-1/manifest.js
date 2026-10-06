@@ -8,6 +8,11 @@ export const CORPORATE_TEMPLATE_1_MANIFEST = {
   "label": "Corporate Template 1",
   "pages": [
     {
+      "id": "rsvp",
+      "label": "RSVP",
+      "defaultEnabled": true
+    },
+    {
       "id": "landing",
       "label": "Landing",
       "defaultEnabled": true
@@ -15,11 +20,6 @@ export const CORPORATE_TEMPLATE_1_MANIFEST = {
     {
       "id": "eventDetails",
       "label": "Event details",
-      "defaultEnabled": true
-    },
-    {
-      "id": "rsvp",
-      "label": "RSVP",
       "defaultEnabled": true
     },
     {

@@ -9,9 +9,9 @@ export const CORPORATE_PAGE_WIDTH = 390;
 export const PAGE_AFTER_DECOR_GAP = 24;
 
 export const CORPORATE_PAGE_ORDER = [
+  "rsvp",
   "landing",
   "eventDetails",
-  "rsvp",
   "agenda",
   "location",
   "resources",

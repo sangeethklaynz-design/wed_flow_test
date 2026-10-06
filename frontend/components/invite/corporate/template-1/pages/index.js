@@ -16,9 +16,9 @@ export const CORPORATE_PAGE_HEIGHT = 844;
 
 /** Guest scroll order (matches manifest pages). */
 export const CORPORATE_PAGE_ORDER = [
+  "rsvp",
   "landing",
   "eventDetails",
-  "rsvp",
   "agenda",
   "location",
   "resources",

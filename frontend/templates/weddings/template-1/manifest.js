@@ -13,6 +13,11 @@ export const WEDDING_TEMPLATE_1_MANIFEST = {
       "defaultEnabled": true
     },
     {
+      "id": "rsvp",
+      "label": "RSVP",
+      "defaultEnabled": true
+    },
+    {
       "id": "starting",
       "label": "Landing page",
       "defaultEnabled": true
@@ -20,11 +25,6 @@ export const WEDDING_TEMPLATE_1_MANIFEST = {
     {
       "id": "opening",
       "label": "Opening page",
-      "defaultEnabled": true
-    },
-    {
-      "id": "rsvp",
-      "label": "RSVP",
       "defaultEnabled": true
     },
     {

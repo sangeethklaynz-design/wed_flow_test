@@ -4,6 +4,11 @@
   "label": "Corporate Template 1",
   "pages": [
     {
+      "id": "rsvp",
+      "label": "RSVP",
+      "defaultEnabled": true
+    },
+    {
       "id": "landing",
       "label": "Landing",
       "defaultEnabled": true
@@ -11,11 +16,6 @@
     {
       "id": "eventDetails",
       "label": "Event details",
-      "defaultEnabled": true
-    },
-    {
-      "id": "rsvp",
-      "label": "RSVP",
       "defaultEnabled": true
     },
     {

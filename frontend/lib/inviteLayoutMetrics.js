@@ -86,9 +86,9 @@ export const PAGE_DESIGN_TOP = {
 };
 
 export const PAGE_ORDER = [
+  "rsvp",
   "starting",
   "opening",
-  "rsvp",
   "allDetails",
   "ourStory",
   "bigDay",

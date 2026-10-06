@@ -4,9 +4,9 @@
   "label": "Wedding Template 1",
   "pages": [
     { "id": "openingVideo", "label": "Opening video", "defaultEnabled": true },
+    { "id": "rsvp", "label": "RSVP", "defaultEnabled": true },
     { "id": "starting", "label": "Landing page", "defaultEnabled": true },
     { "id": "opening", "label": "Opening page", "defaultEnabled": true },
-    { "id": "rsvp", "label": "RSVP", "defaultEnabled": true },
     { "id": "allDetails", "label": "All the details", "defaultEnabled": true },
     { "id": "ourStory", "label": "Our Story", "defaultEnabled": true },
     { "id": "bigDay", "label": "The Big Day", "defaultEnabled": true },

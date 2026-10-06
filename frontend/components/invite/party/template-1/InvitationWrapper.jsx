@@ -362,7 +362,10 @@ function PartyInvitationFull({
           eventVenue={meta.eventVenue}
           backgroundUrl={meta.backgroundUrl}
           onScrollNext={() => {
-            const next = visiblePages.find((id) => id !== "landing");
+            const landingIdx = visiblePages.indexOf("landing");
+            const next = landingIdx >= 0 && landingIdx < visiblePages.length - 1
+              ? visiblePages[landingIdx + 1]
+              : null;
             if (next) scrollToPage(next);
           }}
         />
