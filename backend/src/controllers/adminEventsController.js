@@ -20,6 +20,7 @@ const {
   listPackFiles,
   resourcePackDir,
 } = require("../utils/eventTemplates");
+const { syncTemplateScheduleToDb, inferIcon } = require("../utils/scheduleSync");
 
 function todayDateOnly() {
   return new Date().toISOString().slice(0, 10);
@@ -416,6 +417,13 @@ async function createEvent(req, res) {
 
     await transaction.commit();
 
+    const initialSchedule =
+      templateConfig.fields?.agendaItems ||
+      templateConfig.fields?.scheduleItems;
+    if (Array.isArray(initialSchedule) && initialSchedule.length) {
+      await syncTemplateScheduleToDb(id, weddingId, initialSchedule, payload.type);
+    }
+
     const [rows] = await sequelize.query(
       `
       SELECT e.*, u.email AS client_email
@@ -775,6 +783,25 @@ async function updateTemplateConfig(req, res) {
       },
     };
 
+    const isCorporate =
+      String(existing.type || "").toLowerCase() === "corporate";
+    const incomingSchedule = isCorporate
+      ? incoming.fields?.agendaItems || incoming.fields?.scheduleItems
+      : incoming.fields?.scheduleItems || incoming.fields?.agendaItems;
+    if (Array.isArray(incomingSchedule)) {
+      nextConfig.fields.agendaItems = incomingSchedule.map((it) => ({
+        time: String(it.time || "09:00 AM").trim(),
+        title: String(it.title || "").trim(),
+        location: String(it.location || "").trim(),
+      }));
+      nextConfig.fields.scheduleItems = incomingSchedule.map((it) => ({
+        time: String(it.time || "09:00 AM").trim(),
+        title: String(it.title || "").trim(),
+        location: String(it.location || "").trim(),
+        icon: inferIcon(it.title, it.icon),
+      }));
+    }
+
     if (req.body?.resourcePackId) {
       const packId = String(req.body.resourcePackId).trim();
       if (packId) {
@@ -789,6 +816,10 @@ async function updateTemplateConfig(req, res) {
         `UPDATE events SET template_config = ?, updated_at = NOW() WHERE id = ?;`,
         { replacements: [JSON.stringify(nextConfig), id] }
       );
+    }
+
+    if (Array.isArray(incomingSchedule)) {
+      await syncTemplateScheduleToDb(id, null, incomingSchedule, existing.type);
     }
 
     const [rows] = await sequelize.query(

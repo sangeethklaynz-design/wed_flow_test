@@ -57,8 +57,55 @@ function findFile(list, filename) {
   return list.find((f) => f.filename === filename) || list[0];
 }
 
+function parseTimeToStartEnd(timeStr) {
+  if (!timeStr) return { startTime: "09:00", endTime: "10:00" };
+  const clean = String(timeStr).replace(/onwards/i, "").trim();
+  const parts = clean.split(/\s*(?:-|–|—|to)\s*/i);
+
+  function toMinutes(raw) {
+    if (!raw) return null;
+    const m = String(raw).trim().match(/^(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?$/i);
+    if (!m) return null;
+    let h = parseInt(m[1], 10);
+    const min = m[2] ? parseInt(m[2], 10) : 0;
+    const ampm = m[3] ? m[3].toLowerCase() : null;
+    if (ampm === "pm" && h < 12) h += 12;
+    if (ampm === "am" && h === 12) h = 0;
+    return h * 60 + min;
+  }
+
+  function minToStr(min) {
+    if (min == null) return "09:00";
+    const h = Math.floor(min / 60) % 24;
+    const m = min % 60;
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  }
+
+  const sMin = toMinutes(parts[0]);
+  if (sMin == null) return { startTime: "09:00", endTime: "10:00" };
+  let eMin = parts[1] ? toMinutes(parts[1]) : null;
+  if (eMin == null || eMin <= sMin) {
+    eMin = Math.min(sMin + 60, 23 * 60 + 59);
+  }
+  return { startTime: minToStr(sMin), endTime: minToStr(eMin) };
+}
+
 /** Default schedule when the event has no schedule events configured. */
-export function buildAdminPreviewScheduleEvents(event) {
+export function buildAdminPreviewScheduleEvents(event, config = null) {
+  const fields = config?.fields || event?.templateConfig?.fields || {};
+  const items = fields.scheduleItems || fields.agendaItems;
+  if (Array.isArray(items) && items.length) {
+    return items.map((item, idx) => {
+      const times = parseTimeToStartEnd(item.time);
+      return {
+        id: item.id || `preview-${idx + 1}`,
+        title: item.title || `Event ${idx + 1}`,
+        startTime: times.startTime,
+        endTime: times.endTime,
+        location: item.location || "",
+      };
+    });
+  }
   const location = event?.location || "Venue";
   if (Array.isArray(event?.scheduleEvents) && event.scheduleEvents.length) {
     return event.scheduleEvents;
@@ -148,7 +195,7 @@ export function buildAdminInvitePreviewData(event, config = {}, resources = null
     .filter((row) => row.name || row.phone)
     .slice(0, 2);
 
-  const scheduleEvents = buildAdminPreviewScheduleEvents(event);
+  const scheduleEvents = buildAdminPreviewScheduleEvents(event, config);
 
   return {
     static: {
@@ -268,7 +315,7 @@ export function buildAdminGuestPreviewData(event, resources = null, config = nul
     guest: buildAdminDummyGuest(event),
     static: {
       ...base.static,
-      scheduleEvents: buildAdminPreviewScheduleEvents(event),
+      scheduleEvents: buildAdminPreviewScheduleEvents(event, resolvedConfig),
     },
   };
 }

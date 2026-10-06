@@ -12,6 +12,7 @@ const {
   resolveCoupleBackgroundFromDisk,
 } = require("./invitationMedia");
 const { listPackFiles, publicChromeUrl } = require("./eventTemplates");
+const { ensureScheduleSynced } = require("./scheduleSync");
 
 function splitCoupleNames(coupleNames) {
   const raw = String(coupleNames || "").trim();
@@ -140,7 +141,7 @@ async function loadScheduleEventsForWedding(weddingId) {
     SELECT id, event_time, end_time, title, location, special_notes, display_order
     FROM schedule_events
     WHERE wedding_id = ?
-    ORDER BY event_time ASC, display_order ASC;
+    ORDER BY display_order ASC, event_time ASC;
     `,
     { replacements: [weddingId] }
   );
@@ -156,7 +157,16 @@ async function loadScheduleEventsForWedding(weddingId) {
 }
 
 async function loadStaticInvitationBundle(weddingId) {
-  const wedding = await loadWeddingRow(weddingId);
+  let wedding = await loadWeddingRow(weddingId);
+  if (!wedding) return null;
+
+  await ensureScheduleSynced(
+    weddingId,
+    wedding.linked_event_id || wedding.event_id,
+    wedding.event_type
+  );
+
+  wedding = await loadWeddingRow(weddingId);
   if (!wedding) return null;
 
   const [invitationRows] = await sequelize.query(

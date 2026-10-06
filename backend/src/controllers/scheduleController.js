@@ -2,6 +2,7 @@ const crypto = require("crypto");
 const { sequelize } = require("../models");
 const { getWeddingForUser, toDateOnly } = require("../utils/wedding");
 const { createNotification } = require("./notificationsController");
+const { syncDbScheduleToTemplate, ensureScheduleSynced } = require("../utils/scheduleSync");
 
 function timeToMinutes(value) {
   if (!value || !/^\d{2}:\d{2}$/.test(String(value))) return null;
@@ -103,7 +104,7 @@ async function fetchScheduleRows(weddingId, eventId = null) {
     FROM schedule_events
     WHERE wedding_id = ?
     ${whereEvent}
-    ORDER BY event_time ASC, display_order ASC;
+    ORDER BY display_order ASC, event_time ASC;
     `,
     { replacements }
   );
@@ -168,6 +169,8 @@ async function listSchedule(req, res) {
         message: error.message,
       });
     }
+
+    await ensureScheduleSynced(wedding.id, wedding.event_id, wedding.event_type);
 
     const rows = await fetchScheduleRows(wedding.id);
     return res.status(200).json({
@@ -271,6 +274,7 @@ async function createScheduleEvent(req, res) {
     );
 
     const rows = await fetchScheduleRows(wedding.id, eventId);
+    await syncDbScheduleToTemplate(wedding.id, wedding.event_id);
     await createNotification(wedding.id, "schedule_added", "Event added", `"${payload.title}" has been added to the schedule.`, null);
     return res.status(201).json({
       event: mapEventRow(rows[0], wedding.wedding_date),
@@ -365,6 +369,7 @@ async function updateScheduleEvent(req, res) {
     );
 
     const rows = await fetchScheduleRows(wedding.id, eventId);
+    await syncDbScheduleToTemplate(wedding.id, wedding.event_id);
     await createNotification(wedding.id, "schedule_updated", "Event updated", `"${rows[0].title}" has been updated.`, null);
     return res.status(200).json({
       event: mapEventRow(rows[0], wedding.wedding_date),
@@ -406,6 +411,7 @@ async function deleteScheduleEvent(req, res) {
     );
 
     await createNotification(wedding.id, "schedule_deleted", "Event removed", `"${deletedTitle}" has been removed from the schedule.`, null);
+    await syncDbScheduleToTemplate(wedding.id, wedding.event_id);
     return res.status(200).json({
       message: "Schedule event deleted",
       id: eventId,

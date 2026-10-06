@@ -212,6 +212,17 @@ function PageOnlyPreview({
     );
   }
 
+  if (pageId === "schedule") {
+    return (
+      <div
+        className="relative overflow-hidden bg-[#FAF6F0]"
+        style={{ width: INVITE_WIDTH, minHeight: 844 }}
+      >
+        <InvitationSchedule events={templateData?.static?.scheduleEvents || []} />
+      </div>
+    );
+  }
+
   const band = resolvePageBand(pageId, config);
   const allowInteract = pageId === "rsvp";
 

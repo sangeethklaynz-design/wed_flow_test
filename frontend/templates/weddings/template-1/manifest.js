@@ -48,12 +48,49 @@ export const WEDDING_TEMPLATE_1_MANIFEST = {
       "defaultEnabled": true
     },
     {
+      "id": "schedule",
+      "label": "Wedding schedule",
+      "defaultEnabled": true
+    },
+    {
       "id": "closing",
       "label": "Closing",
       "defaultEnabled": true
     }
   ],
   "dynamicFields": [
+    {
+      "id": "scheduleItems",
+      "pageId": "schedule",
+      "type": "list",
+      "label": "Schedule items",
+      "itemSchema": {
+        "time": {
+          "type": "text",
+          "label": "Time (e.g. 10:30 AM or 10:30 AM - 11:30 AM)"
+        },
+        "title": {
+          "type": "text",
+          "label": "Title"
+        },
+        "location": {
+          "type": "text",
+          "label": "Location / note"
+        }
+      },
+      "defaultValue": [
+        {
+          "time": "04:00 PM - 05:00 PM",
+          "title": "Ceremony",
+          "location": "Venue Lawn"
+        },
+        {
+          "time": "06:00 PM - 10:00 PM",
+          "title": "Reception",
+          "location": "Grand Ballroom"
+        }
+      ]
+    },
     {
       "id": "openingVideo",
       "pageId": "openingVideo",
