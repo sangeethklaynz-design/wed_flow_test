@@ -629,7 +629,9 @@ function CorporateInvitationFull({
         margin: '0 auto',
       }}
     >
-      <InvitationPreviewBackButton href="/invite" label="Back to invite" />
+      {!guestToken && !embedded ? (
+        <InvitationPreviewBackButton href="/invite" label="Back to invite" guestToken={guestToken} />
+      ) : null}
 
       <InvitationBackgroundMusic
         musicUrl={media.musicUrl || "/assets/couple_music/dinelkadishmi/dinelkadishmi_music.mp3"}

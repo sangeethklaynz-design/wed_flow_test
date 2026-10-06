@@ -522,7 +522,9 @@ function PartyInvitationFull({
         margin: "0 auto",
       }}
     >
-      <InvitationPreviewBackButton href="/invite" label="Back to invite" />
+      {!guestToken && !embedded ? (
+        <InvitationPreviewBackButton href="/invite" label="Back to invite" guestToken={guestToken} />
+      ) : null}
 
       <InvitationBackgroundMusic
         musicUrl={meta.musicUrl || "/assets/couple_music/dinelkadishmi/dinelkadishmi_music.mp3"}

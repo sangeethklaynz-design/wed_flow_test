@@ -140,7 +140,7 @@ function dbRowsToTemplateItems(rows) {
 /**
  * Synchronizes DB schedule_events mutations into events.template_config
  */
-async function syncDbScheduleToTemplate(weddingId, eventId = null, iconOverrides = {}) {
+async function syncDbScheduleToTemplate(weddingId, eventId = null) {
   try {
     if (!weddingId && !eventId) return;
 
@@ -166,29 +166,6 @@ async function syncDbScheduleToTemplate(weddingId, eventId = null, iconOverrides
 
     if (!resolvedWeddingId) return;
 
-    // Fetch existing config items to preserve custom icons
-    let existingItems = [];
-    let config = {};
-    if (resolvedEventId) {
-      const [evRows] = await sequelize.query(
-        `SELECT template_config FROM events WHERE id = ? LIMIT 1;`,
-        { replacements: [resolvedEventId] }
-      );
-      try {
-        config = typeof evRows[0]?.template_config === "string"
-          ? JSON.parse(evRows[0].template_config)
-          : (evRows[0]?.template_config || {});
-        existingItems = Array.isArray(config?.fields?.scheduleItems)
-          ? config.fields.scheduleItems
-          : Array.isArray(config?.fields?.agendaItems)
-            ? config.fields.agendaItems
-            : [];
-      } catch {
-        config = {};
-        existingItems = [];
-      }
-    }
-
     // Fetch current schedule rows from DB
     const [rows] = await sequelize.query(
       `
@@ -206,23 +183,28 @@ async function syncDbScheduleToTemplate(weddingId, eventId = null, iconOverrides
       location: r.location || r.special_notes || "",
     }));
 
-    const scheduleItems = rows.map((r, idx) => {
-      const match =
-        existingItems.find((it) => it.id === r.id || it.title === r.title) ||
-        existingItems[idx];
-      const customIcon =
-        (iconOverrides && (iconOverrides[r.id] || iconOverrides[r.title])) ||
-        match?.icon;
-      return {
-        id: r.id,
-        time: formatStartEndToTemplateTime(r.event_time, r.end_time),
-        title: r.title,
-        location: r.location || r.special_notes || "",
-        icon: inferIcon(r.title, customIcon),
-      };
-    });
+    const scheduleItems = rows.map((r) => ({
+      time: formatStartEndToTemplateTime(r.event_time, r.end_time),
+      title: r.title,
+      location: r.location || r.special_notes || "",
+      icon: inferIcon(r.title),
+    }));
 
     if (resolvedEventId) {
+      const [evRows] = await sequelize.query(
+        `SELECT template_config FROM events WHERE id = ? LIMIT 1;`,
+        { replacements: [resolvedEventId] }
+      );
+
+      let config = {};
+      try {
+        config = typeof evRows[0]?.template_config === "string"
+          ? JSON.parse(evRows[0].template_config)
+          : (evRows[0]?.template_config || {});
+      } catch {
+        config = {};
+      }
+
       config.fields = {
         ...(config.fields || {}),
         agendaItems,

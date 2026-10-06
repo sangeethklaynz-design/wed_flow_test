@@ -1,17 +1,25 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 /**
  * Exit control for the couple full-screen invitation preview (/invitation).
  * Fixed above the invite shell so it stays visible during video + scroll.
+ * Hidden when viewed as a guest token link (/i/[token]) or if guestToken is provided.
  */
 export default function InvitationPreviewBackButton({
   href = "/invite",
   label = "Back to invite",
+  guestToken = null,
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+
+  // Only in the guest templates opened as a token: remove the back button
+  if (guestToken || pathname?.startsWith("/i/")) {
+    return null;
+  }
 
   const handleBack = () => {
     if (typeof window !== "undefined" && window.history.length > 1) {

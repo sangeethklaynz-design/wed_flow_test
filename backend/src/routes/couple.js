@@ -24,8 +24,6 @@ const {
   updateScheduleEvent,
   deleteScheduleEvent,
   downloadSchedule,
-  getScheduleTemplateConfig,
-  updateScheduleTemplateConfig,
 } = require("../controllers/scheduleController");
 const {
   listNotifications,
@@ -54,8 +52,6 @@ router.post("/guests/:id/toggle-pin", requireAuth, togglePin);
 
 router.get("/schedule", requireAuth, listSchedule);
 router.get("/schedule/download", requireAuth, downloadSchedule);
-router.get("/schedule/template", requireAuth, getScheduleTemplateConfig);
-router.put("/schedule/template", requireAuth, updateScheduleTemplateConfig);
 router.get("/schedule/:id", requireAuth, getScheduleEvent);
 router.post("/schedule", requireAuth, createScheduleEvent);
 router.put("/schedule/:id", requireAuth, updateScheduleEvent);
