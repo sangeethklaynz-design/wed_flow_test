@@ -5,6 +5,15 @@ import { Controller, useForm } from "react-hook-form";
 import TimePicker from "@/components/ui/TimePicker";
 import ModalCloseButton from "@/components/ui/ModalCloseButton";
 
+const SCHEDULE_ICONS = [
+  { id: "drink", label: "Drinks", emoji: "🍸" },
+  { id: "mic", label: "Speeches", emoji: "🎤" },
+  { id: "food", label: "Dining", emoji: "🍽️" },
+  { id: "music", label: "Live Music", emoji: "🎵" },
+  { id: "dj", label: "DJ & Party", emoji: "🎧" },
+  { id: "celebrate", label: "Celebration", emoji: "🎉" },
+];
+
 export default function AddScheduleEventModal({
   open,
   onClose,
@@ -14,6 +23,8 @@ export default function AddScheduleEventModal({
   existingEvents = [],
 }) {
   const [customError, setCustomError] = useState("");
+  const [selectedIcon, setSelectedIcon] = useState("celebrate");
+
   const {
     register,
     control,
@@ -25,6 +36,7 @@ export default function AddScheduleEventModal({
       title: "",
       startTime: "",
       endTime: "",
+      location: "",
       specialNotes: "",
       notificationEnabled: false,
     },
@@ -33,12 +45,15 @@ export default function AddScheduleEventModal({
   useEffect(() => {
     if (!open) return;
     setCustomError("");
+    const ev = initialEvent || {};
+    setSelectedIcon(ev.icon || "celebrate");
     reset({
-      title: initialEvent?.title ?? "",
-      startTime: initialEvent?.startTime ?? "",
-      endTime: initialEvent?.endTime ?? "",
-      specialNotes: initialEvent?.specialNotes ?? "",
-      notificationEnabled: initialEvent?.notificationEnabled ?? false,
+      title: ev.title ?? "",
+      startTime: ev.startTime ?? "",
+      endTime: ev.endTime ?? "",
+      location: ev.location ?? ev.specialNotes ?? "",
+      specialNotes: ev.specialNotes ?? ev.location ?? "",
+      notificationEnabled: ev.notificationEnabled ?? false,
     });
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -57,22 +72,14 @@ export default function AddScheduleEventModal({
       return;
     }
 
-    const isOverlap = existingEvents.some((event) => {
-      if (mode === "edit" && event.id === initialEvent?.id) return false;
-      return data.startTime < event.endTime && data.endTime > event.startTime;
-    });
-
-    if (isOverlap) {
-      setCustomError("This time period already has an event in the schedule.");
-      return;
-    }
-
     const payload = {
       id: initialEvent?.id,
       title: data.title.trim(),
       startTime: data.startTime,
       endTime: data.endTime,
-      specialNotes: data.specialNotes?.trim() || "",
+      location: data.location?.trim() || data.specialNotes?.trim() || "",
+      specialNotes: data.specialNotes?.trim() || data.location?.trim() || "",
+      icon: selectedIcon || "celebrate",
       notificationEnabled:
         mode === "edit" ? Boolean(data.notificationEnabled) : false,
       status: mode === "edit" ? initialEvent?.status : "upcoming",
@@ -111,8 +118,8 @@ export default function AddScheduleEventModal({
           </h2>
           <p className="text-muted text-sm">
             {mode === "edit"
-              ? "Update the event details for your wedding day."
-              : "Add a new moment to your wedding schedule."}
+              ? "Update the details and icon for your schedule moment."
+              : "Add a new moment to your event schedule."}
           </p>
         </div>
 
@@ -136,6 +143,33 @@ export default function AddScheduleEventModal({
             {errors.title && (
               <p className="text-xs text-red-500">Event name is required</p>
             )}
+          </div>
+
+          {/* Template Icon Selector */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-muted block">
+              Event Icon / Category
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {SCHEDULE_ICONS.map((item) => {
+                const isSelected = selectedIcon === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setSelectedIcon(item.id)}
+                    className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-medium transition-all ${
+                      isSelected
+                        ? "border-[#054380] bg-[#054380]/10 text-[#054380] font-semibold"
+                        : "border-border bg-white text-navy hover:bg-gray-50"
+                    }`}
+                  >
+                    <span className="text-base">{item.emoji}</span>
+                    <span className="truncate">{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -188,13 +222,13 @@ export default function AddScheduleEventModal({
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-muted block">
-              Special notes
+              Location / Notes
             </label>
-            <textarea
-              rows={3}
-              placeholder="e.g. Ballroom · Galle Face"
-              {...register("specialNotes")}
-              className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#054380]/50 transition-shadow placeholder:text-gray-300 resize-none"
+            <input
+              type="text"
+              placeholder="e.g. Main Ballroom · Red Carpet Area"
+              {...register("location")}
+              className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#054380]/50 transition-shadow placeholder:text-gray-300"
             />
           </div>
 

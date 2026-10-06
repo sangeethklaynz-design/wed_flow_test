@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Calendar } from "lucide-react";
 import { NotificationBell } from "@/components/ui/NotificationPanel";
 import { InviteByType } from "@/lib/inviteRenderer";
 import { apiRequest } from "@/lib/api";
@@ -116,19 +116,29 @@ export default function InvitePage() {
         <NotificationBell />
       </div>
 
-      {/* Sub-heading + View full invitation button */}
+      {/* Sub-heading + View full invitation button + Edit Schedule button */}
       <div className="mb-6 md:mb-8 bg-white rounded-2xl border border-border p-5 card-shadow flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <p className="text-muted text-sm md:text-base">
-          Preview the cover section of your wedding invite, then open the full template
+          Preview the cover section of your invitation, customize your schedule, or open the full template
         </p>
-        <button
-          type="button"
-          onClick={openFullInvitation}
-          className="inline-flex items-center gap-2 self-start sm:self-auto bg-navy text-white font-medium px-4 py-2.5 rounded-xl hover:bg-navy/90 transition-colors whitespace-nowrap"
-        >
-          <ExternalLink className="w-4 h-4" strokeWidth={2.25} />
-          View full invitation
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+          <button
+            type="button"
+            onClick={() => router.push("/schedule")}
+            className="inline-flex items-center gap-2 border border-border bg-white text-navy font-medium px-4 py-2.5 rounded-xl hover:bg-cream transition-colors whitespace-nowrap shadow-xs"
+          >
+            <Calendar className="w-4 h-4 text-[#054380]" />
+            Edit Schedule
+          </button>
+          <button
+            type="button"
+            onClick={openFullInvitation}
+            className="inline-flex items-center gap-2 bg-navy text-white font-medium px-4 py-2.5 rounded-xl hover:bg-navy/90 transition-colors whitespace-nowrap"
+          >
+            <ExternalLink className="w-4 h-4" strokeWidth={2.25} />
+            View full invitation
+          </button>
+        </div>
       </div>
 
       {error ? (

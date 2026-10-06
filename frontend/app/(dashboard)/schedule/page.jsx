@@ -11,11 +11,12 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Download, Plus } from "lucide-react";
+import { Download, Plus, SlidersHorizontal } from "lucide-react";
 import { NotificationBell } from "@/components/ui/NotificationPanel";
 import ScheduleEventCard from "@/components/schedule/ScheduleEventCard";
 import ScheduleTable from "@/components/schedule/ScheduleTable";
 import AddScheduleEventModal from "@/components/schedule/AddScheduleEventModal";
+import EditTemplateScheduleModal from "@/components/schedule/EditTemplateScheduleModal";
 import ScheduleViewModal from "@/components/schedule/ScheduleViewModal";
 import ConfirmDeleteModal from "@/components/guests/ConfirmDeleteModal";
 import { apiRequest } from "@/lib/api";
@@ -85,6 +86,7 @@ export default function SchedulePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [addOpen, setAddOpen] = useState(false);
+  const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [viewEvent, setViewEvent] = useState(null);
   const [editEvent, setEditEvent] = useState(null);
   const [deleteEvent, setDeleteEvent] = useState(null);
@@ -239,6 +241,16 @@ export default function SchedulePage() {
           <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
+              onClick={() => setTemplateModalOpen(true)}
+              aria-label="Customize template schedule"
+              className="inline-flex items-center gap-1.5 border border-border bg-white text-navy font-medium px-3 py-2 rounded-xl hover:bg-cream transition-colors text-xs shadow-xs"
+              title="Customize template schedule"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-[#054380]" />
+              Template
+            </button>
+            <button
+              type="button"
               onClick={() => setAddOpen(true)}
               aria-label="Add event"
               className="w-11 h-11 rounded-full bg-navy text-white flex items-center justify-center hover:bg-navy/90 transition-colors shadow-sm"
@@ -273,6 +285,14 @@ export default function SchedulePage() {
             <ProgressBlock done={doneCount} total={total} />
           </div>
           <div className="flex items-center gap-2 self-start lg:self-center lg:ml-auto shrink-0">
+            <button
+              type="button"
+              onClick={() => setTemplateModalOpen(true)}
+              className="inline-flex items-center gap-2 border border-border bg-white text-navy font-medium px-4 py-2.5 rounded-xl hover:bg-cream transition-colors whitespace-nowrap shadow-xs"
+            >
+              <SlidersHorizontal className="w-4 h-4 text-[#054380]" strokeWidth={2} />
+              Customize Template Schedule
+            </button>
             <button
               type="button"
               onClick={() => setAddOpen(true)}
@@ -417,6 +437,12 @@ export default function SchedulePage() {
           setDeleteEvent(null);
           setError("");
         }}
+      />
+
+      <EditTemplateScheduleModal
+        open={templateModalOpen}
+        onClose={() => setTemplateModalOpen(false)}
+        onSaved={loadSchedule}
       />
     </div>
   );

@@ -2,7 +2,13 @@ const crypto = require("crypto");
 const { sequelize } = require("../models");
 const { getWeddingForUser, toDateOnly } = require("../utils/wedding");
 const { createNotification } = require("./notificationsController");
-const { syncDbScheduleToTemplate, ensureScheduleSynced } = require("../utils/scheduleSync");
+const {
+  syncDbScheduleToTemplate,
+  syncTemplateScheduleToDb,
+  ensureScheduleSynced,
+  inferIcon,
+  formatStartEndToTemplateTime,
+} = require("../utils/scheduleSync");
 
 function timeToMinutes(value) {
   if (!value || !/^\d{2}:\d{2}$/.test(String(value))) return null;
@@ -57,15 +63,20 @@ function computeStatus(weddingDateValue, startTime, endTime, fallbackStatus) {
   return "upcoming";
 }
 
-function mapEventRow(row, weddingDate) {
+function mapEventRow(row, weddingDate, iconMap = {}) {
   const startTime = normalizeTime(row.event_time);
   const endTime = normalizeTime(row.end_time);
+  const customIcon = iconMap[row.id] || iconMap[row.title];
+  const icon = customIcon || inferIcon(row.title);
+  const notes = row.special_notes || row.location || "";
   return {
     id: row.id,
     title: row.title,
     startTime,
     endTime,
-    specialNotes: row.special_notes || row.location || "",
+    location: row.location || notes,
+    specialNotes: notes,
+    icon,
     status: computeStatus(weddingDate, startTime, endTime, row.status),
     notificationEnabled:
       row.notification_enabled === undefined
@@ -120,6 +131,14 @@ function parseScheduleBody(body) {
       body?.specialNotes === undefined
         ? undefined
         : String(body.specialNotes || "").trim(),
+    location:
+      body?.location === undefined
+        ? undefined
+        : String(body.location || "").trim(),
+    icon:
+      body?.icon === undefined
+        ? undefined
+        : String(body.icon || "").trim().toLowerCase(),
     notificationEnabled:
       body?.notificationEnabled === undefined
         ? undefined
@@ -142,20 +161,6 @@ function validateScheduleInput({ title, startTime, endTime }) {
   return null;
 }
 
-function hasOverlap(startTime, endTime, rows, excludeId = null) {
-  const nextStart = timeToMinutes(startTime);
-  const nextEnd = timeToMinutes(endTime);
-
-  return rows.some((row) => {
-    if (excludeId && row.id === excludeId) return false;
-    const existingStart = timeToMinutes(normalizeTime(row.event_time));
-    const existingEnd =
-      timeToMinutes(normalizeTime(row.end_time)) ?? existingStart;
-    if (existingStart === null || existingEnd === null) return false;
-    return nextStart < existingEnd && nextEnd > existingStart;
-  });
-}
-
 function nextDisplayOrder(rows) {
   return rows.reduce((max, row) => Math.max(max, Number(row.display_order) || 0), 0) + 1;
 }
@@ -172,10 +177,30 @@ async function listSchedule(req, res) {
 
     await ensureScheduleSynced(wedding.id, wedding.event_id, wedding.event_type);
 
+    let iconMap = {};
+    if (wedding.event_id) {
+      const [eRows] = await sequelize.query(
+        `SELECT template_config FROM events WHERE id = ? LIMIT 1;`,
+        { replacements: [wedding.event_id] }
+      );
+      try {
+        const cfg = typeof eRows[0]?.template_config === "string"
+          ? JSON.parse(eRows[0].template_config)
+          : (eRows[0]?.template_config || {});
+        const items = cfg?.fields?.scheduleItems || cfg?.fields?.agendaItems || [];
+        for (const item of items) {
+          if (item?.id && item?.icon) iconMap[item.id] = item.icon;
+          if (item?.title && item?.icon) iconMap[item.title] = item.icon;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
     const rows = await fetchScheduleRows(wedding.id);
     return res.status(200).json({
       weddingDate: toDateOnly(wedding.wedding_date),
-      events: rows.map((row) => mapEventRow(row, wedding.wedding_date)),
+      events: rows.map((row) => mapEventRow(row, wedding.wedding_date, iconMap)),
     });
   } catch (err) {
     console.error("listSchedule error:", err);
@@ -237,21 +262,17 @@ async function createScheduleEvent(req, res) {
     }
 
     const existingRows = await fetchScheduleRows(wedding.id);
-    if (hasOverlap(payload.startTime, payload.endTime, existingRows)) {
-      return res.status(400).json({
-        error: "Bad Request",
-        message: "This event overlaps an existing schedule item",
-      });
-    }
-
     const eventId = crypto.randomUUID();
+    const loc = payload.location || payload.specialNotes || null;
+    const notes = payload.specialNotes || payload.location || null;
+
     await sequelize.query(
       `
       INSERT INTO schedule_events (
         id, wedding_id, event_id, event_time, end_time, title, location, special_notes,
         status, display_order, notification_enabled, notification_sent_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, NULL);
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL);
       `,
       {
         replacements: [
@@ -261,7 +282,8 @@ async function createScheduleEvent(req, res) {
           payload.startTime,
           payload.endTime,
           payload.title,
-          payload.specialNotes || null,
+          loc,
+          notes,
           uiStatusToDb("upcoming"),
           nextDisplayOrder(existingRows),
           payload.notificationEnabled === undefined
@@ -274,10 +296,18 @@ async function createScheduleEvent(req, res) {
     );
 
     const rows = await fetchScheduleRows(wedding.id, eventId);
-    await syncDbScheduleToTemplate(wedding.id, wedding.event_id);
-    await createNotification(wedding.id, "schedule_added", "Event added", `"${payload.title}" has been added to the schedule.`, null);
+    const iconOverrides = payload.icon ? { [eventId]: payload.icon } : {};
+    await syncDbScheduleToTemplate(wedding.id, wedding.event_id, iconOverrides);
+    await createNotification(
+      wedding.id,
+      "schedule_added",
+      "Event added",
+      `"${payload.title}" has been added to the schedule.`,
+      null
+    );
+
     return res.status(201).json({
-      event: mapEventRow(rows[0], wedding.wedding_date),
+      event: mapEventRow(rows[0], wedding.wedding_date, iconOverrides),
     });
   } catch (err) {
     console.error("createScheduleEvent error:", err);
@@ -314,9 +344,13 @@ async function updateScheduleEvent(req, res) {
     const nextEndTime = payload.endTime || normalizeTime(existing.end_time);
     const nextTitle = payload.title || existing.title;
     const nextNotes =
-      payload.specialNotes === undefined
-        ? existing.special_notes || existing.location || null
-        : payload.specialNotes || null;
+      payload.specialNotes !== undefined
+        ? payload.specialNotes
+        : existing.special_notes || existing.location || null;
+    const nextLocation =
+      payload.location !== undefined
+        ? payload.location
+        : existing.location || nextNotes;
     const nextNotificationEnabled =
       payload.notificationEnabled === undefined
         ? Number(existing.notification_enabled ?? 1)
@@ -336,13 +370,6 @@ async function updateScheduleEvent(req, res) {
       });
     }
 
-    if (hasOverlap(nextStartTime, nextEndTime, existingRows, eventId)) {
-      return res.status(400).json({
-        error: "Bad Request",
-        message: "This event overlaps an existing schedule item",
-      });
-    }
-
     await sequelize.query(
       `
       UPDATE schedule_events
@@ -350,6 +377,7 @@ async function updateScheduleEvent(req, res) {
         event_time = ?,
         end_time = ?,
         title = ?,
+        location = ?,
         special_notes = ?,
         notification_enabled = ?,
         notification_sent_at = NULL
@@ -360,6 +388,7 @@ async function updateScheduleEvent(req, res) {
           nextStartTime,
           nextEndTime,
           nextTitle,
+          nextLocation,
           nextNotes,
           nextNotificationEnabled,
           eventId,
@@ -369,10 +398,18 @@ async function updateScheduleEvent(req, res) {
     );
 
     const rows = await fetchScheduleRows(wedding.id, eventId);
-    await syncDbScheduleToTemplate(wedding.id, wedding.event_id);
-    await createNotification(wedding.id, "schedule_updated", "Event updated", `"${rows[0].title}" has been updated.`, null);
+    const iconOverrides = payload.icon ? { [eventId]: payload.icon } : {};
+    await syncDbScheduleToTemplate(wedding.id, wedding.event_id, iconOverrides);
+    await createNotification(
+      wedding.id,
+      "schedule_updated",
+      "Event updated",
+      `"${rows[0].title}" has been updated.`,
+      null
+    );
+
     return res.status(200).json({
-      event: mapEventRow(rows[0], wedding.wedding_date),
+      event: mapEventRow(rows[0], wedding.wedding_date, iconOverrides),
     });
   } catch (err) {
     console.error("updateScheduleEvent error:", err);
@@ -410,7 +447,13 @@ async function deleteScheduleEvent(req, res) {
       }
     );
 
-    await createNotification(wedding.id, "schedule_deleted", "Event removed", `"${deletedTitle}" has been removed from the schedule.`, null);
+    await createNotification(
+      wedding.id,
+      "schedule_deleted",
+      "Event removed",
+      `"${deletedTitle}" has been removed from the schedule.`,
+      null
+    );
     await syncDbScheduleToTemplate(wedding.id, wedding.event_id);
     return res.status(200).json({
       message: "Schedule event deleted",
@@ -458,6 +501,194 @@ async function downloadSchedule(req, res) {
   }
 }
 
+/**
+ * GET /api/couple/schedule/template
+ * Returns the template schedule configuration (title, subtitle, notes, items)
+ */
+async function getScheduleTemplateConfig(req, res) {
+  try {
+    const { wedding, error } = await assertWedding(req);
+    if (error) {
+      return res.status(error.status).json({
+        error: "Not Found",
+        message: error.message,
+      });
+    }
+
+    await ensureScheduleSynced(wedding.id, wedding.event_id, wedding.event_type);
+
+    let templateConfig = {};
+    let eventType = wedding.event_type || "wedding";
+    if (wedding.event_id) {
+      const [eRows] = await sequelize.query(
+        `SELECT template_config, type FROM events WHERE id = ? LIMIT 1;`,
+        { replacements: [wedding.event_id] }
+      );
+      if (eRows[0]) {
+        eventType = eRows[0].type || eventType;
+        try {
+          templateConfig = typeof eRows[0].template_config === "string"
+            ? JSON.parse(eRows[0].template_config)
+            : (eRows[0].template_config || {});
+        } catch {
+          templateConfig = {};
+        }
+      }
+    }
+
+    const fields = templateConfig?.fields || {};
+    const rows = await fetchScheduleRows(wedding.id);
+    const isCorporate = String(eventType || "").toLowerCase() === "corporate";
+    const defaultTitle = isCorporate ? "Event Agenda" : "Order of Events";
+    const title =
+      fields.scheduleTitle ||
+      fields.agendaTitle ||
+      wedding.schedule_title ||
+      defaultTitle;
+    const subtitle = fields.scheduleSubtitle || fields.agendaSubtitle || "";
+    const notes = fields.scheduleNotes || fields.agendaNotes || "";
+
+    const rawTemplateItems = fields.scheduleItems || fields.agendaItems || [];
+    const items = rows.map((r, idx) => {
+      const match =
+        rawTemplateItems.find((it) => it.id === r.id || it.title === r.title) ||
+        rawTemplateItems[idx];
+      return {
+        id: r.id,
+        time: formatStartEndToTemplateTime(r.event_time, r.end_time),
+        startTime: normalizeTime(r.event_time),
+        endTime: normalizeTime(r.end_time),
+        title: r.title,
+        location: r.location || r.special_notes || "",
+        icon: inferIcon(r.title, match?.icon),
+      };
+    });
+
+    return res.status(200).json({
+      scheduleTitle: title,
+      scheduleSubtitle: subtitle,
+      scheduleNotes: notes,
+      items,
+      eventType,
+    });
+  } catch (err) {
+    console.error("getScheduleTemplateConfig error:", err);
+    return res.status(500).json({
+      error: "Internal Server Error",
+      message: "Failed to load template schedule",
+    });
+  }
+}
+
+/**
+ * PUT /api/couple/schedule/template
+ * Updates the template schedule configuration (title, subtitle, notes, items)
+ * and synchronizes across template_config and schedule_events
+ */
+async function updateScheduleTemplateConfig(req, res) {
+  try {
+    const { wedding, error } = await assertWedding(req);
+    if (error) {
+      return res.status(error.status).json({
+        error: "Not Found",
+        message: error.message,
+      });
+    }
+
+    const { scheduleTitle, scheduleSubtitle, scheduleNotes, items } =
+      req.body || {};
+
+    if (wedding.id && scheduleTitle) {
+      await sequelize.query(
+        `UPDATE weddings SET schedule_title = ?, updated_at = NOW() WHERE id = ?;`,
+        { replacements: [scheduleTitle, wedding.id] }
+      );
+    }
+
+    if (wedding.event_id) {
+      const [eRows] = await sequelize.query(
+        `SELECT template_config, type FROM events WHERE id = ? LIMIT 1;`,
+        { replacements: [wedding.event_id] }
+      );
+      let config = {};
+      const eventType = eRows[0]?.type || wedding.event_type || "wedding";
+      try {
+        config =
+          typeof eRows[0]?.template_config === "string"
+            ? JSON.parse(eRows[0].template_config)
+            : (eRows[0]?.template_config || {});
+      } catch {
+        config = {};
+      }
+
+      config.fields = { ...(config.fields || {}) };
+      if (scheduleTitle !== undefined) {
+        config.fields.scheduleTitle = scheduleTitle;
+        config.fields.agendaTitle = scheduleTitle;
+      }
+      if (scheduleSubtitle !== undefined) {
+        config.fields.scheduleSubtitle = scheduleSubtitle;
+        config.fields.agendaSubtitle = scheduleSubtitle;
+      }
+      if (scheduleNotes !== undefined) {
+        config.fields.scheduleNotes = scheduleNotes;
+        config.fields.agendaNotes = scheduleNotes;
+      }
+
+      if (Array.isArray(items)) {
+        config.fields.agendaItems = items.map((it) => ({
+          time: String(it.time || "09:00 AM").trim(),
+          title: String(it.title || "").trim(),
+          location: String(it.location || "").trim(),
+        }));
+        config.fields.scheduleItems = items.map((it) => ({
+          time: String(it.time || "09:00 AM").trim(),
+          title: String(it.title || "").trim(),
+          location: String(it.location || "").trim(),
+          icon: inferIcon(it.title, it.icon),
+        }));
+
+        await sequelize.query(
+          `UPDATE events SET template_config = ?, updated_at = NOW() WHERE id = ?;`,
+          { replacements: [JSON.stringify(config), wedding.event_id] }
+        );
+
+        await syncTemplateScheduleToDb(
+          wedding.event_id,
+          wedding.id,
+          items,
+          eventType
+        );
+      } else {
+        await sequelize.query(
+          `UPDATE events SET template_config = ?, updated_at = NOW() WHERE id = ?;`,
+          { replacements: [JSON.stringify(config), wedding.event_id] }
+        );
+      }
+    }
+
+    await createNotification(
+      wedding.id,
+      "schedule_updated",
+      "Schedule customized",
+      "The template schedule was customized.",
+      null
+    );
+
+    const rows = await fetchScheduleRows(wedding.id);
+    return res.status(200).json({
+      message: "Template schedule updated successfully",
+      events: rows.map((r) => mapEventRow(r, wedding.wedding_date)),
+    });
+  } catch (err) {
+    console.error("updateScheduleTemplateConfig error:", err);
+    return res.status(500).json({
+      error: "Internal Server Error",
+      message: "Failed to update template schedule",
+    });
+  }
+}
+
 module.exports = {
   listSchedule,
   getScheduleEvent,
@@ -465,4 +696,6 @@ module.exports = {
   updateScheduleEvent,
   deleteScheduleEvent,
   downloadSchedule,
+  getScheduleTemplateConfig,
+  updateScheduleTemplateConfig,
 };
