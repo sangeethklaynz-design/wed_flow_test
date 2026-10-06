@@ -45,6 +45,8 @@ export default function InvitationPage({
   embedded = false,
   /** Guest RSVP success — parent can show schedule → thank you → invitation */
   onRsvpSuccess = null,
+  /** Scroll down to next section */
+  onScrollNext = null,
   /** Admin preview: skip RSVP field validation and advance on button click */
   previewBypassValidation = false,
   /** Optional admin/template overrides (also read from data.templateConfig) */
@@ -388,6 +390,20 @@ export default function InvitationPage({
     setGuests(String(n));
   };
 
+  const handleScrollNext = () => {
+    if (typeof onScrollNext === "function") {
+      onScrollNext();
+      return;
+    }
+    const el = document.querySelector('[data-invite-page="starting"]');
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else if (typeof window !== "undefined") {
+      const top = layout?.targetTop?.starting || 875;
+      window.scrollTo({ top, behavior: "smooth" });
+    }
+  };
+
   const DETAIL_NODE_STEP = 102;
 
   const layout = computeInviteLayoutMetrics({
@@ -473,7 +489,12 @@ export default function InvitationPage({
           ========================================================= */}
 
       {showStarting ? (
-        <div className="absolute left-0 top-0 w-full" style={shiftStyle("starting")}>
+        <div
+          id="page-starting"
+          data-invite-page="starting"
+          className="absolute left-0 top-0 w-full"
+          style={shiftStyle("starting")}
+        >
       {/* Landing background - assets/background_image/<slug>/ @ 50% opacity, fit to height */}
       {landingBackgroundUrl ? (
         <div
@@ -731,6 +752,7 @@ export default function InvitationPage({
             guestToken={guestToken}
             rsvp={t.rsvp}
             maxGuests={t.maxGuests}
+            onScrollNext={handleScrollNext}
           />
         </div>
       ) : (
@@ -933,6 +955,42 @@ export default function InvitationPage({
               {submitting ? "Sending..." : "Send RSVP"}
             </button>
           ) : null}
+
+          {/* Scroll Down to explore button (just as in parties template) */}
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={handleScrollNext}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleScrollNext();
+              }
+            }}
+            className="mx-auto mt-4 mb-2 flex flex-col items-center justify-between cursor-pointer select-none group z-10"
+            style={{ width: "117px", height: "62px" }}
+            aria-label="Scroll down to explore"
+          >
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 shadow-md backdrop-blur-sm group-hover:translate-y-1 group-hover:scale-105"
+              style={{
+                border: `1.5px solid ${theme.pageTitle}66`,
+                backgroundColor: "rgba(255, 255, 255, 0.85)",
+                color: theme.pageTitle,
+                animation: "floatBounce 2.4s ease-in-out infinite",
+              }}
+            >
+              <svg className="w-[18px] h-[18px] stroke-current fill-none" strokeWidth={2} viewBox="0 0 24 24">
+                <path d="M7 10l5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <span
+              className="text-[8px] font-semibold tracking-[0.22em] uppercase transition-colors duration-300 whitespace-nowrap group-hover:opacity-80"
+              style={{ color: theme.pageTitle, fontFamily: "var(--font-sans), sans-serif" }}
+            >
+              SCROLL  TO  EXPLORE
+            </span>
+          </div>
         </form>
       )}
 

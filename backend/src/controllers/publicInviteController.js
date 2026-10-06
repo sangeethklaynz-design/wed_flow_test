@@ -137,14 +137,31 @@ async function submitPublicRsvp(req, res) {
     const guestRsvpStatus =
       attendingStatus === "ATTENDING" ? "CONFIRMED" : "DECLINED";
 
+    const updatedFullName =
+      req.body?.fullName !== undefined && String(req.body.fullName).trim()
+        ? String(req.body.fullName).trim()
+        : null;
+    const updatedPhone =
+      req.body?.whatsappNumber !== undefined && String(req.body.whatsappNumber).trim()
+        ? String(req.body.whatsappNumber).trim()
+        : null;
+
     await sequelize.query(
       `
       UPDATE guests
-      SET rsvp_status = ?
+      SET
+        rsvp_status = ?,
+        full_name = COALESCE(?, full_name),
+        whatsapp_number = COALESCE(?, whatsapp_number)
       WHERE id = ?;
       `,
       {
-        replacements: [guestRsvpStatus, row.guest_id],
+        replacements: [
+          guestRsvpStatus,
+          updatedFullName,
+          updatedPhone,
+          row.guest_id,
+        ],
         transaction,
       }
     );

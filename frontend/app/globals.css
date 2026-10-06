@@ -268,6 +268,16 @@ body {
   }
 }
 
+@keyframes floatBounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(4px);
+  }
+}
+
 @keyframes tickPopIn {
   0% {
     transform: scale(0.65);

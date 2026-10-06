@@ -382,6 +382,14 @@ function PartyInvitationFull({
           contentScale={1}
           previewBypassValidation={previewBypassValidation || !guestToken}
           onRsvpSuccess={interactive ? handleRsvpSuccess : () => {}}
+          onScrollNext={() => {
+            const rsvpIdx = visiblePages.indexOf("rsvp");
+            const next =
+              rsvpIdx >= 0 && rsvpIdx < visiblePages.length - 1
+                ? visiblePages[rsvpIdx + 1]
+                : null;
+            if (next) scrollToPage(next);
+          }}
         />
       );
     }

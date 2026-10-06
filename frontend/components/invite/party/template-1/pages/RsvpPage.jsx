@@ -49,6 +49,7 @@ export default function RsvpPage({
   guestToken = null,
   maxGuests = 1,
   guest = null,
+  onScrollNext = null,
 }) {
   const questions =
     Array.isArray(fields.rsvpQuestions) && fields.rsvpQuestions.length
@@ -60,38 +61,52 @@ export default function RsvpPage({
   const tagline = fields.rsvpTagline || "We'd love to celebrate with you!";
   const pageHeight = computeRsvpHeight(questions);
 
+  // Keep every field as empty only with placeholders so guests can fill them
   const initialAnswers = useMemo(() => {
     const next = {};
     questions.forEach((q, i) => {
       const key = fieldKey(q, i);
-      const label = String(q?.label || "").toLowerCase();
       const type = String(q?.inputType || "text").toLowerCase();
       if (type === "radio") {
         const opts = parseOptionList(q?.options);
         next[key] = opts[0] || "";
-      } else if (/full\s*name|your\s*name|^name$/i.test(label) && guest?.fullName) {
-        next[key] = guest.fullName;
-      } else if (/email/i.test(label) && guest?.email) {
-        next[key] = guest.email;
-      } else if (/phone/i.test(label) && (guest?.whatsappNumber || guest?.phone)) {
-        next[key] = guest.whatsappNumber || guest.phone;
-      } else if (/number of guest|guests? count|how many guest/i.test(label)) {
-        next[key] = "1";
       } else {
         next[key] = "";
       }
     });
     return next;
-  }, [questions, guest]);
+  }, [questions]);
 
   const [answers, setAnswers] = useState(initialAnswers);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [rsvpError, setRsvpError] = useState("");
   const [btnText, setBtnText] = useState("Submit RSVP");
 
+  const questionKeyList = useMemo(() => {
+    return questions.map((q, i) => `${fieldKey(q, i)}:${q?.inputType}`).join("|");
+  }, [questions]);
+
+  // When question schema changes (e.g. admin template editor), merge any new keys without wiping existing user answers
   useEffect(() => {
-    setAnswers(initialAnswers);
-  }, [initialAnswers]);
+    setAnswers((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      questions.forEach((q, i) => {
+        const key = fieldKey(q, i);
+        if (next[key] === undefined) {
+          changed = true;
+          const type = String(q?.inputType || "text").toLowerCase();
+          if (type === "radio") {
+            const opts = parseOptionList(q?.options);
+            next[key] = opts[0] || "";
+          } else {
+            next[key] = "";
+          }
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [questionKeyList, questions]);
 
   const setAnswer = (key, value) => {
     setAnswers((prev) => ({ ...prev, [key]: value }));
@@ -197,12 +212,19 @@ export default function RsvpPage({
     setIsSubmitting(true);
     setBtnText("Submitting...");
     try {
+      const nameQ = questions.find((q) => /full\s*name|your\s*name|^name$/i.test(q?.label || ""));
+      const nameVal = nameQ ? answers[fieldKey(nameQ, questions.indexOf(nameQ))] : "";
+      const phoneQ = questions.find((q) => /phone|mobile|whatsapp/i.test(q?.label || ""));
+      const phoneVal = phoneQ ? answers[fieldKey(phoneQ, questions.indexOf(phoneQ))] : "";
+
       await apiRequest(`/api/public/invite/${encodeURIComponent(guestToken)}/rsvp`, {
         method: "POST",
         body: {
           status,
           attendingCount,
           wishes: wishesPayload,
+          fullName: nameVal || undefined,
+          whatsappNumber: phoneVal || undefined,
         },
       });
 
@@ -389,6 +411,29 @@ export default function RsvpPage({
           <button type="submit" disabled={isSubmitting} className={styles.submitButton}>
             {btnText}
           </button>
+
+          {typeof onScrollNext === "function" ? (
+            <div
+              role="button"
+              tabIndex={0}
+              className={styles.scrollGroup}
+              onClick={onScrollNext}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onScrollNext?.();
+                }
+              }}
+              aria-label="Scroll down to explore"
+            >
+              <div className={styles.scrollButton}>
+                <svg viewBox="0 0 24 24">
+                  <path d="M7 10l5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <span className={styles.scrollText}>SCROLL  TO  EXPLORE</span>
+            </div>
+          ) : null}
         </form>
       </div>
     </section>

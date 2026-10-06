@@ -19,6 +19,7 @@ const {
   loadTemplateManifest,
   listPackFiles,
   resourcePackDir,
+  publicResourceUrl,
 } = require("../utils/eventTemplates");
 const { syncTemplateScheduleToDb, inferIcon } = require("../utils/scheduleSync");
 
@@ -820,6 +821,49 @@ async function updateTemplateConfig(req, res) {
 
     if (Array.isArray(incomingSchedule)) {
       await syncTemplateScheduleToDb(id, null, incomingSchedule, existing.type);
+    }
+
+    const effectivePackId = req.body?.resourcePackId || existing.resourcePackId;
+    const targetVideo =
+      nextConfig.fields?.openingVideo || nextConfig.fields?.landingVideo;
+    const openingVideoEnabled = nextConfig.pages?.openingVideo !== false;
+
+    if (targetVideo && effectivePackId && openingVideoEnabled) {
+      const videoUrl = publicResourceUrl(
+        existing.type,
+        effectivePackId,
+        "video",
+        targetVideo
+      );
+      if (videoUrl) {
+        try {
+          await sequelize.query(
+            `
+            UPDATE invitations i
+            JOIN weddings w ON w.id = i.wedding_id
+            SET i.opening_video_url = ?
+            WHERE w.event_id = ?;
+            `,
+            { replacements: [videoUrl, id] }
+          );
+        } catch {
+          // non-fatal
+        }
+      }
+    } else if (!openingVideoEnabled || !targetVideo) {
+      try {
+        await sequelize.query(
+          `
+          UPDATE invitations i
+          JOIN weddings w ON w.id = i.wedding_id
+          SET i.opening_video_url = NULL
+          WHERE w.event_id = ?;
+          `,
+          { replacements: [id] }
+        );
+      } catch {
+        // non-fatal
+      }
     }
 
     const [rows] = await sequelize.query(

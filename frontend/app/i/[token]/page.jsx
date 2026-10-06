@@ -34,7 +34,12 @@ export default function PublicGuestInvitePage() {
         const data = await apiRequest(
           `/api/public/invite/${encodeURIComponent(token)}/invitation-template`
         );
-        setTemplateData(data);
+        setTemplateData((prev) => {
+          if (prev && JSON.stringify(prev) === JSON.stringify(data)) {
+            return prev;
+          }
+          return data;
+        });
         setError("");
       } catch (err) {
         if (!silent) {

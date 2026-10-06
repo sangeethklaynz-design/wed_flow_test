@@ -128,27 +128,6 @@ export default function LandingPage({
           </svg>
         </div>
         <div className={styles.locationText}>{venueLabel}</div>
-
-        <div
-          className={styles.scrollGroup}
-          onClick={onScrollNext}
-          role="button"
-          tabIndex={0}
-          aria-label="Scroll down to explore"
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              onScrollNext?.();
-            }
-          }}
-        >
-          <div className={styles.scrollButton}>
-            <svg viewBox="0 0 24 24">
-              <path d="M7 10l5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-          <span className={styles.scrollText}>SCROLL  TO  EXPLORE</span>
-        </div>
       </div>
     </section>
   );

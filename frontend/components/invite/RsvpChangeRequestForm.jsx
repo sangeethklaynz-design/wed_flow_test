@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Lock } from "lucide-react";
 import { apiRequest, resolveMediaUrl } from "@/lib/api";
 
-export default function RsvpChangeRequestForm({ guestToken, rsvp, maxGuests }) {
+export default function RsvpChangeRequestForm({ guestToken, rsvp, maxGuests, onScrollNext = null }) {
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -171,6 +171,40 @@ export default function RsvpChangeRequestForm({ guestToken, rsvp, maxGuests }) {
           className="object-contain"
         />
       </div>
+
+      {typeof onScrollNext === "function" ? (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={onScrollNext}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onScrollNext?.();
+            }
+          }}
+          className="mx-auto mt-4 mb-2 flex flex-col items-center justify-between cursor-pointer select-none group z-10"
+          style={{ width: "117px", height: "62px" }}
+          aria-label="Scroll down to explore"
+        >
+          <div
+            className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 shadow-md backdrop-blur-sm group-hover:translate-y-1 group-hover:scale-105"
+            style={{
+              border: "1.5px solid rgba(119, 50, 164, 0.4)",
+              backgroundColor: "rgba(255, 255, 255, 0.85)",
+              color: "#7732A4",
+              animation: "floatBounce 2.4s ease-in-out infinite",
+            }}
+          >
+            <svg className="w-[18px] h-[18px] stroke-current fill-none" strokeWidth={2} viewBox="0 0 24 24">
+              <path d="M7 10l5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <span className="text-[8px] font-semibold tracking-[0.22em] uppercase transition-colors duration-300 whitespace-nowrap text-[#7732A4] group-hover:opacity-80">
+            SCROLL  TO  EXPLORE
+          </span>
+        </div>
+      ) : null}
     </div>
   );
 }

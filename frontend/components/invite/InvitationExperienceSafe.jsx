@@ -121,6 +121,15 @@ export default function InvitationExperienceSafe({
     }
   }, []);
 
+  const handleScrollToNextPage = useCallback(() => {
+    const el = document.querySelector('[data-invite-page="starting"]');
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else if (typeof window !== "undefined") {
+      window.scrollBy({ top: 844, behavior: "smooth" });
+    }
+  }, []);
+
   if (!liveTemplateData) return null;
 
   const isVideoActive = step === "video" && (videoState === "playing" || videoState === "fading");
@@ -148,6 +157,7 @@ export default function InvitationExperienceSafe({
               interactive={interactive}
               embedded
               onRsvpSuccess={handleRsvpSuccess}
+              onScrollNext={handleScrollToNextPage}
             />
           </div>
         </main>
@@ -195,6 +205,7 @@ export default function InvitationExperienceSafe({
               interactive={interactive && !isVideoActive}
               embedded
               onRsvpSuccess={handleRsvpSuccess}
+              onScrollNext={handleScrollToNextPage}
             />
           </div>
         ) : null}

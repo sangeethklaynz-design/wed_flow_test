@@ -354,15 +354,17 @@ function CorporateInvitationFull({
   }, [interactive]);
 
   const handleExploreClick = () => {
-    const page2 = document.getElementById('page-2');
-    if (page2) {
+    const target =
+      document.querySelector('[data-invite-page="landing"]') ||
+      document.getElementById('page-1');
+    if (target) {
       if (embedded && containerRef.current) {
         containerRef.current.scrollTo({
-          top: page2.offsetTop,
+          top: target.offsetTop,
           behavior: 'smooth',
         });
       } else {
-        page2.scrollIntoView({ behavior: 'smooth' });
+        target.scrollIntoView({ behavior: 'smooth' });
       }
     }
   };
@@ -492,6 +494,7 @@ function CorporateInvitationFull({
           maxGuests={maxGuests}
           previewBypassValidation={previewBypassValidation || !guestToken}
           onRsvpSuccess={interactive ? handleRsvpSuccess : () => {}}
+          onScrollNext={handleExploreClick}
         />
       );
     }

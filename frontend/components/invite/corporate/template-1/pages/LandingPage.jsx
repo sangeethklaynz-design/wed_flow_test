@@ -134,30 +134,6 @@ export const LandingPage = ({
             </span>
           </div>
         </div>
-
-        <button
-          type="button"
-          onClick={onExploreClick}
-          className="absolute bottom-[48px] left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 cursor-pointer group"
-        >
-          <span className="w-[117px] h-[11px] font-instrument font-normal text-[8px] leading-[11px] text-white tracking-[0.22em] text-center uppercase">
-            Explore Invitation
-          </span>
-          <svg
-            className="animate-chevron-float text-white/90 group-hover:text-white"
-            width="22"
-            height="22"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        </button>
       </div>
     </section>
   );

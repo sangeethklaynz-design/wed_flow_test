@@ -315,55 +315,6 @@ async function loadStaticInvitationBundle(weddingId) {
       : splitCoupleNames(wedding.couple_names);
 
   const weddingDate = toDateOnly(wedding.wedding_date);
-  let documents = [];
-  let packBackgroundUrl = null;
-  let packVideoUrl = null;
-  let packMusicUrl = null;
-
-  const eventTypeForDocs = String(wedding.event_type || "").toLowerCase();
-  if (
-    (eventTypeForDocs === "corporate" || eventTypeForDocs === "party") &&
-    wedding.resource_pack_id
-  ) {
-    documents = listPackFiles(
-      wedding.event_type,
-      wedding.resource_pack_id,
-      "documents"
-    );
-    const bgFiles = listPackFiles(
-      wedding.event_type,
-      wedding.resource_pack_id,
-      "background"
-    );
-    if (bgFiles && bgFiles.length) {
-      packBackgroundUrl = bgFiles[0].url;
-    }
-    const videoFiles = listPackFiles(
-      wedding.event_type,
-      wedding.resource_pack_id,
-      "video"
-    );
-    if (videoFiles && videoFiles.length) {
-      packVideoUrl = videoFiles[0].url;
-    }
-    const musicFiles = listPackFiles(
-      wedding.event_type,
-      wedding.resource_pack_id,
-      "music"
-    );
-    if (musicFiles && musicFiles.length) {
-      packMusicUrl = musicFiles[0].url;
-    }
-  }
-
-  const openingVideoUrl =
-    (diskVideo && diskVideo.url) ||
-    packVideoUrl ||
-    invitation?.opening_video_url ||
-    null;
-
-  const musicUrl = (diskMusic && diskMusic.url) || packMusicUrl || null;
-  const backgroundUrl = (diskBackground && diskBackground.url) || packBackgroundUrl || null;
 
   let templateConfig = null;
   if (wedding.template_config) {
@@ -376,6 +327,109 @@ async function loadStaticInvitationBundle(weddingId) {
       templateConfig = null;
     }
   }
+
+  let documents = [];
+  let packBackgroundUrl = null;
+  let packVideoUrl = null;
+  let packMusicUrl = null;
+
+  const eventTypeForDocs = String(wedding.event_type || "wedding").toLowerCase();
+  const effectivePackId = wedding.resource_pack_id;
+
+  if (effectivePackId) {
+    documents = listPackFiles(
+      eventTypeForDocs,
+      effectivePackId,
+      "documents"
+    );
+    const bgFiles = listPackFiles(
+      eventTypeForDocs,
+      effectivePackId,
+      "background"
+    );
+    if (bgFiles && bgFiles.length) {
+      const configBg = templateConfig?.fields?.landingBackground;
+      const matchedBg = configBg
+        ? bgFiles.find((f) => f.filename === configBg)
+        : null;
+      packBackgroundUrl = matchedBg?.url || bgFiles[0].url;
+    }
+    const videoFiles = listPackFiles(
+      eventTypeForDocs,
+      effectivePackId,
+      "video"
+    );
+    if (videoFiles && videoFiles.length) {
+      const configVideo =
+        templateConfig?.fields?.openingVideo ||
+        templateConfig?.fields?.landingVideo;
+      const matchedVideo = configVideo
+        ? videoFiles.find((f) => f.filename === configVideo)
+        : null;
+      packVideoUrl = matchedVideo?.url || videoFiles[0].url;
+    }
+    const musicFiles = listPackFiles(
+      eventTypeForDocs,
+      effectivePackId,
+      "music"
+    );
+    if (musicFiles && musicFiles.length) {
+      const configMusic = templateConfig?.fields?.backgroundMusic;
+      const matchedMusic = configMusic
+        ? musicFiles.find((f) => f.filename === configMusic)
+        : null;
+      packMusicUrl = matchedMusic?.url || musicFiles[0].url;
+    }
+    const packImageFiles = listPackFiles(
+      eventTypeForDocs,
+      effectivePackId,
+      "images"
+    );
+    if (packImageFiles && packImageFiles.length) {
+      packImageFiles.forEach((pImg, idx) => {
+        const already = resolvedImages.find(
+          (img) => (img.file_name || img.fileName) === pImg.filename
+        );
+        if (!already) {
+          resolvedImages.push({
+            id: `pack-${idx}-${pImg.filename}`,
+            image_url: pImg.url,
+            caption: null,
+            display_order: 100 + idx,
+            file_name: pImg.filename,
+          });
+        }
+      });
+    }
+  }
+
+  const openingVideoPageEnabled =
+    templateConfig?.pages?.openingVideo !== false;
+
+  const openingVideoUrl = openingVideoPageEnabled
+    ? (packVideoUrl ||
+       (diskVideo && diskVideo.url) ||
+       invitation?.opening_video_url ||
+       null)
+    : null;
+
+  if (
+    packVideoUrl &&
+    invitation?.id &&
+    invitation.opening_video_url !== packVideoUrl
+  ) {
+    try {
+      await sequelize.query(
+        `UPDATE invitations SET opening_video_url = ? WHERE id = ?;`,
+        { replacements: [packVideoUrl, invitation.id] }
+      );
+    } catch {
+      // non-fatal
+    }
+  }
+
+  const musicUrl = packMusicUrl || (diskMusic && diskMusic.url) || null;
+  const backgroundUrl = packBackgroundUrl || (diskBackground && diskBackground.url) || null;
 
   const chromeBaseUrl = publicChromeUrl(
     wedding.event_type || "wedding",

@@ -32,7 +32,12 @@ export default function PublicInvitationPage() {
         const data = await apiRequest("/api/couple/invitation-template", {
           token,
         });
-        setTemplateData(data);
+        setTemplateData((prev) => {
+          if (prev && JSON.stringify(prev) === JSON.stringify(data)) {
+            return prev;
+          }
+          return data;
+        });
         setError("");
       } catch (err) {
         if (err.status === 401) {

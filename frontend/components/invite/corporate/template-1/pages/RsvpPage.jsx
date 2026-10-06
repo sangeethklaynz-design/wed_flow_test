@@ -21,6 +21,7 @@ export const RsvpPage = ({
   previewBypassValidation = false,
   guestToken = null,
   maxGuests = 1,
+  onScrollNext = null,
 }) => {
   const questions =
     Array.isArray(fields.rsvpQuestions) && fields.rsvpQuestions.length
@@ -50,10 +51,31 @@ export const RsvpPage = ({
   const [btnText, setBtnText] = useState('Submit RSVP');
   const [btnGreen, setBtnGreen] = useState(false);
 
-  // Reset when question set changes (admin live preview)
+  const questionKeyList = React.useMemo(() => {
+    return questions.map((q, i) => `${fieldKey(q, i)}:${q?.inputType}`).join('|');
+  }, [questions]);
+
+  // When question schema changes (e.g. admin template editor), merge any new keys without wiping existing user answers
   React.useEffect(() => {
-    setAnswers(initialAnswers);
-  }, [initialAnswers]);
+    setAnswers((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      questions.forEach((q, i) => {
+        const key = fieldKey(q, i);
+        if (next[key] === undefined) {
+          changed = true;
+          const type = String(q?.inputType || 'text').toLowerCase();
+          if (type === 'radio') {
+            const opts = parseOptionList(q?.options);
+            next[key] = opts[0] || '';
+          } else {
+            next[key] = '';
+          }
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [questionKeyList, questions]);
 
   const setAnswer = (key, value) => {
     setAnswers((prev) => ({ ...prev, [key]: value }));
@@ -157,12 +179,19 @@ export const RsvpPage = ({
     setIsSubmitting(true);
     setBtnText('Submitting...');
     try {
+      const nameQ = questions.find((q) => /full\s*name|your\s*name|^name$/i.test(q?.label || ''));
+      const nameVal = nameQ ? answers[fieldKey(nameQ, questions.indexOf(nameQ))] : '';
+      const phoneQ = questions.find((q) => /phone|mobile|whatsapp/i.test(q?.label || ''));
+      const phoneVal = phoneQ ? answers[fieldKey(phoneQ, questions.indexOf(phoneQ))] : '';
+
       await apiRequest(`/api/public/invite/${encodeURIComponent(guestToken)}/rsvp`, {
         method: 'POST',
         body: {
           status,
           attendingCount,
           wishes: wishesPayload,
+          fullName: nameVal || undefined,
+          whatsappNumber: phoneVal || undefined,
         },
       });
 
@@ -391,6 +420,33 @@ export const RsvpPage = ({
           >
             {btnText}
           </button>
+
+          {typeof onScrollNext === 'function' ? (
+            <button
+              type="button"
+              onClick={onScrollNext}
+              className="mt-4 mb-2 flex flex-col items-center gap-1.5 cursor-pointer group mx-auto bg-transparent border-0 outline-none"
+              aria-label="Scroll down to explore"
+            >
+              <span className="w-[117px] font-instrument font-normal text-[8.5px] leading-[11px] text-[var(--corp-text-primary)] tracking-[0.22em] text-center uppercase">
+                Explore Invitation
+              </span>
+              <svg
+                className="animate-chevron-float text-[var(--corp-text-primary)]/80 group-hover:text-[var(--corp-text-primary)]"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+          ) : null}
         </form>
       </div>
     </section>

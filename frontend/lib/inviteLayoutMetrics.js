@@ -136,13 +136,16 @@ export function estimateRsvpFormHeight(questions) {
   return estimateRsvpFieldsHeight(questions);
 }
 
+export const RSVP_SCROLL_BUTTON_H = 86;
+
 /**
- * Content stack above RSVP bottom floral: fields + Send button.
+ * Content stack above RSVP bottom floral: fields + Send button + scroll down button.
  */
-export function estimateRsvpContentHeight(questions, { includeButton = true } = {}) {
+export function estimateRsvpContentHeight(questions, { includeButton = true, includeScrollButton = true } = {}) {
   const fieldsH = estimateRsvpFieldsHeight(questions);
   if (!includeButton) return fieldsH;
-  return fieldsH + RSVP_GAP_AFTER_FIELDS + RSVP_BUTTON_H;
+  const scrollH = includeScrollButton ? RSVP_SCROLL_BUTTON_H : 0;
+  return fieldsH + RSVP_GAP_AFTER_FIELDS + RSVP_BUTTON_H + scrollH;
 }
 
 /**
