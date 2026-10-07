@@ -46,6 +46,10 @@ export const PaymentSuccessOverlay = ({
       aria-modal="true"
       aria-label="Payment Successful"
       className="absolute top-0 left-0 w-[390px] h-[844px] rounded-[26px] overflow-hidden z-[110] shadow-card bg-confirm-grad select-none animate-in fade-in zoom-in-95 duration-300"
+      style={{
+        '--corp-text-primary': '#080480',
+        '--corp-text-highlight': '#0084FF',
+      }}
     >
       <div className="relative w-[390px] h-[844px] mx-auto select-none">
         {/* Top Left Corner Back Button to RSVP Confirmation */}
@@ -54,14 +58,15 @@ export const PaymentSuccessOverlay = ({
           id="back-to-rsvp-btn"
           onClick={onBackToRsvp}
           aria-label="Back to RSVP confirmation"
-          className="absolute top-[18px] left-[18px] w-[36px] h-[36px] rounded-full bg-white/85 backdrop-blur-md border border-[#BED7F5] shadow-[0_2px_8px_rgba(0,30,80,0.12)] flex items-center justify-center text-[var(--corp-text-primary)] cursor-pointer z-[20] transition-all duration-150 hover:bg-white hover:scale-105 active:scale-95"
+          className="absolute top-[18px] left-[18px] w-[36px] h-[36px] rounded-full bg-[#080480] text-white shadow-[0_2px_8px_rgba(8,4,128,0.25)] flex items-center justify-center cursor-pointer z-[20] transition-all duration-150 hover:bg-[#0a0699] hover:scale-105 active:scale-95"
+          style={{ backgroundColor: '#080480', color: '#ffffff' }}
         >
           <svg
             width="18"
             height="18"
             viewBox="0 0 24 24"
             fill="none"
-            stroke="var(--corp-text-primary)"
+            stroke="#ffffff"
             strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -127,7 +132,8 @@ export const PaymentSuccessOverlay = ({
           type="button"
           id="view-my-ticket-btn"
           onClick={handleViewTicket}
-          className="absolute top-[536px] left-[53px] w-[280px] h-[40px] px-4 bg-[var(--corp-text-primary)] text-white rounded-lg flex items-center justify-center cursor-pointer shadow-[0_4px_14px_rgba(8,4,128,0.25)] z-[3] transition-all duration-150 hover:opacity-90 hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(8,4,128,0.32)] active:translate-y-[1px]"
+          className="absolute top-[536px] left-[53px] w-[280px] h-[40px] px-4 bg-[#080480] text-white rounded-lg flex items-center justify-center cursor-pointer shadow-[0_4px_14px_rgba(8,4,128,0.25)] z-[3] transition-all duration-150 hover:opacity-90 hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(8,4,128,0.32)] active:translate-y-[1px]"
+          style={{ backgroundColor: '#080480', color: '#ffffff' }}
         >
           {/* Turn 2 - Screenshot 4: Text 'View My Ticket' (W: 119, H: 19, X: 133, Y: 546, Inter Semi Bold 16px) */}
           <span className="font-inter font-semibold text-[16px] leading-[19px] text-white">
@@ -140,7 +146,8 @@ export const PaymentSuccessOverlay = ({
           type="button"
           id="payment-add-calendar-btn"
           onClick={handleAddToCalendar}
-          className="absolute top-[599px] left-[53px] w-[280px] h-[40px] px-4 bg-white text-[var(--corp-text-primary)] border-[1.5px] border-[var(--corp-text-primary)] rounded-lg flex items-center justify-center gap-[9px] cursor-pointer z-[3] transition-all duration-150 hover:bg-[#F1F6FE] hover:-translate-y-[1px] active:translate-y-[1px]"
+          className="absolute top-[599px] left-[53px] w-[280px] h-[40px] px-4 bg-white text-[#080480] border-[1.5px] border-[#080480] rounded-lg flex items-center justify-center gap-[9px] cursor-pointer z-[3] transition-all duration-150 hover:bg-[#F1F6FE] hover:-translate-y-[1px] active:translate-y-[1px]"
+          style={{ backgroundColor: '#ffffff', color: '#080480', borderColor: '#080480' }}
         >
           {/* Turn 3 - Screenshot 1: Calendar icon inside Add to Calendar button (W: 25, H: 22, X: 113, Y: 608) */}
           <svg

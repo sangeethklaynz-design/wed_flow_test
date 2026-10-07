@@ -43,6 +43,10 @@ export const TicketQrOverlay = ({
       aria-modal="true"
       aria-label="Event Ticket and QR Code"
       className="absolute top-0 left-0 w-[390px] h-[844px] rounded-[26px] overflow-hidden z-[120] shadow-card bg-ticket-grad select-none animate-in fade-in zoom-in-95 duration-300"
+      style={{
+        '--corp-text-primary': '#080480',
+        '--corp-text-highlight': '#0084FF',
+      }}
     >
       <div className="relative w-[390px] h-[844px] mx-auto select-none">
         {/* High-fidelity full backdrop (gradient and sky glow) */}
@@ -200,7 +204,8 @@ export const TicketQrOverlay = ({
           type="button"
           id="ticket-download-btn"
           onClick={handleDownloadTicket}
-          className="absolute top-[578px] left-[54px] w-[285px] h-[40px] px-4 bg-[var(--corp-text-primary)] text-white rounded-lg flex items-center justify-center cursor-pointer shadow-[0_4px_14px_rgba(8,4,128,0.25)] hover:opacity-90 hover:-translate-y-[1px] active:translate-y-[1px] transition-all duration-150 z-[6]"
+          className="absolute top-[578px] left-[54px] w-[285px] h-[40px] px-4 bg-[#080480] text-white rounded-lg flex items-center justify-center cursor-pointer shadow-[0_4px_14px_rgba(8,4,128,0.25)] hover:opacity-90 hover:-translate-y-[1px] active:translate-y-[1px] transition-all duration-150 z-[6]"
+          style={{ backgroundColor: '#080480', color: '#ffffff' }}
         >
           <div className="w-[168px] h-[25px] flex items-center justify-center gap-[7px]">
             <svg className="w-[18px] h-[18px] flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -208,7 +213,7 @@ export const TicketQrOverlay = ({
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
-            <span className="font-inter font-semibold text-[14px] leading-none whitespace-nowrap">
+            <span className="font-inter font-semibold text-[14px] leading-none whitespace-nowrap text-white">
               Download Ticket
             </span>
           </div>
@@ -219,7 +224,8 @@ export const TicketQrOverlay = ({
           type="button"
           id="ticket-add-calendar-btn"
           onClick={onAddToCalendar}
-          className="absolute top-[637px] left-[54px] w-[285px] h-[40px] px-4 bg-white text-[var(--corp-text-primary)] border-[1.5px] border-[var(--corp-text-primary)] rounded-lg flex items-center justify-center cursor-pointer hover:bg-[#F1F6FE] hover:-translate-y-[1px] active:translate-y-[1px] transition-all duration-150 z-[6]"
+          className="absolute top-[637px] left-[54px] w-[285px] h-[40px] px-4 bg-white text-[#080480] border-[1.5px] border-[#080480] rounded-lg flex items-center justify-center cursor-pointer hover:bg-[#F1F6FE] hover:-translate-y-[1px] active:translate-y-[1px] transition-all duration-150 z-[6]"
+          style={{ backgroundColor: '#ffffff', color: '#080480', borderColor: '#080480' }}
         >
           <div className="w-[163px] h-[22px] flex items-center justify-center gap-[9px]">
             <svg className="w-[18px] h-[18px] flex-shrink-0" viewBox="0 0 25 22" fill="none" stroke="#0174EF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -228,7 +234,7 @@ export const TicketQrOverlay = ({
               <line x1="7" y1="1.5" x2="7" y2="5.5" />
               <line x1="2" y1="8.5" x2="23" y2="8.5" />
             </svg>
-            <span className="font-inter font-semibold text-[14px] leading-none whitespace-nowrap">
+            <span className="font-inter font-semibold text-[14px] leading-none whitespace-nowrap text-[#080480]">
               Add to Calendar
             </span>
           </div>

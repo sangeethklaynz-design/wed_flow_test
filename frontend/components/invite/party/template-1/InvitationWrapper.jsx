@@ -290,7 +290,9 @@ function PartyInvitationFull({
   );
 
   const scrollToPage = (pageId) => {
-    const el = document.querySelector(`[data-invite-page="${pageId}"]`);
+    const el =
+      document.querySelector(`[data-invite-page="${pageId}"]`) ||
+      (pageId === "rsvp" ? document.getElementById("page-3") : null);
     if (el) {
       if (embedded && embeddedContainerRef.current) {
         embeddedContainerRef.current.scrollTo({
@@ -318,12 +320,10 @@ function PartyInvitationFull({
   ).trim();
 
   const handleProceedToPayment = () => {
-    if (paymentLink) {
-      if (typeof window !== "undefined") {
-        window.open(paymentLink, "_blank", "noopener,noreferrer");
-      }
-      return;
+    if (paymentLink && typeof window !== "undefined") {
+      window.open(paymentLink, "_blank", "noopener,noreferrer");
     }
+    setShowRsvpConfirmation(false);
     setShowPaymentSuccess(true);
   };
 
@@ -332,11 +332,19 @@ function PartyInvitationFull({
     setHasSubmittedRsvp(true);
     if (typeof onRsvpSuccessProp === "function") {
       onRsvpSuccessProp(data);
-      return;
     }
     if (!interactive) return;
     setShowPaymentSuccess(false);
     setShowRsvpConfirmation(true);
+  };
+
+  const handleBackToInvite = () => {
+    setShowPaymentSuccess(false);
+    setShowRsvpConfirmation(false);
+    setHasSubmittedRsvp(true);
+    setTimeout(() => {
+      scrollToPage("rsvp");
+    }, 60);
   };
 
   const handleDownloadSchedule = async () => {
@@ -506,32 +514,30 @@ function PartyInvitationFull({
             }}
           />
         ) : showPaymentSuccess ? (
-          <PaymentSuccessPage
-            contentScale={1}
-            onAddToCalendar={() => {
-              setShowPaymentSuccess(false);
-              setShowRsvpConfirmation(false);
-              setTimeout(() => scrollToPage("saveTheDate"), 120);
-            }}
-            onBackToInvite={() => {
-              setShowPaymentSuccess(false);
-              setShowRsvpConfirmation(false);
-              scrollToFirst();
-            }}
-          />
+          <div className="relative w-[390px] h-[844px] min-h-[844px] mx-auto overflow-hidden">
+            <PaymentSuccessPage
+              contentScale={1}
+              onAddToCalendar={() => {
+                setShowPaymentSuccess(false);
+                setShowRsvpConfirmation(false);
+                setTimeout(() => scrollToPage("saveTheDate"), 120);
+              }}
+              onBackToInvite={handleBackToInvite}
+            />
+          </div>
         ) : showRsvpConfirmation ? (
-          <RsvpConfirmationPage
-            contentScale={1}
-            canAttend={
-              rsvpData?.attendance !== "no" &&
-              rsvpData?.attendingStatus !== "declined"
-            }
-            rsvpData={rsvpData}
-            onBackToInvite={() => setShowRsvpConfirmation(false)}
-            onProceedToPayment={handleProceedToPayment}
-            onSaveSchedule={handleDownloadSchedule}
-            isDownloadingPdf={isDownloadingSchedule}
-          />
+          <div className="relative w-[390px] h-[844px] min-h-[844px] mx-auto overflow-hidden">
+            <RsvpConfirmationPage
+              contentScale={1}
+              canAttend={
+                rsvpData?.attendance !== "no" &&
+                rsvpData?.attendingStatus !== "declined"
+              }
+              rsvpData={rsvpData}
+              onBackToInvite={handleBackToInvite}
+              onProceedToPayment={handleProceedToPayment}
+            />
+          </div>
         ) : (
           <div className="relative w-[390px] flex flex-col">
             {visiblePages.map((pageId) => renderPage(pageId))}
@@ -604,7 +610,7 @@ function PartyInvitationFull({
               />
             </div>
           ) : showPaymentSuccess ? (
-            <div className="relative w-[390px] min-h-[844px] mx-auto" style={{ margin: "0 auto" }}>
+            <div className="relative w-[390px] h-[844px] min-h-[844px] mx-auto overflow-hidden" style={{ margin: "0 auto" }}>
               <PaymentSuccessPage
                 contentScale={1}
                 onAddToCalendar={() => {
@@ -612,15 +618,11 @@ function PartyInvitationFull({
                   setShowRsvpConfirmation(false);
                   setTimeout(() => scrollToPage("saveTheDate"), 120);
                 }}
-                onBackToInvite={() => {
-                  setShowPaymentSuccess(false);
-                  setShowRsvpConfirmation(false);
-                  scrollToFirst();
-                }}
+                onBackToInvite={handleBackToInvite}
               />
             </div>
           ) : showRsvpConfirmation ? (
-            <div className="relative w-[390px] min-h-[844px] mx-auto" style={{ margin: "0 auto" }}>
+            <div className="relative w-[390px] h-[844px] min-h-[844px] mx-auto overflow-hidden" style={{ margin: "0 auto" }}>
               <RsvpConfirmationPage
                 contentScale={1}
                 canAttend={
@@ -628,10 +630,8 @@ function PartyInvitationFull({
                   rsvpData?.attendingStatus !== "declined"
                 }
                 rsvpData={rsvpData}
-                onBackToInvite={() => setShowRsvpConfirmation(false)}
+                onBackToInvite={handleBackToInvite}
                 onProceedToPayment={handleProceedToPayment}
-                onSaveSchedule={handleDownloadSchedule}
-                isDownloadingPdf={isDownloadingSchedule}
               />
             </div>
           ) : (

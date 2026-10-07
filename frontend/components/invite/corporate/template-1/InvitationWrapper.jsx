@@ -671,6 +671,7 @@ function CorporateInvitationFull({
             backgroundColor: '#02122B',
             margin: '0 auto',
             display: 'block',
+            ...corporateThemeVars(fields),
           }}
           aria-label="Corporate invitation"
         >
