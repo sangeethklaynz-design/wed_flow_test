@@ -10,16 +10,14 @@ export default function LocationPage({
   googleMapsLink = null,
   contentScale = 1,
 }) {
-  const title = fields.locationTitle || "Event Location";
+  const title = "Event Location";
   const venue = locationName || "Venue TBA";
   const address = locationAddress || "";
   const addressLines = String(address || "")
     .split("\n")
     .filter(Boolean);
   const areaLabel =
-    fields.areaLabel ||
-    (addressLines.length ? addressLines[addressLines.length - 1] : "") ||
-    "";
+    (addressLines.length ? addressLines[addressLines.length - 1] : "") || "";
   const mapsUrl =
     googleMapsLink ||
     (venue || address

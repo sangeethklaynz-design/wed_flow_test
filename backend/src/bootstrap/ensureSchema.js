@@ -252,6 +252,7 @@ async function ensureEventsTable() {
         event_date DATE NOT NULL,
         location VARCHAR(255) NULL,
         google_maps_link TEXT NULL,
+        payment_link TEXT NULL,
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX idx_events_date (event_date),
@@ -339,6 +340,13 @@ async function ensureEventsTable() {
       ALTER TABLE notifications
       ADD COLUMN event_id VARCHAR(36) NULL AFTER wedding_id,
       ADD INDEX idx_notifications_event (event_id);
+    `);
+  }
+
+  if (!(await columnExists("events", "payment_link"))) {
+    await sequelize.query(`
+      ALTER TABLE events
+      ADD COLUMN payment_link TEXT NULL AFTER google_maps_link;
     `);
   }
 }

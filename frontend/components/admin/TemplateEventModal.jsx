@@ -474,6 +474,15 @@ export default function TemplateEventModal({ open, onClose, event, onSaved }) {
     setPreviewFlow("schedule");
   }, [event?.type]);
 
+  const handlePreviewProceedToPayment = useCallback(() => {
+    const paymentLink = String(event?.paymentLink || "").trim();
+    if (paymentLink && typeof window !== "undefined") {
+      window.open(paymentLink, "_blank", "noopener,noreferrer");
+      return;
+    }
+    setPreviewFlow("payment");
+  }, [event?.paymentLink]);
+
   const eventTypeLower = String(event?.type || "wedding").toLowerCase();
   const isSnapInvite =
     eventTypeLower === "corporate" || eventTypeLower === "party";
@@ -648,7 +657,14 @@ export default function TemplateEventModal({ open, onClose, event, onSaved }) {
                     <p className="text-sm font-medium text-navy">Location page</p>
                     <p className="text-xs text-muted mt-1">
                       Venue, address, and maps come from Edit event. Page title and
-                      optional area label are editable below.
+                      labels are fixed.
+                    </p>
+                  </div>
+                ) : selectedPageId === "details" && eventTypeLower === "party" ? (
+                  <div className="bg-white rounded-2xl border border-border p-4">
+                    <p className="text-sm font-medium text-navy">Important details</p>
+                    <p className="text-xs text-muted mt-1">
+                      Page title and detail content are fixed for this template.
                     </p>
                   </div>
                 ) : selectedPageId === "saveTheDate" &&
@@ -656,8 +672,7 @@ export default function TemplateEventModal({ open, onClose, event, onSaved }) {
                   <div className="bg-white rounded-2xl border border-border p-4">
                     <p className="text-sm font-medium text-navy">Save the date</p>
                     <p className="text-xs text-muted mt-1">
-                      Title and subtitle are fixed. Add or remove calendar options
-                      (Google, Apple, Outlook, or a custom link) below. Event name
+                      Title, subtitle, and calendar options are fixed. Event name
                       and details for calendar invites come from the event.
                     </p>
                   </div>
@@ -722,7 +737,7 @@ export default function TemplateEventModal({ open, onClose, event, onSaved }) {
                           <RsvpConfirmationOverlay
                             isOpen
                             onClose={() => setPreviewFlow("page")}
-                            onProceedToPayment={() => setPreviewFlow("payment")}
+                            onProceedToPayment={handlePreviewProceedToPayment}
                           />
                         </div>
                       </PreviewFlowChrome>
@@ -763,7 +778,7 @@ export default function TemplateEventModal({ open, onClose, event, onSaved }) {
                             contentScale={1}
                             canAttend
                             onBackToInvite={() => setPreviewFlow("page")}
-                            onProceedToPayment={() => setPreviewFlow("payment")}
+                            onProceedToPayment={handlePreviewProceedToPayment}
                             onSaveSchedule={() => {}}
                           />
                         </div>

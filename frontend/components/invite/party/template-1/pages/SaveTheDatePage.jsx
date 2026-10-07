@@ -66,10 +66,7 @@ export default function SaveTheDatePage({
   const startIso = toIsoStamp(eventDate, false) || "2026-11-12T13:00:00Z";
   const endIso = toIsoStamp(eventDate, true) || "2026-11-12T17:30:00Z";
 
-  const links =
-    Array.isArray(fields.calendarLinks) && fields.calendarLinks.length
-      ? fields.calendarLinks
-      : DEFAULT_CALENDAR_LINKS;
+  const links = DEFAULT_CALENDAR_LINKS;
   const pageHeight = computeSaveTheDateHeight(links);
 
   const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(

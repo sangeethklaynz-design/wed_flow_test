@@ -208,6 +208,7 @@ export function buildAdminInvitePreviewData(event, config = {}, resources = null
         location: event?.location || null,
         locationAddress: event?.locationAddress || null,
         googleMapsLink: event?.googleMapsLink || null,
+        paymentLink: event?.paymentLink || null,
       },
       wedding: {
         groomName,

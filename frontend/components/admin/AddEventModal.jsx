@@ -57,11 +57,15 @@ export default function AddEventModal({
       eventDate: "",
       location: "",
       googleMapsLink: "",
+      paymentLink: "",
       clientEmail: "",
     },
   });
 
   const selectedType = watch("type");
+  const showPaymentLink =
+    mode === "add" &&
+    (selectedType === "corporate" || selectedType === "party");
 
   useEffect(() => {
     if (!open) return;
@@ -72,6 +76,7 @@ export default function AddEventModal({
       eventDate: initialEvent?.eventDate ?? "",
       location: initialEvent?.location ?? "",
       googleMapsLink: initialEvent?.googleMapsLink ?? "",
+      paymentLink: "",
       clientEmail: "",
     });
     setFormError("");
@@ -146,6 +151,9 @@ export default function AddEventModal({
     };
     if (mode === "add") {
       payload.clientEmail = String(data.clientEmail || "").trim().toLowerCase();
+      if (data.type === "corporate" || data.type === "party") {
+        payload.paymentLink = String(data.paymentLink || "").trim();
+      }
     }
 
     try {
@@ -316,6 +324,23 @@ export default function AddEventModal({
               className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#054380]/50 transition-shadow placeholder:text-gray-300"
             />
           </div>
+
+          {showPaymentLink ? (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted block">
+                Payment link
+              </label>
+              <input
+                type="url"
+                placeholder="https://..."
+                {...register("paymentLink")}
+                className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#054380]/50 transition-shadow placeholder:text-gray-300"
+              />
+              <p className="text-[11px] text-muted">
+                Guests use this link from Proceed to Payment after RSVP.
+              </p>
+            </div>
+          ) : null}
 
           {formError ? (
             <p className="text-sm text-red-500 text-center">{formError}</p>

@@ -58,7 +58,8 @@ async function loadWeddingRow(weddingId) {
       e.name AS event_name,
       e.resource_pack_id AS resource_pack_id,
       e.location AS event_location,
-      e.google_maps_link AS event_google_maps_link
+      e.google_maps_link AS event_google_maps_link,
+      e.payment_link AS event_payment_link
     FROM weddings w
     LEFT JOIN events e ON e.id = w.event_id
     WHERE w.id = ?
@@ -455,6 +456,7 @@ async function loadStaticInvitationBundle(weddingId) {
       resourcePackId: wedding.resource_pack_id || null,
       location: wedding.event_location || null,
       googleMapsLink: wedding.event_google_maps_link || null,
+      paymentLink: wedding.event_payment_link || null,
     },
     templateConfig,
     chromeBaseUrl: chromeBaseUrl || null,

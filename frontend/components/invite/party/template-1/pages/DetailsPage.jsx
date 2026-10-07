@@ -75,11 +75,8 @@ function extractEmail(text = "") {
 }
 
 export default function DetailsPage({ fields = {}, contentScale = 1 }) {
-  const title = fields.detailsTitle || "Important Details";
-  const items =
-    Array.isArray(fields.detailItems) && fields.detailItems.length
-      ? fields.detailItems
-      : DEFAULT_DETAIL_ITEMS;
+  const title = "Important Details";
+  const items = DEFAULT_DETAIL_ITEMS;
   const pageHeight = computeDetailsHeight(items);
 
   return (

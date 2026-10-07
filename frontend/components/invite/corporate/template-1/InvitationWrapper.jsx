@@ -407,6 +407,17 @@ function CorporateInvitationFull({
   };
 
   const handleProceedToPayment = () => {
+    const paymentLink = String(
+      templateData?.static?.event?.paymentLink ||
+        templateData?.event?.paymentLink ||
+        ""
+    ).trim();
+    if (paymentLink) {
+      if (typeof window !== "undefined") {
+        window.open(paymentLink, "_blank", "noopener,noreferrer");
+      }
+      return;
+    }
     setIsConfirmationOpen(false);
     setIsPaymentSuccessOpen(true);
     setHash('#payment-success');

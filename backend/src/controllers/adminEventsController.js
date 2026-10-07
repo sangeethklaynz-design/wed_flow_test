@@ -63,6 +63,7 @@ function mapEventRow(row) {
     eventDate,
     location: row.location || null,
     googleMapsLink: row.google_maps_link || null,
+    paymentLink: row.payment_link || null,
     status: deriveStatus(eventDate),
     userId: row.user_id || null,
     clientSlug: row.client_slug || null,
@@ -82,6 +83,8 @@ function parseBody(body = {}) {
   const location = String(body.location || "").trim() || null;
   const googleMapsLink =
     String(body.googleMapsLink || body.google_maps_link || "").trim() || null;
+  const paymentLink =
+    String(body.paymentLink || body.payment_link || "").trim() || null;
   const resourcePackId = String(
     body.resourcePackId || body.resource_pack_id || ""
   ).trim();
@@ -96,6 +99,7 @@ function parseBody(body = {}) {
     eventDate,
     location,
     googleMapsLink,
+    paymentLink,
     resourcePackId,
     clientEmail,
   };
@@ -354,8 +358,8 @@ async function createEvent(req, res) {
       `
       INSERT INTO events (
         id, user_id, name, client_slug, client_password, type, template_key, resource_pack_id,
-        template_config, event_date, location, google_maps_link
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        template_config, event_date, location, google_maps_link, payment_link
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
       `,
       {
         replacements: [
@@ -371,6 +375,9 @@ async function createEvent(req, res) {
           payload.eventDate,
           payload.location,
           payload.googleMapsLink,
+          payload.type === "corporate" || payload.type === "party"
+            ? payload.paymentLink
+            : null,
         ],
         transaction,
       }
