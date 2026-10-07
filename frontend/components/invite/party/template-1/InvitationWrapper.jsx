@@ -23,8 +23,6 @@ import InvitationBackgroundMusic from "@/components/invite/InvitationBackgroundM
 import InviteMobileScaler from "@/components/invite/InviteMobileScaler";
 import InvitationPreviewBackButton from "@/components/invite/InvitationPreviewBackButton";
 import RsvpChangeRequestPage from "./pages/RsvpChangeRequestPage";
-import RsvpConfirmationPage from "./pages/RsvpConfirmationPage";
-import PaymentSuccessPage from "./pages/PaymentSuccessPage";
 import styles from "./InvitationViewer.module.css";
 import "./partyTokens.css";
 
@@ -221,8 +219,6 @@ function PartyInvitationFull({
   previewBypassValidation = false,
 }) {
   const embeddedContainerRef = useRef(null);
-  const [showRsvpConfirmation, setShowRsvpConfirmation] = useState(false);
-  const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
   const [isInvitationRoute, setIsInvitationRoute] = useState(false);
 
   useEffect(() => {
@@ -245,13 +241,28 @@ function PartyInvitationFull({
     const isAttending =
       initialRsvp?.attendingStatus === "attending" ||
       String(guest?.rsvpStatus || guest?.rsvp_status || "").toUpperCase() === "CONFIRMED";
+    const wishesStr = initialRsvp?.wishes || "";
+    const mealMatch = wishesStr.match(/Meal[^:]*:\s*([^\n\r]+)/i);
+    const reqMatch = wishesStr.match(/Special Requirement[^:]*:\s*([^\n\r]+)/i);
     return {
       attendance: isAttending ? "yes" : "no",
       attendingStatus: isAttending ? "confirmed" : "declined",
       attendingCount: initialRsvp?.attendingCount ?? (isAttending ? 1 : 0),
       guestCount: initialRsvp?.attendingCount ?? (isAttending ? 1 : 0),
       guests: initialRsvp?.attendingCount ?? (isAttending ? 1 : 0),
-      wishes: initialRsvp?.wishes || "",
+      mealPreference:
+        initialRsvp?.mealPreference ||
+        initialRsvp?.meal ||
+        (mealMatch ? mealMatch[1].trim() : "") ||
+        guest?.mealPreference ||
+        "",
+      specialRequirements:
+        initialRsvp?.specialRequirements ||
+        initialRsvp?.requirements ||
+        (reqMatch ? reqMatch[1].trim() : "") ||
+        guest?.specialRequirements ||
+        "",
+      wishes: wishesStr,
     };
   });
   const maxGuests = Number(guest?.maxGuests || guest?.invitedCount) || 1;
@@ -301,10 +312,10 @@ function PartyInvitationFull({
     setHasSubmittedRsvp(true);
     if (typeof onRsvpSuccessProp === "function") {
       onRsvpSuccessProp(data);
-      return;
     }
-    if (!interactive) return;
-    setShowRsvpConfirmation(true);
+    setTimeout(() => {
+      scrollToPage("rsvp");
+    }, 50);
   };
 
   const handleDownloadSchedule = async () => {
@@ -473,40 +484,6 @@ function PartyInvitationFull({
               setMusicActive(true);
             }}
           />
-        ) : showPaymentSuccess ? (
-          <PaymentSuccessPage
-            contentScale={1}
-            onAddToCalendar={() => {
-              setShowPaymentSuccess(false);
-              setShowRsvpConfirmation(false);
-              setTimeout(() => scrollToPage("saveTheDate"), 120);
-            }}
-            onBackToInvite={() => {
-              setShowPaymentSuccess(false);
-              setShowRsvpConfirmation(false);
-              scrollToFirst();
-            }}
-          />
-        ) : showRsvpConfirmation ? (
-          <RsvpConfirmationPage
-            contentScale={1}
-            canAttend={
-              rsvpData?.attendance !== "no" &&
-              rsvpData?.attendingStatus !== "declined"
-            }
-            rsvpData={rsvpData}
-            onBackToInvite={() => setShowRsvpConfirmation(false)}
-            onProceedToPayment={() => {
-              if (
-                rsvpData?.attendance === "no" ||
-                rsvpData?.attendingStatus === "declined"
-              )
-                return;
-              setShowPaymentSuccess(true);
-            }}
-            onSaveSchedule={handleDownloadSchedule}
-            isDownloadingPdf={isDownloadingSchedule}
-          />
         ) : (
           <div className="relative w-[390px] flex flex-col">
             {visiblePages.map((pageId) => renderPage(pageId))}
@@ -576,44 +553,6 @@ function PartyInvitationFull({
                   setShowIntroVideo(false);
                   setMusicActive(true);
                 }}
-              />
-            </div>
-          ) : showPaymentSuccess ? (
-            <div className="relative w-[390px] min-h-[844px] mx-auto" style={{ margin: "0 auto" }}>
-              <PaymentSuccessPage
-                contentScale={1}
-                onAddToCalendar={() => {
-                  setShowPaymentSuccess(false);
-                  setShowRsvpConfirmation(false);
-                  setTimeout(() => scrollToPage("saveTheDate"), 120);
-                }}
-                onBackToInvite={() => {
-                  setShowPaymentSuccess(false);
-                  setShowRsvpConfirmation(false);
-                  scrollToFirst();
-                }}
-              />
-            </div>
-          ) : showRsvpConfirmation ? (
-            <div className="relative w-[390px] min-h-[844px] mx-auto" style={{ margin: "0 auto" }}>
-              <RsvpConfirmationPage
-                contentScale={1}
-                canAttend={
-                  rsvpData?.attendance !== "no" &&
-                  rsvpData?.attendingStatus !== "declined"
-                }
-                rsvpData={rsvpData}
-                onBackToInvite={() => setShowRsvpConfirmation(false)}
-                onProceedToPayment={() => {
-                  if (
-                    rsvpData?.attendance === "no" ||
-                    rsvpData?.attendingStatus === "declined"
-                  )
-                    return;
-                  setShowPaymentSuccess(true);
-                }}
-                onSaveSchedule={handleDownloadSchedule}
-                isDownloadingPdf={isDownloadingSchedule}
               />
             </div>
           ) : (

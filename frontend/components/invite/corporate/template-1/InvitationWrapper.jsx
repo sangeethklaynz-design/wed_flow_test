@@ -164,6 +164,7 @@ export function CorporatePagePreview({
               ? onRsvpSuccess
               : () => {}
           }
+          onScrollNext={() => {}}
         />
       </div>
     );

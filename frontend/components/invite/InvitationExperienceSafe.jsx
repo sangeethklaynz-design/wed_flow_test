@@ -25,6 +25,8 @@ export default function InvitationExperienceSafe({
   templateData,
   guestToken = null,
   interactive = false,
+  embedded = false,
+  templateConfig = null,
 }) {
   const hasVideo = Boolean(
     templateData?.static?.video?.hasVideo && templateData?.static?.video?.url
@@ -131,6 +133,28 @@ export default function InvitationExperienceSafe({
   }, []);
 
   if (!liveTemplateData) return null;
+
+  if (embedded) {
+    return (
+      <main
+        className="relative overflow-hidden border-0 outline-none isolate"
+        style={{
+          width: INVITE_FRAME_W,
+          backgroundColor: "#FAF6F0",
+        }}
+      >
+        <div className="relative w-[390px]">
+          <InvitationPage
+            data={liveTemplateData}
+            guestToken={guestToken}
+            interactive={false}
+            embedded
+            templateConfig={templateConfig}
+          />
+        </div>
+      </main>
+    );
+  }
 
   const isVideoActive = step === "video" && (videoState === "playing" || videoState === "fading");
   const showSkipButton = hasVideo && step === "video" && (!isGuestView || guestCanSkip);

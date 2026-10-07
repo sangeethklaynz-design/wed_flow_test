@@ -63,6 +63,13 @@ export function InviteByType({
       templateData={templateData}
       guestToken={guestToken}
       interactive={interactive}
+      embedded={embedded}
+      templateConfig={
+        templateConfig ||
+        templateData?.static?.templateConfig ||
+        templateData?.templateConfig ||
+        null
+      }
     />
   );
 }

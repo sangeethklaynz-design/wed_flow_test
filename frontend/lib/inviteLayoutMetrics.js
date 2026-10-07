@@ -177,7 +177,7 @@ export function computeDetailsLayout(detailCount) {
 export const PAGE_BASE_SPAN = {
   starting: LANDING_DECOR_BOTTOM - 0,
   opening: OPENING_DECOR_BOTTOM - OPENING_PAGE_TOP,
-  rsvp: DETAILS_PAGE_TOP - RSVP_PAGE_TOP,
+  rsvp: RSVP_DECOR_BOTTOM - RSVP_PAGE_TOP,
   allDetails:
     computeDetailsLayout(BASE_DETAIL_COUNT).floralBottom +
     PAGE_AFTER_DECOR_GAP -
@@ -280,7 +280,7 @@ export function computeInviteLayoutMetrics(opts = {}) {
     starting: showStarting ? PAGE_BASE_SPAN.starting : 0,
     opening: showOpening ? PAGE_BASE_SPAN.opening : 0,
     rsvp: showRsvp
-      ? spanCoveringBottom(RSVP_PAGE_TOP, rsvpBottom, PAGE_BASE_SPAN.rsvp)
+      ? Math.max(PAGE_BASE_SPAN.rsvp, rsvpBottom - RSVP_PAGE_TOP)
       : 0,
     allDetails: showAllDetails
       ? spanCoveringBottom(

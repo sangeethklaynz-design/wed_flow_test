@@ -5,11 +5,12 @@ import { INVITE_FRAME_H, INVITE_FRAME_W } from "./InvitationVideoIntro";
 
 const MOBILE_MAX = 767;
 
-function useInviteNoUiScale() {
+function useInviteNoUiScale(enabled = true) {
   useEffect(() => {
+    if (!enabled) return;
     document.documentElement.classList.add("invite-no-ui-scale");
     return () => document.documentElement.classList.remove("invite-no-ui-scale");
-  }, []);
+  }, [enabled]);
 }
 
 function useInviteMobileScale(mode = "width") {
@@ -56,8 +57,9 @@ export default function InviteMobileScaler({
   mode = "width",
   fixedHeight,
   className = "",
+  disableNoUiScale = false,
 }) {
-  useInviteNoUiScale();
+  useInviteNoUiScale(!disableNoUiScale);
   const { scale, isMobile, viewportHeight } = useInviteMobileScale(mode);
   const contentRef = useRef(null);
   const [measuredHeight, setMeasuredHeight] = useState(fixedHeight ?? 0);

@@ -18,11 +18,15 @@ export default function RsvpChangeRequestPage({
   const guestCount =
     rsvpData?.guestCount !== undefined
       ? String(rsvpData.guestCount)
+      : rsvpData?.attendingCount !== undefined
+      ? String(rsvpData.attendingCount)
+      : rsvpData?.guests !== undefined
+      ? String(rsvpData.guests)
       : attendance === "no"
       ? "0"
       : "1";
-  const mealPreference = rsvpData?.mealPreference || "Veg or Non-Veg";
-  const specialRequirements = rsvpData?.specialRequirements || "";
+  const mealPreference = rsvpData?.mealPreference || rsvpData?.meal || "Veg or Non-Veg";
+  const specialRequirements = rsvpData?.specialRequirements || rsvpData?.requirements || "";
 
   const handleSubmitRequest = async (e) => {
     e.preventDefault();
@@ -63,7 +67,7 @@ export default function RsvpChangeRequestPage({
   };
 
   return (
-    <section className={styles.pageContainer} id="page-3" aria-label="Page 3 - RSVP Change Request">
+    <section className={styles.pageContainer} id="page-3" data-invite-page="rsvp" aria-label="Page 3 - RSVP Change Request">
       {/* Top Foliage Background - Figma: W: 390, H: 205 */}
       <img
         src="/assets/events/parties/templates/template-1/chrome/rsvp-change-request-page/top-bg.webp"

@@ -137,7 +137,7 @@ export const EventAgendaPage = ({
     Array.isArray(fields.agendaItems) && fields.agendaItems.length
       ? fields.agendaItems
       : AGENDA_ITEMS;
-  const pageHeight = computeAgendaHeight(agendaItems, isRsvpConfirmed);
+  const pageHeight = computeAgendaHeight(agendaItems, true);
   const listH =
     agendaItems.length === 0
       ? 0
@@ -183,8 +183,8 @@ export const EventAgendaPage = ({
       id="page-4"
       data-page="4"
       data-invite-page="agenda"
-      className="relative w-[390px] flex-shrink-0 overflow-hidden snap-start snap-always bg-agenda-grad select-none"
-      style={{ height: pageHeight, minHeight: pageHeight, ...corporatePageGradientStyle(fields) }}
+      className="relative w-[390px] flex-shrink-0 snap-start snap-always bg-agenda-grad select-none"
+      style={{ height: "auto", minHeight: pageHeight, ...corporatePageGradientStyle(fields) }}
     >
       <div
         className="relative z-[2] w-[390px] mx-auto select-none flex flex-col"
@@ -234,51 +234,49 @@ export const EventAgendaPage = ({
           </div>
         </div>
 
-        {/* Save the Agenda Button (Visible only after confirming RSVP) */}
-        {isRsvpConfirmed ? (
-          <div className="mt-5 w-full flex flex-col items-center justify-center z-[3] shrink-0 px-4">
-            <button
-              type="button"
-              id="save-agenda-btn"
-              onClick={handleDownloadAgenda}
-              disabled={downloading}
-              className="w-full max-w-[280px] h-[42px] px-5 bg-[var(--corp-text-primary)] hover:opacity-90 active:translate-y-[1px] transition-all duration-150 text-white rounded-lg font-jakarta font-bold text-[13.5px] flex items-center justify-center gap-2.5 cursor-pointer shadow-[0_4px_14px_rgba(8,4,128,0.25)] hover:shadow-[0_6px_18px_rgba(8,4,128,0.32)]"
-            >
-              {downloading ? (
-                <>
-                  <svg className="animate-spin w-4 h-4 text-white" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                  </svg>
-                  <span>Downloading Agenda…</span>
-                </>
-              ) : (
-                <>
-                  <svg
-                    className="w-[18px] h-[18px] flex-shrink-0"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="7 10 12 15 17 10" />
-                    <line x1="12" y1="15" x2="12" y2="3" />
-                  </svg>
-                  <span>Save the Agenda</span>
-                </>
-              )}
-            </button>
-            {downloadError ? (
-              <p className="text-red-500 font-instrument text-xs text-center mt-2">
-                {downloadError}
-              </p>
-            ) : null}
-          </div>
-        ) : null}
+        {/* Save the Agenda Button (Always visible) */}
+        <div className="mt-5 w-full flex flex-col items-center justify-center z-[3] shrink-0 px-4">
+          <button
+            type="button"
+            id="save-agenda-btn"
+            onClick={handleDownloadAgenda}
+            disabled={downloading}
+            className="w-full max-w-[280px] h-[42px] px-5 bg-[var(--corp-text-primary)] hover:opacity-90 active:translate-y-[1px] transition-all duration-150 text-white rounded-lg font-jakarta font-bold text-[13.5px] flex items-center justify-center gap-2.5 cursor-pointer shadow-[0_4px_14px_rgba(8,4,128,0.25)] hover:shadow-[0_6px_18px_rgba(8,4,128,0.32)]"
+          >
+            {downloading ? (
+              <>
+                <svg className="animate-spin w-4 h-4 text-white" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                </svg>
+                <span>Downloading Agenda…</span>
+              </>
+            ) : (
+              <>
+                <svg
+                  className="w-[18px] h-[18px] flex-shrink-0"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                <span>Save the Agenda</span>
+              </>
+            )}
+          </button>
+          {downloadError ? (
+            <p className="text-red-500 font-instrument text-xs text-center mt-2">
+              {downloadError}
+            </p>
+          ) : null}
+        </div>
 
         <div className="mt-6 w-full flex items-center justify-center text-center z-[3] shrink-0 px-4">
           <p className="font-petrona font-semibold text-[15.5px] leading-[1.35] text-[var(--corp-text-primary)] m-0 tracking-[0.01em]">

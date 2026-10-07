@@ -218,8 +218,8 @@ export const RsvpPage = ({
       id="page-3"
       data-page="3"
       data-invite-page="rsvp"
-      className="relative w-[390px] flex-shrink-0 overflow-hidden snap-start snap-always bg-rsvp-grad select-none"
-      style={{ height: pageHeight, minHeight: pageHeight, ...corporatePageGradientStyle(fields) }}
+      className="relative w-[390px] flex-shrink-0 snap-start snap-always bg-rsvp-grad select-none"
+      style={{ height: "auto", minHeight: pageHeight, ...corporatePageGradientStyle(fields) }}
     >
       <div
         className="relative z-[2] w-[390px] mx-auto select-none flex flex-col px-[37px] pb-7"
@@ -422,30 +422,52 @@ export const RsvpPage = ({
           </button>
 
           {typeof onScrollNext === 'function' ? (
-            <button
-              type="button"
+            <div
+              role="button"
+              tabIndex={0}
               onClick={onScrollNext}
-              className="mt-4 mb-2 flex flex-col items-center gap-1.5 cursor-pointer group mx-auto bg-transparent border-0 outline-none"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onScrollNext?.();
+                }
+              }}
+              className="mt-[22px] mb-[12px] flex flex-col items-center justify-between cursor-pointer group mx-auto z-10 select-none"
+              style={{ width: "117px", minHeight: "62px" }}
               aria-label="Scroll down to explore"
             >
-              <span className="w-[117px] font-instrument font-normal text-[8.5px] leading-[11px] text-[var(--corp-text-primary)] tracking-[0.22em] text-center uppercase">
-                Explore Invitation
-              </span>
-              <svg
-                className="animate-chevron-float text-[var(--corp-text-primary)]/80 group-hover:text-[var(--corp-text-primary)]"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
+              <div
+                className="w-[40px] h-[40px] rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-105 group-hover:translate-y-[3px]"
+                style={{
+                  border: "1.5px solid rgba(8, 4, 128, 0.4)",
+                  background: "rgba(255, 255, 255, 0.85)",
+                  backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
+                  color: "var(--corp-text-primary, #080480)",
+                  boxShadow: "0 4px 16px rgba(0, 0, 0, 0.08), 0 0 10px rgba(8, 4, 128, 0.06)",
+                  animation: "floatBounce 2.4s ease-in-out infinite",
+                }}
               >
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </button>
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M7 10l5 5 5-5" />
+                </svg>
+              </div>
+              <span
+                className="w-[117px] h-[11px] flex items-center justify-center font-instrument text-[8px] font-semibold text-[var(--corp-text-primary, #080480)] uppercase transition-colors duration-300 whitespace-nowrap tracking-[0.22em] group-hover:text-[var(--corp-text-highlight, #0084FF)] mt-2"
+              >
+                EXPLORE  INVITATION
+              </span>
+            </div>
           ) : null}
         </form>
       </div>

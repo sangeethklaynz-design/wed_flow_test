@@ -390,11 +390,24 @@ function drawPage(doc, context, pageEvents, fonts) {
   }
 
   // Header — couple / org names
-  const nameLines = splitCoupleNameLines(context.coupleNames);
+  const nameLines = (isCorp || isParty)
+    ? [String(context.coupleNames || (isParty ? "GALA NIGHT" : "EVENT")).trim()]
+    : splitCoupleNameLines(context.coupleNames);
+
+  let headerFontSize = (isCorp || isParty) ? 22 : nameFontSize;
+  const headerFont = (isCorp || isParty) ? fonts.eventSemi : fonts.script;
+
+  if (isCorp || isParty) {
+    doc.font(headerFont);
+    while (headerFontSize > 13 && doc.fontSize(headerFontSize).widthOfString(nameLines[0]) > 320) {
+      headerFontSize -= 1;
+    }
+  }
+
   doc
     .fillColor(activeColors.headerText)
-    .font((isCorp || isParty) ? fonts.eventSemi : fonts.script)
-    .fontSize((isCorp || isParty) ? 22 : nameFontSize);
+    .font(headerFont)
+    .fontSize(headerFontSize);
 
   nameLines.forEach((line, index) => {
     const x =
@@ -407,7 +420,7 @@ function drawPage(doc, context, pageEvents, fonts) {
   });
 
   const subtitleY =
-    nameTop + ((isCorp || isParty) ? 32 : nameLines.length * nameLineHeight) + subtitleTopOffset;
+    nameTop + ((isCorp || isParty) ? (headerFontSize + 12) : nameLines.length * nameLineHeight) + subtitleTopOffset;
   doc
     .fillColor(activeColors.subtitleText)
     .font((isCorp || isParty) ? fonts.eventSemi : fonts.subtitle)
