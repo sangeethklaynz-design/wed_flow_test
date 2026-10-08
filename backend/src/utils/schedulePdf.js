@@ -5,16 +5,17 @@ const { sequelize } = require("../models");
 const { toDateOnly, formatDisplayCoupleNames } = require("./wedding");
 
 const EVENTS_PER_PAGE = 13;
+const CORP_EVENTS_PER_PAGE = 10;
+const PARTY_EVENTS_PER_PAGE = 8;
 const PAGE_WIDTH = 390;
 const PAGE_HEIGHT = 844;
 
-/** Exact floral art (no baked-in sample text) — preferred background */
+/** Wedding templates */
 const CLEAN_BG = path.join(
   __dirname,
   "../../assets/schedule-templates/wedding-timeline-bg.png"
 );
 
-/** Full reference composite (has sample text — only used as last resort) */
 const REFERENCE_COMPOSITE = path.join(
   __dirname,
   "../../assets/schedule-templates/wedding-timeline-reference.png"
@@ -25,6 +26,55 @@ const FALLBACK_BG = path.join(
   "../../assets/schedule-templates/default-schedule-bg.png"
 );
 
+/** Corporate schedule assets */
+const CORP_BG_IMG = path.join(
+  __dirname,
+  "../../events/corporate-events/templates/template-1/chrome/event-schedule/event-schedule_background.png"
+);
+
+/** Party schedule assets */
+const PARTY_TOP_BG = path.join(
+  __dirname,
+  "../../events/parties/templates/template-1/chrome/schedule-page/top-bg.png"
+);
+const PARTY_BOTTOM_BG = path.join(
+  __dirname,
+  "../../events/parties/templates/template-1/chrome/schedule-page/bottom-bg.png"
+);
+const PARTY_UNDERLINE = path.join(
+  __dirname,
+  "../../events/parties/templates/template-1/chrome/schedule-page/underline-deco.png"
+);
+
+const PARTY_ICONS = {
+  drink: path.join(__dirname, "../../events/parties/templates/template-1/chrome/schedule-page/drink.png"),
+  mic: path.join(__dirname, "../../events/parties/templates/template-1/chrome/schedule-page/mic.png"),
+  food: path.join(__dirname, "../../events/parties/templates/template-1/chrome/schedule-page/food.png"),
+  music: path.join(__dirname, "../../events/parties/templates/template-1/chrome/schedule-page/music.png"),
+  celebrate: path.join(__dirname, "../../events/parties/templates/template-1/chrome/schedule-page/celebrate.png"),
+  dj: path.join(__dirname, "../../events/parties/templates/template-1/chrome/schedule-page/dj.png"),
+};
+
+const DEFAULT_CORP_AGENDA = [
+  { startTime: "09:00 AM", title: "Registration & Welcome Tea", note: "Ocean View Lobby" },
+  { startTime: "09:30 AM", title: "Opening Remarks", note: "Grand Ballroom" },
+  { startTime: "10:00 AM", title: "Keynote Session", note: "The Future of Business" },
+  { startTime: "11:30 AM", title: "Panel Discussion", note: "Industry Trends" },
+  { startTime: "01:00 PM", title: "Networking Lunch", note: "Sapphire Lawn" },
+  { startTime: "02:30 PM", title: "Breakout Sessions", note: "Multiple Rooms" },
+  { startTime: "04:00 PM", title: "Closing Ceremony", note: "Main Ballroom" },
+  { startTime: "05:00 PM", title: "Cocktail & Networking", note: "Garden View" },
+];
+
+const DEFAULT_PARTY_ITEMS = [
+  { startTime: "06:00 PM", title: "Guest Arrival & Welcome Drinks", icon: "drink" },
+  { startTime: "06:30 PM", title: "Opening & Welcome", icon: "mic" },
+  { startTime: "07:00 PM", title: "Dinner Service", icon: "food" },
+  { startTime: "08:30 PM", title: "Live Music & Entertainment", icon: "music" },
+  { startTime: "09:30 PM", title: "Games & Activities", icon: "celebrate" },
+  { startTime: "10:30 PM", title: "DJ Night & Dance", icon: "dj" },
+];
+
 const FONT_FALLBACK_REGULAR = "C:\\Windows\\Fonts\\georgia.ttf";
 const FONT_FALLBACK_BOLD = "C:\\Windows\\Fonts\\georgiab.ttf";
 
@@ -34,8 +84,8 @@ const {
   resolveFontFile,
 } = require("./scheduleTextStyle");
 
-// Layout calibrated to the 390×844 reference timeline (non-text geometry)
-const LAYOUT = {
+// Wedding layout geometry
+const WEDDING_LAYOUT = {
   leftMargin: 34,
   nameTop: 42,
   subtitleTopOffset: 6,
@@ -62,7 +112,6 @@ function resolveBackgroundPath(scheduleImageUrl) {
 
   if (scheduleImageUrl) {
     const raw = String(scheduleImageUrl).replace(/\\/g, "/");
-    // Prefer clean floral art over composite reference (which has baked text)
     if (raw.includes("wedding-timeline-reference")) {
       candidates.push(CLEAN_BG);
     }
@@ -145,6 +194,9 @@ function registerFonts(doc, textStyle) {
     time: "Times-Bold",
     footer: "Times-Roman",
     subtitle: "Times-Roman",
+    title: "Times-Bold",
+    text: "Helvetica",
+    textBold: "Helvetica-Bold",
   };
 
   const registerNamed = (alias, fileName, fallbackAlias) => {
@@ -168,6 +220,16 @@ function registerFonts(doc, textStyle) {
     fonts.time = "ScheduleFallback-Bold";
     fonts.footer = "ScheduleFallback";
     fonts.subtitle = "ScheduleFallback";
+    fonts.title = "ScheduleFallback-Bold";
+  }
+
+  if (fs.existsSync("C:\\Windows\\Fonts\\segoeui.ttf")) {
+    doc.registerFont("AppSegoeUI", "C:\\Windows\\Fonts\\segoeui.ttf");
+    fonts.text = "AppSegoeUI";
+  }
+  if (fs.existsSync("C:\\Windows\\Fonts\\segoeuib.ttf")) {
+    doc.registerFont("AppSegoeUI-Bold", "C:\\Windows\\Fonts\\segoeuib.ttf");
+    fonts.textBold = "AppSegoeUI-Bold";
   }
 
   fonts.script = registerNamed("ScheduleScript", style.name_font, fonts.script);
@@ -208,10 +270,10 @@ async function loadScheduleDownloadContext(weddingId) {
         e.location AS event_location
       FROM weddings w
       LEFT JOIN events e ON e.id = w.event_id
-      WHERE w.id = ?
+      WHERE w.id = ? OR w.event_id = ?
       LIMIT 1;
       `,
-      { replacements: [weddingId] }
+      { replacements: [weddingId, weddingId] }
     ),
     sequelize.query(
       `
@@ -264,13 +326,21 @@ async function loadScheduleDownloadContext(weddingId) {
         }));
     } else if (isParty && Array.isArray(eventFields.scheduleItems) && eventFields.scheduleItems.length > 0) {
       events = eventFields.scheduleItems
-        .filter((item) => item.time || item.title)
+        .filter((item) => item.time || item.title || item.desc)
         .map((item) => ({
           startTime: item.time || "",
-          title: item.title || "",
+          title: item.title || item.desc || "",
           note: item.description || item.location || "",
+          icon: item.icon || "celebrate",
         }));
     }
+  }
+
+  // Fallback defaults if no schedule items exist in DB
+  if (isCorporate && events.length === 0) {
+    events = [...DEFAULT_CORP_AGENDA];
+  } else if (isParty && events.length === 0) {
+    events = [...DEFAULT_PARTY_ITEMS];
   }
 
   const coupleNames = isCorporate
@@ -284,9 +354,9 @@ async function loadScheduleDownloadContext(weddingId) {
         }) || wedding.couple_names);
 
   const title = isCorporate
-    ? (wedding.schedule_title || "EVENT AGENDA").toUpperCase()
+    ? (eventFields.scheduleTitle || wedding.schedule_title || "Event Agenda")
     : isParty
-      ? (eventFields.scheduleTitle || wedding.schedule_title || "EVENT SCHEDULE").toUpperCase()
+      ? (eventFields.scheduleTitle || wedding.schedule_title || "Event Schedule")
       : (wedding.schedule_title || "WEDDING TIMELINE").toUpperCase();
 
   const venue = isCorporate
@@ -306,13 +376,182 @@ async function loadScheduleDownloadContext(weddingId) {
     weddingDateLabel,
     title,
     venue,
+    eventFields,
     backgroundPath: (isCorporate || isParty) ? null : resolveBackgroundPath(wedding.schedule_image_url),
     textStyle: mergeScheduleTextStyle(wedding.schedule_style_json),
     events,
   };
 }
 
-function drawPage(doc, context, pageEvents, fonts) {
+/** Draws Corporate Agenda matching the template page design */
+function drawCorporatePage(doc, context, pageEvents, fonts, pageIndex, totalPages) {
+  const fields = context.eventFields || {};
+  const topColor = fields.gradientTop || "#D4E0F7";
+  const midColor = fields.gradientMid || "#FFFFFF";
+  const botColor = fields.gradientBottom || "#A5DBFD";
+
+  // Background gradient
+  const grad = doc.linearGradient(0, 0, 0, PAGE_HEIGHT);
+  grad.stop(0, topColor).stop(0.4, midColor).stop(1, botColor);
+  doc.rect(0, 0, PAGE_WIDTH, PAGE_HEIGHT).fill(grad);
+
+  // Header Title & Subtitle
+  const baseTitle = context.title || "Event Agenda";
+  const titleText = totalPages > 1 && pageIndex > 0
+    ? `${baseTitle} (Cont.)`
+    : baseTitle;
+
+  doc
+    .fillColor("#080480")
+    .font(fonts.title)
+    .fontSize(24)
+    .text(titleText, 0, 22, { width: PAGE_WIDTH, align: "center" });
+
+  doc
+    .fillColor("#080480")
+    .font(fonts.text)
+    .fontSize(10.5)
+    .text("A day of insights and connection.", 0, 50, { width: PAGE_WIDTH, align: "center" });
+
+  // Timeline (10 items per page)
+  const startY = 76;
+  const lineX = 62;
+  const count = pageEvents.length;
+  const rowStep = count > 1 ? Math.min(49, (535 - startY) / (count - 1)) : 49;
+
+  if (count > 0) {
+    const endY = count > 1 ? startY + (count - 1) * rowStep + 8 : startY + 8;
+    doc.save()
+      .strokeColor("#5B61EA")
+      .lineWidth(2)
+      .moveTo(lineX, startY + 8)
+      .lineTo(lineX, endY)
+      .stroke()
+      .restore();
+  }
+
+  pageEvents.forEach((item, idx) => {
+    const y = startY + idx * rowStep;
+    // Node circle
+    doc.save()
+      .circle(lineX, y + 8, 7)
+      .fill("#FFFFFF")
+      .strokeColor("#5B61EA")
+      .lineWidth(2)
+      .stroke()
+      .restore();
+
+    const rawTime = String(item.startTime || "");
+    const timeLabel = rawTime.includes("AM") || rawTime.includes("PM") ? rawTime : (formatAmPm(rawTime) || rawTime);
+    const textX = lineX + 18;
+    const textW = 285;
+
+    doc.fillColor("#080480").font(fonts.textBold).fontSize(11.5).text(timeLabel, textX, y - 4, { width: textW, lineBreak: false });
+    doc.fillColor("#080480").font(fonts.textBold).fontSize(10.5).text(item.title || "", textX, y + 10, { width: textW, lineBreak: false, ellipsis: true });
+    if (item.note) {
+      doc.fillColor("#7A8797").font(fonts.text).fontSize(9).text(item.note, textX, y + 24, { width: textW, lineBreak: false, ellipsis: true });
+    }
+  });
+
+  // Quote (on last page)
+  if (pageIndex === totalPages - 1) {
+    doc.fillColor("#080480").font(fonts.title).fontSize(13).text('" A Greater Tomorrow', 20, 584, { width: 350, align: "center" });
+    doc.fillColor("#080480").font(fonts.title).fontSize(13).text('At A Brighter Together "', 20, 602, { width: 350, align: "center" });
+  }
+
+  // Bottom graphic
+  if (fs.existsSync(CORP_BG_IMG)) {
+    doc.image(CORP_BG_IMG, 0, PAGE_HEIGHT - 162, { width: PAGE_WIDTH, height: 162 });
+  }
+}
+
+/** Draws Party Schedule matching the template page design */
+function drawPartyPage(doc, context, pageEvents, fonts, pageIndex, totalPages) {
+  const fields = context.eventFields || {};
+  const topColor = fields.gradientTop || "#588dcf";
+  const midColor = fields.gradientMid || "#e5f2fd";
+  const botColor = fields.gradientBottom || "#4377bd";
+
+  // Background gradient
+  const grad = doc.linearGradient(0, 0, 0, PAGE_HEIGHT);
+  grad.stop(0, topColor).stop(0.45, midColor).stop(1, botColor);
+  doc.rect(0, 0, PAGE_WIDTH, PAGE_HEIGHT).fill(grad);
+
+  // Top decorative image
+  if (fs.existsSync(PARTY_TOP_BG)) {
+    doc.image(PARTY_TOP_BG, 0, 0, { width: PAGE_WIDTH });
+  }
+
+  // Bottom decorative image
+  if (fs.existsSync(PARTY_BOTTOM_BG)) {
+    doc.image(PARTY_BOTTOM_BG, 0, PAGE_HEIGHT - 250, { width: PAGE_WIDTH, height: 250 });
+  }
+
+  // Header Title
+  const baseTitle = context.title || "Event Schedule";
+  const titleText = totalPages > 1 && pageIndex > 0
+    ? `${baseTitle} (Cont.)`
+    : baseTitle;
+
+  doc
+    .fillColor("#0c1e48")
+    .font(fonts.title)
+    .fontSize(26)
+    .text(titleText, 0, 98, { width: PAGE_WIDTH, align: "center" });
+
+  // Underline decoration
+  if (fs.existsSync(PARTY_UNDERLINE)) {
+    doc.image(PARTY_UNDERLINE, (PAGE_WIDTH - 160) / 2, 126, { width: 160, height: 48 });
+  }
+
+  // Timeline (8 items per page)
+  const startY = 182;
+  const circleRadius = 18;
+  const circleX = 70;
+  const lineX = circleX + circleRadius; // 88
+  const count = pageEvents.length;
+  const rowStep = count > 1 ? Math.min(49, (535 - startY) / (count - 1)) : 49;
+
+  if (count > 0) {
+    const endY = count > 1 ? startY + (count - 1) * rowStep + circleRadius : startY + circleRadius;
+    doc.save()
+      .strokeColor("#d8b87a")
+      .lineWidth(2)
+      .moveTo(lineX, startY + circleRadius)
+      .lineTo(lineX, endY)
+      .stroke()
+      .restore();
+  }
+
+  pageEvents.forEach((item, idx) => {
+    const y = startY + idx * rowStep;
+    const centerY = y + circleRadius;
+
+    // Golden circle
+    doc.save()
+      .circle(lineX, centerY, circleRadius)
+      .fill("#ecdaab")
+      .restore();
+
+    // Icon PNG
+    const iconKey = String(item.icon || "celebrate").toLowerCase();
+    const iconPath = PARTY_ICONS[iconKey] || PARTY_ICONS.celebrate;
+    if (fs.existsSync(iconPath)) {
+      doc.image(iconPath, lineX - 10, centerY - 10, { width: 20, height: 20 });
+    }
+
+    const rawTime = String(item.startTime || "");
+    const timeLabel = rawTime.includes("AM") || rawTime.includes("PM") ? rawTime : (formatAmPm(rawTime) || rawTime);
+    const textX = lineX + circleRadius + 14;
+    const textW = 248;
+
+    doc.fillColor("#0c1e48").font(fonts.textBold).fontSize(12.5).text(timeLabel, textX, y - 2, { width: textW, lineBreak: false });
+    doc.fillColor("#1e3a7a").font(fonts.text).fontSize(10.5).text(item.title || item.note || "", textX, y + 15, { width: textW, lineBreak: false, ellipsis: true });
+  });
+}
+
+/** Draws Wedding Timeline matching the traditional floral design */
+function drawWeddingPage(doc, context, pageEvents, fonts) {
   const {
     leftMargin,
     nameTop,
@@ -329,36 +568,7 @@ function drawPage(doc, context, pageEvents, fonts) {
     footerY1,
     footerY2,
     colors,
-  } = LAYOUT;
-
-  const isCorp = Boolean(context.isCorporate);
-  const isParty = Boolean(context.isParty);
-  const activeColors = isCorp
-    ? {
-        headerText: "#080480",
-        subtitleText: "#0084FF",
-        dark: "#0F172A",
-        line: "#5B61EA",
-        dot: "#0084FF",
-        bg: "#F8FAFC",
-      }
-    : isParty
-      ? {
-          headerText: "#081d64",
-          subtitleText: "#0174EF",
-          dark: "#0A1628",
-          line: "#1e75c8",
-          dot: "#0174EF",
-          bg: "#F4F8FD",
-        }
-      : {
-          headerText: colors.brown,
-          subtitleText: colors.brown,
-          dark: colors.dark,
-          line: colors.line,
-          dot: colors.line,
-          bg: "#F9F7F2",
-        };
+  } = WEDDING_LAYOUT;
 
   const style = context.textStyle || DEFAULT_SCHEDULE_TEXT_STYLE;
   const nameFontSize = style.name_font_size;
@@ -376,7 +586,6 @@ function drawPage(doc, context, pageEvents, fonts) {
       height: PAGE_HEIGHT,
     });
 
-    // Only wipe text zones when the artwork still has baked-in sample copy
     if (isCompositeReference(context.backgroundPath)) {
       doc.save();
       doc.fillColor("#F9F7F2");
@@ -386,33 +595,20 @@ function drawPage(doc, context, pageEvents, fonts) {
       doc.restore();
     }
   } else {
-    doc.rect(0, 0, PAGE_WIDTH, PAGE_HEIGHT).fill(activeColors.bg);
+    doc.rect(0, 0, PAGE_WIDTH, PAGE_HEIGHT).fill("#F9F7F2");
   }
 
-  // Header — couple / org names
-  const nameLines = (isCorp || isParty)
-    ? [String(context.coupleNames || (isParty ? "GALA NIGHT" : "EVENT")).trim()]
-    : splitCoupleNameLines(context.coupleNames);
-
-  let headerFontSize = (isCorp || isParty) ? 22 : nameFontSize;
-  const headerFont = (isCorp || isParty) ? fonts.eventSemi : fonts.script;
-
-  if (isCorp || isParty) {
-    doc.font(headerFont);
-    while (headerFontSize > 13 && doc.fontSize(headerFontSize).widthOfString(nameLines[0]) > 320) {
-      headerFontSize -= 1;
-    }
-  }
+  // Header — couple names
+  const nameLines = splitCoupleNameLines(context.coupleNames);
 
   doc
-    .fillColor(activeColors.headerText)
-    .font(headerFont)
-    .fontSize(headerFontSize);
+    .fillColor(colors.brown)
+    .font(fonts.script)
+    .fontSize(nameFontSize);
 
   nameLines.forEach((line, index) => {
-    const x =
-      index === 0 || isCorp || isParty ? leftMargin : leftMargin + nameSecondLineIndent;
-    doc.text(line, x, nameTop + index * ((isCorp || isParty) ? 26 : nameLineHeight), {
+    const x = index === 0 ? leftMargin : leftMargin + nameSecondLineIndent;
+    doc.text(line, x, nameTop + index * nameLineHeight, {
       width: 320,
       align: "left",
       lineBreak: false,
@@ -420,11 +616,11 @@ function drawPage(doc, context, pageEvents, fonts) {
   });
 
   const subtitleY =
-    nameTop + ((isCorp || isParty) ? (headerFontSize + 12) : nameLines.length * nameLineHeight) + subtitleTopOffset;
+    nameTop + nameLines.length * nameLineHeight + subtitleTopOffset;
   doc
-    .fillColor(activeColors.subtitleText)
-    .font((isCorp || isParty) ? fonts.eventSemi : fonts.subtitle)
-    .fontSize((isCorp || isParty) ? 13 : subtitleFontSize)
+    .fillColor(colors.brown)
+    .font(fonts.subtitle)
+    .fontSize(subtitleFontSize)
     .text(context.title, leftMargin, subtitleY, {
       width: 320,
       align: "left",
@@ -432,7 +628,7 @@ function drawPage(doc, context, pageEvents, fonts) {
       lineBreak: false,
     });
 
-  // Even vertical rhythm across up to 13 events (reference spacing)
+  // Vertical timeline
   const slotCount = Math.max(pageEvents.length - 1, 1);
   const rowHeight =
     pageEvents.length > 1
@@ -447,7 +643,7 @@ function drawPage(doc, context, pageEvents, fonts) {
   if (pageEvents.length > 0) {
     doc
       .save()
-      .strokeColor(activeColors.line)
+      .strokeColor(colors.line)
       .lineWidth(lineWidth)
       .moveTo(lineX, firstY)
       .lineTo(lineX, lastY)
@@ -461,10 +657,10 @@ function drawPage(doc, context, pageEvents, fonts) {
     const timeLabel = rawTime.includes("AM") || rawTime.includes("PM") ? rawTime : formatAmPm(rawTime);
     const title = String(event.title || "").toUpperCase();
 
-    doc.save().circle(lineX, y, dotRadius).fill(activeColors.dot).restore();
+    doc.save().circle(lineX, y, dotRadius).fill(colors.line).restore();
 
     doc
-      .fillColor(isCorp ? activeColors.headerText : activeColors.dark)
+      .fillColor(colors.dark)
       .font(fonts.time)
       .fontSize(eventTimeSize)
       .text(timeLabel, leftMargin, y - eventTimeSize / 2, {
@@ -474,7 +670,7 @@ function drawPage(doc, context, pageEvents, fonts) {
       });
 
     doc
-      .fillColor(activeColors.dark)
+      .fillColor(colors.dark)
       .font(fonts.eventSemi)
       .fontSize(eventTitleSize)
       .text(title, lineX + titleLeftGap, y - eventTitleSize / 2, {
@@ -486,7 +682,7 @@ function drawPage(doc, context, pageEvents, fonts) {
 
     if (event.note) {
       doc
-        .fillColor(isCorp ? "#64748B" : activeColors.dark)
+        .fillColor(colors.dark)
         .font(fonts.footer)
         .fontSize(9)
         .text(event.note, lineX + titleLeftGap, y + eventTitleSize / 2 + 1, {
@@ -498,9 +694,9 @@ function drawPage(doc, context, pageEvents, fonts) {
     }
   });
 
-  // Footer — date + venue, normal weight
+  // Footer — date + venue
   doc
-    .fillColor(activeColors.headerText)
+    .fillColor(colors.brown)
     .font(fonts.footer)
     .fontSize(footerFontSize)
     .text(context.weddingDateLabel || "", footerLeft, footerY1, {
@@ -511,7 +707,7 @@ function drawPage(doc, context, pageEvents, fonts) {
 
   if (context.venue) {
     doc
-      .fillColor(isCorp ? "#64748B" : activeColors.dark)
+      .fillColor(colors.dark)
       .font(fonts.footer)
       .fontSize(footerFontSize)
       .text(context.venue, footerLeft, footerY2, {
@@ -529,7 +725,12 @@ async function buildSchedulePdfBuffer(weddingId) {
     throw new Error("Wedding not found");
   }
 
-  const pages = chunkEvents(context.events, EVENTS_PER_PAGE);
+  const eventsPerPage = context.isCorporate
+    ? CORP_EVENTS_PER_PAGE
+    : context.isParty
+      ? PARTY_EVENTS_PER_PAGE
+      : EVENTS_PER_PAGE;
+  const pages = chunkEvents(context.events, eventsPerPage);
 
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({
@@ -546,9 +747,15 @@ async function buildSchedulePdfBuffer(weddingId) {
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
-    pages.forEach((pageEvents) => {
+    pages.forEach((pageEvents, pageIndex) => {
       doc.addPage({ size: [PAGE_WIDTH, PAGE_HEIGHT], margin: 0 });
-      drawPage(doc, context, pageEvents, fonts);
+      if (context.isCorporate) {
+        drawCorporatePage(doc, context, pageEvents, fonts, pageIndex, pages.length);
+      } else if (context.isParty) {
+        drawPartyPage(doc, context, pageEvents, fonts, pageIndex, pages.length);
+      } else {
+        drawWeddingPage(doc, context, pageEvents, fonts);
+      }
     });
 
     doc.end();

@@ -30,6 +30,7 @@ export default function GuestTable({
   onCancelRsvp,
   onResendInvite,
   onTogglePin,
+  footer = null,
 }) {
   const [openMenuId, setOpenMenuId] = useState(null);
 
@@ -187,6 +188,7 @@ export default function GuestTable({
           </tbody>
         </table>
       </div>
+      {footer ? <div className="border-t border-border">{footer}</div> : null}
     </div>
   );
 }

@@ -25,64 +25,94 @@ function escapePdfText(str) {
 
 /** Fallback client-side PDF generation if server API is unavailable or preview mode */
 function generateClientAgendaPdf(fields, agendaItems) {
-  const org = fields.orgName || 'NEXORA';
-  const title = (fields.eventTitle || 'Annual Business Summit').replace(/[\r\n]+/g, ' ');
-  const dateVenue = [fields.eventDateLabel, fields.eventVenueLabel].filter(Boolean).join(' | ');
+  const title = (fields.scheduleTitle || 'Event Agenda').replace(/[\r\n]+/g, ' ');
 
-  const textOps = [];
-  textOps.push('BT');
-  textOps.push('/F2 18 Tf');
-  textOps.push('50 780 Td');
-  textOps.push(`(${escapePdfText(org)}) Tj`);
-  textOps.push('ET');
+  const ops = [];
+  // Background gradient simulation in 3 bands (top #D4E0F7, mid #FFFFFF, bot #A5DBFD)
+  ops.push('0.83 0.88 0.97 rg'); // Top soft blue
+  ops.push('0 560 390 284 re f');
+  ops.push('1.0 1.0 1.0 rg');     // Mid white
+  ops.push('0 200 390 360 re f');
+  ops.push('0.65 0.86 0.99 rg'); // Bot soft blue #A5DBFD
+  ops.push('0 0 390 200 re f');
 
-  textOps.push('BT');
-  textOps.push('/F1 14 Tf');
-  textOps.push('50 755 Td');
-  textOps.push(`(${escapePdfText(title)}) Tj`);
-  textOps.push('ET');
+  // Title: Event Agenda (dark blue #080480)
+  ops.push('0.03 0.02 0.50 rg');
+  ops.push('BT');
+  ops.push('/F2 20 Tf');
+  ops.push('125 790 Td');
+  ops.push(`(${escapePdfText(title)}) Tj`);
+  ops.push('ET');
 
-  if (dateVenue) {
-    textOps.push('BT');
-    textOps.push('/F1 10 Tf');
-    textOps.push('50 735 Td');
-    textOps.push(`(${escapePdfText(dateVenue)}) Tj`);
-    textOps.push('ET');
+  // Subtitle
+  ops.push('BT');
+  ops.push('/F1 10.5 Tf');
+  ops.push('110 770 Td');
+  ops.push('(A day of insights and connection.) Tj');
+  ops.push('ET');
+
+  // Timeline vertical line: #5B61EA (10 items per page)
+  const lineX = 62;
+  const startY = 730;
+  const step = 49;
+  const items = Array.isArray(agendaItems) && agendaItems.length ? agendaItems.slice(0, 10) : [];
+  const count = items.length;
+
+  if (count > 0) {
+    ops.push('0.36 0.38 0.92 RG'); // #5B61EA
+    ops.push('2 w');
+    ops.push(`${lineX} ${startY} m ${lineX} ${startY - (count - 1) * step} l S`);
   }
 
-  textOps.push('BT');
-  textOps.push('/F2 13 Tf');
-  textOps.push('50 700 Td');
-  textOps.push('(EVENT AGENDA) Tj');
-  textOps.push('ET');
+  items.forEach((item, idx) => {
+    const y = startY - idx * step;
+    // Node circle: white filled with #5B61EA stroke
+    ops.push('1 1 1 rg');
+    ops.push('0.36 0.38 0.92 RG');
+    ops.push('2 w');
+    ops.push(`${lineX - 5} ${y - 5} 10 10 re b`);
 
-  let y = 670;
-  agendaItems.forEach((item) => {
-    if (!item.time && !item.title) return;
-    textOps.push('BT');
-    textOps.push('/F2 10 Tf');
-    textOps.push(`50 ${y} Td`);
-    textOps.push(`(${escapePdfText(item.time || '')}) Tj`);
-    textOps.push('ET');
+    // Time (bold #080480)
+    ops.push('0.03 0.02 0.50 rg');
+    ops.push('BT');
+    ops.push('/F2 11 Tf');
+    ops.push(`${lineX + 18} ${y} Td`);
+    ops.push(`(${escapePdfText(item.time || '')}) Tj`);
+    ops.push('ET');
 
-    textOps.push('BT');
-    textOps.push('/F1 10 Tf');
-    textOps.push(`140 ${y} Td`);
-    textOps.push(`(${escapePdfText(item.title || '')}) Tj`);
-    textOps.push('ET');
+    // Title (bold #080480)
+    ops.push('BT');
+    ops.push('/F2 10.5 Tf');
+    ops.push(`${lineX + 18} ${y - 14} Td`);
+    ops.push(`(${escapePdfText(item.title || '')}) Tj`);
+    ops.push('ET');
 
+    // Location (#7A8797)
     if (item.location) {
-      y -= 13;
-      textOps.push('BT');
-      textOps.push('/F1 8.5 Tf');
-      textOps.push(`140 ${y} Td`);
-      textOps.push(`(${escapePdfText(item.location)}) Tj`);
-      textOps.push('ET');
+      ops.push('0.48 0.53 0.59 rg');
+      ops.push('BT');
+      ops.push('/F1 9 Tf');
+      ops.push(`${lineX + 18} ${y - 27} Td`);
+      ops.push(`(${escapePdfText(item.location)}) Tj`);
+      ops.push('ET');
     }
-    y -= 22;
   });
 
-  const streamContent = textOps.join('\n');
+  // Quote at bottom
+  ops.push('0.03 0.02 0.50 rg');
+  ops.push('BT');
+  ops.push('/F2 12.5 Tf');
+  ops.push('110 230 Td');
+  ops.push('(" A Greater Tomorrow) Tj');
+  ops.push('ET');
+
+  ops.push('BT');
+  ops.push('/F2 12.5 Tf');
+  ops.push('100 214 Td');
+  ops.push('(At A Brighter Together ") Tj');
+  ops.push('ET');
+
+  const streamContent = ops.join('\n');
   const streamLength = streamContent.length;
 
   const pdf = `%PDF-1.4
@@ -93,7 +123,7 @@ endobj
 << /Type /Pages /Kids [3 0 R] /Count 1 >>
 endobj
 3 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 390 844] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>
 endobj
 4 0 obj
 << /Length ${streamLength} >>
@@ -149,13 +179,24 @@ export const EventAgendaPage = ({
     setDownloadError('');
     try {
       let blob = null;
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
       if (guestToken) {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
         const res = await fetch(
           `${apiUrl}/api/public/invite/${encodeURIComponent(guestToken)}/schedule/download`
         );
         if (res.ok) {
           blob = await res.blob();
+        }
+      } else {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        if (token) {
+          const res = await fetch(`${apiUrl}/api/couple/schedule/download`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.ok) {
+            blob = await res.blob();
+          }
         }
       }
 
@@ -169,8 +210,8 @@ export const EventAgendaPage = ({
       a.download = 'event-agenda.pdf';
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(objectUrl);
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 2000);
     } catch (err) {
       setDownloadError(err?.message || 'Failed to download agenda. Please try again.');
     } finally {

@@ -286,7 +286,7 @@ async function listEvents(req, res) {
       SELECT e.*, u.email AS client_email
       FROM events e
       LEFT JOIN users u ON u.id = e.user_id
-      ORDER BY e.event_date DESC, e.created_at DESC;
+      ORDER BY e.created_at DESC, e.id DESC;
       `
     );
 

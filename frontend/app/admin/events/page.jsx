@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
 import AddEventModal from "@/components/admin/AddEventModal";
 import EventsTable from "@/components/admin/EventsTable";
 import ViewEventModal from "@/components/admin/ViewEventModal";
@@ -22,6 +22,111 @@ import {
   openAdminGuestPreview,
 } from "@/lib/adminEvents";
 
+const EVENTS_PER_PAGE = 15;
+
+function sortEventsByLatestCreated(eventList) {
+  return [...eventList].sort((a, b) => {
+    const timeA = new Date(a.createdAt || a.created_at || 0).getTime();
+    const timeB = new Date(b.createdAt || b.created_at || 0).getTime();
+    if (timeA !== timeB) return timeB - timeA;
+    return String(b.id || "").localeCompare(String(a.id || ""));
+  });
+}
+
+function getPageNumbers(currentPage, totalPages) {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+  if (currentPage <= 4) {
+    return [1, 2, 3, 4, 5, "...", totalPages];
+  }
+  if (currentPage >= totalPages - 3) {
+    return [
+      1,
+      "...",
+      totalPages - 4,
+      totalPages - 3,
+      totalPages - 2,
+      totalPages - 1,
+      totalPages,
+    ];
+  }
+  return [
+    1,
+    "...",
+    currentPage - 1,
+    currentPage,
+    currentPage + 1,
+    "...",
+    totalPages,
+  ];
+}
+
+function PaginationBar({
+  safePage,
+  totalPages,
+  totalItems,
+  itemsPerPage,
+  onPageChange,
+}) {
+  if (totalItems === 0) return null;
+  const startItem = (safePage - 1) * itemsPerPage + 1;
+  const endItem = Math.min(safePage * itemsPerPage, totalItems);
+
+  return (
+    <div className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <p className="text-[13px] text-muted font-medium">
+        Showing {startItem} to {endItem} of {totalItems} events
+      </p>
+      <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-center">
+        <button
+          type="button"
+          onClick={() => onPageChange(Math.max(1, safePage - 1))}
+          disabled={safePage === 1}
+          className="w-8 h-8 rounded border border-[#eef0f3] flex items-center justify-center text-muted hover:bg-gray-50 disabled:opacity-40 transition-colors"
+          aria-label="Previous page"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+
+        {getPageNumbers(safePage, totalPages).map((p, idx) =>
+          p === "..." ? (
+            <span
+              key={`ellipsis-${idx}`}
+              className="w-8 h-8 flex items-center justify-center text-muted text-xs select-none"
+            >
+              …
+            </span>
+          ) : (
+            <button
+              key={p}
+              type="button"
+              onClick={() => onPageChange(p)}
+              className={`w-8 h-8 rounded text-[13px] font-bold flex items-center justify-center transition-colors ${
+                safePage === p
+                  ? "bg-[#054380] text-white"
+                  : "border border-[#eef0f3] text-muted hover:bg-gray-50"
+              }`}
+            >
+              {p}
+            </button>
+          )
+        )}
+
+        <button
+          type="button"
+          onClick={() => onPageChange(Math.min(totalPages, safePage + 1))}
+          disabled={safePage === totalPages}
+          className="w-8 h-8 rounded border border-[#eef0f3] flex items-center justify-center text-muted hover:bg-gray-50 disabled:opacity-40 transition-colors"
+          aria-label="Next page"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminEventsPage() {
   const router = useRouter();
   const [events, setEvents] = useState([]);
@@ -30,6 +135,7 @@ export default function AdminEventsPage() {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
   const [addOpen, setAddOpen] = useState(false);
   const [viewEvent, setViewEvent] = useState(null);
   const [editEvent, setEditEvent] = useState(null);
@@ -47,7 +153,7 @@ export default function AdminEventsPage() {
 
     try {
       const data = await apiRequest("/api/admin/events", { token });
-      setEvents(data.events || []);
+      setEvents(sortEventsByLatestCreated(data.events || []));
       setError("");
     } catch (err) {
       if (err.status === 401 || err.status === 403) {
@@ -67,7 +173,7 @@ export default function AdminEventsPage() {
 
   const filteredEvents = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return events.filter((event) => {
+    const matched = events.filter((event) => {
       const matchesType = typeFilter === "all" || event.type === typeFilter;
       const matchesStatus =
         statusFilter === "all" || event.status === statusFilter;
@@ -82,7 +188,29 @@ export default function AdminEventsPage() {
           .includes(q);
       return matchesType && matchesStatus && matchesQuery;
     });
+    return sortEventsByLatestCreated(matched);
   }, [events, query, typeFilter, statusFilter]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredEvents.length / EVENTS_PER_PAGE)
+  );
+  const safePage = Math.min(currentPage, totalPages);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [query, typeFilter, statusFilter]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const paginatedEvents = useMemo(() => {
+    const startIndex = (safePage - 1) * EVENTS_PER_PAGE;
+    return filteredEvents.slice(startIndex, startIndex + EVENTS_PER_PAGE);
+  }, [filteredEvents, safePage]);
 
   const handleSave = async (payload) => {
     const token = getAccessToken();
@@ -109,6 +237,7 @@ export default function AdminEventsPage() {
             createdPassword: created.credentials.password,
           });
         }
+        setCurrentPage(1);
       }
       await loadEvents();
     } finally {
@@ -223,7 +352,7 @@ export default function AdminEventsPage() {
             <p className="text-muted text-sm">No events match your search.</p>
           </div>
         ) : (
-          filteredEvents.map((event) => (
+          paginatedEvents.map((event) => (
             <div
               key={event.id}
               className="bg-white rounded-2xl p-4 card-shadow border border-border"
@@ -287,17 +416,40 @@ export default function AdminEventsPage() {
             </div>
           ))
         )}
+
+        {!loading && filteredEvents.length > 0 ? (
+          <div className="mt-4 bg-white rounded-2xl card-shadow border border-border">
+            <PaginationBar
+              safePage={safePage}
+              totalPages={totalPages}
+              totalItems={filteredEvents.length}
+              itemsPerPage={EVENTS_PER_PAGE}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        ) : null}
       </div>
 
       <div className="hidden md:block">
         {!loading ? (
           <EventsTable
-            events={filteredEvents}
+            events={paginatedEvents}
             onViewEvent={setViewEvent}
             onEditEvent={setEditEvent}
             onTemplateEvent={setTemplateEvent}
             onCredentialsEvent={setCredentialsEvent}
             onDeleteEvent={setDeleteEvent}
+            footer={
+              filteredEvents.length > 0 ? (
+                <PaginationBar
+                  safePage={safePage}
+                  totalPages={totalPages}
+                  totalItems={filteredEvents.length}
+                  itemsPerPage={EVENTS_PER_PAGE}
+                  onPageChange={setCurrentPage}
+                />
+              ) : null
+            }
           />
         ) : null}
       </div>

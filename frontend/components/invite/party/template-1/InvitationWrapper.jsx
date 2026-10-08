@@ -25,6 +25,7 @@ import InvitationPreviewBackButton from "@/components/invite/InvitationPreviewBa
 import RsvpChangeRequestPage from "./pages/RsvpChangeRequestPage";
 import RsvpConfirmationPage from "./pages/RsvpConfirmationPage";
 import PaymentSuccessPage from "./pages/PaymentSuccessPage";
+import { generatePartySchedulePdf } from "./pages/SchedulePage";
 import styles from "./InvitationViewer.module.css";
 import "./partyTokens.css";
 
@@ -350,24 +351,45 @@ function PartyInvitationFull({
   const handleDownloadSchedule = async () => {
     setIsDownloadingSchedule(true);
     try {
+      let blob = null;
+      const apiUrl =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+
       if (guestToken) {
-        const apiUrl =
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
         const res = await fetch(
           `${apiUrl}/api/public/invite/${encodeURIComponent(guestToken)}/schedule/download`
         );
         if (res.ok) {
-          const blob = await res.blob();
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = "party-schedule.pdf";
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          setTimeout(() => URL.revokeObjectURL(url), 2000);
-          return;
+          blob = await res.blob();
         }
+      } else {
+        const token =
+          typeof window !== "undefined"
+            ? localStorage.getItem("token")
+            : null;
+        if (token) {
+          const res = await fetch(`${apiUrl}/api/couple/schedule/download`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.ok) {
+            blob = await res.blob();
+          }
+        }
+      }
+
+      if (!blob) {
+        blob = generatePartySchedulePdf(fields, fields.scheduleItems || []);
+      }
+
+      if (blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "party-schedule.pdf";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
       }
     } catch (err) {
       console.error("Failed to download party schedule:", err);
