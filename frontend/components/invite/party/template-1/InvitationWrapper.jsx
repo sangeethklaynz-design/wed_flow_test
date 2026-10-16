@@ -26,6 +26,11 @@ import RsvpChangeRequestPage from "./pages/RsvpChangeRequestPage";
 import RsvpConfirmationPage from "./pages/RsvpConfirmationPage";
 import PaymentSuccessPage from "./pages/PaymentSuccessPage";
 import { generatePartySchedulePdf } from "./pages/SchedulePage";
+import { TicketingSelectionPage } from "@/components/invite/common/TicketingSelectionPage";
+import { TicketingPaymentOverlay } from "@/components/invite/common/TicketingPaymentOverlay";
+import { PaymentSuccessOverlay } from "@/components/invite/corporate/template-1/overlays/PaymentSuccessOverlay";
+import { TicketQrOverlay } from "@/components/invite/corporate/template-1/overlays/TicketQrOverlay";
+import { TicketSelectionView } from "@/components/invite/common/TicketSelectionView";
 import styles from "./InvitationViewer.module.css";
 import "./partyTokens.css";
 
@@ -157,6 +162,37 @@ export function PartyPagePreview({
   }
 
   if (pageId === "rsvp") {
+    const isTicketing = Boolean(
+      templateData?.isTicketingEnabled ||
+      templateData?.static?.isTicketingEnabled ||
+      templateData?.templateConfig?.isTicketingEnabled ||
+      templateConfig?.isTicketingEnabled ||
+      pagesCfg?.isTicketingEnabled ||
+      templateData?.event?.enableTicketing ||
+      templateData?.static?.event?.enableTicketing ||
+      templateData?.event?.isTicketingEnabled ||
+      templateData?.static?.event?.isTicketingEnabled
+    );
+
+    if (isTicketing) {
+      const ticketTypes =
+        templateData?.ticketTypes ||
+        templateData?.static?.ticketTypes ||
+        templateData?.event?.tickets ||
+        templateData?.static?.event?.tickets ||
+        [];
+      return (
+        <div {...frameProps} style={{ ...frameProps.style, backgroundColor: "#FFFFFF" }}>
+          <TicketingSelectionPage
+            ticketTypes={ticketTypes}
+            theme="party"
+            onProceedToPayment={() => {}}
+            onScrollNext={() => {}}
+          />
+        </div>
+      );
+    }
+
     return (
       <div {...frameProps}>
         <Page
@@ -224,6 +260,25 @@ function PartyInvitationFull({
   const embeddedContainerRef = useRef(null);
   const [showRsvpConfirmation, setShowRsvpConfirmation] = useState(false);
   const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
+  const [isTicketingPaymentOpen, setIsTicketingPaymentOpen] = useState(false);
+  const [ticketingBookingData, setTicketingBookingData] = useState(null);
+
+  useEffect(() => {
+    try {
+      const saved =
+        localStorage.getItem("wedflow_purchased_tickets") ||
+        sessionStorage.getItem("wedflow_purchased_tickets");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && (parsed.selectedTickets || parsed.individualTickets)) {
+          setTicketingBookingData(parsed);
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+  const [isTicketOpen, setIsTicketOpen] = useState(false);
   const [isInvitationRoute, setIsInvitationRoute] = useState(false);
 
   useEffect(() => {
@@ -286,6 +341,25 @@ function PartyInvitationFull({
     setMusicActive(!hasVideo);
   }, [hasVideo, meta.videoUrl]);
 
+  useEffect(() => {
+    const handleHash = () => {
+      if (typeof window === "undefined") return;
+      const h = window.location.hash;
+      if (h === "#ticket" || h === "#tickets" || h === "#ticket-qr") {
+        setShowPaymentSuccess(false);
+        setIsTicketingPaymentOpen(false);
+        setIsTicketOpen(true);
+        window.scrollTo({ top: 0, behavior: "instant" });
+        if (embeddedContainerRef.current) {
+          embeddedContainerRef.current.scrollTo({ top: 0, behavior: "instant" });
+        }
+      }
+    };
+    handleHash();
+    window.addEventListener("hashchange", handleHash);
+    return () => window.removeEventListener("hashchange", handleHash);
+  }, []);
+
   const visiblePages = PARTY_PAGE_ORDER.filter((id) =>
     isPageEnabled(pagesCfg, id)
   );
@@ -320,7 +394,73 @@ function PartyInvitationFull({
       ""
   ).trim();
 
+  const handleProceedToTicketingPayment = (data) => {
+    const bookingRef = "LN2026-0001";
+    const booking = {
+      ...data,
+      bookingRef,
+      ticketsSummary: data.selectedTickets
+        .map((t) => `${t.quantity} x ${t.name} (LKR ${Number(t.price).toLocaleString("en-US")})`)
+        .join(", "),
+      individualTickets: data.selectedTickets.flatMap((t, tIdx) =>
+        Array.from({ length: t.quantity }, (_, qIdx) => ({
+          id: `${bookingRef}-${tIdx * 10 + qIdx + 1}`,
+          typeName: `${t.name} Ticket`,
+          price: t.price,
+        }))
+      ),
+    };
+    setTicketingBookingData(booking);
+    setShowRsvpConfirmation(false);
+    setShowPaymentSuccess(false);
+    setIsTicketOpen(false);
+    setIsTicketingPaymentOpen(true);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
+  };
+
+  const handleTicketingPaymentSuccess = () => {
+    setIsTicketingPaymentOpen(false);
+    setShowPaymentSuccess(true);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "instant" });
+      if (ticketingBookingData) {
+        try {
+          localStorage.setItem("wedflow_purchased_tickets", JSON.stringify(ticketingBookingData));
+          sessionStorage.setItem("wedflow_purchased_tickets", JSON.stringify(ticketingBookingData));
+        } catch (e) {
+          console.warn("Could not store tickets", e);
+        }
+      }
+    }
+  };
+
+  const handleCloseTicketingPayment = () => {
+    setIsTicketingPaymentOpen(false);
+    setShowPaymentSuccess(false);
+    setIsTicketOpen(false);
+    setTimeout(() => {
+      scrollToPage("ticketing");
+    }, 60);
+  };
+
+  const handleOpenTicket = () => {
+    setShowPaymentSuccess(false);
+    setIsTicketOpen(true);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "instant" });
+      try {
+        window.history.replaceState(null, "", "#ticket");
+      } catch (e) {}
+    }
+    if (embeddedContainerRef.current) {
+      embeddedContainerRef.current.scrollTo({ top: 0, behavior: "instant" });
+    }
+  };
+
   const handleProceedToPayment = () => {
+    setTicketingBookingData(null);
     if (paymentLink && typeof window !== "undefined") {
       window.open(paymentLink, "_blank", "noopener,noreferrer");
     }
@@ -330,6 +470,7 @@ function PartyInvitationFull({
 
   const handleRsvpSuccess = (data) => {
     setRsvpData(data || null);
+    setTicketingBookingData(null);
     setHasSubmittedRsvp(true);
     if (typeof onRsvpSuccessProp === "function") {
       onRsvpSuccessProp(data);
@@ -346,6 +487,12 @@ function PartyInvitationFull({
     setTimeout(() => {
       scrollToPage("rsvp");
     }, 60);
+  };
+
+  const handleBackFromTicketing = () => {
+    setShowPaymentSuccess(false);
+    setIsTicketingPaymentOpen(true);
+    setIsTicketOpen(false);
   };
 
   const handleDownloadSchedule = async () => {
@@ -399,7 +546,19 @@ function PartyInvitationFull({
   };
 
   const renderPage = (pageId) => {
-    if (pageId === "rsvp" && hasSubmittedRsvp) {
+    const isTicketing = Boolean(
+      templateData?.isTicketingEnabled ||
+      templateData?.static?.isTicketingEnabled ||
+      templateData?.templateConfig?.isTicketingEnabled ||
+      templateConfigProp?.isTicketingEnabled ||
+      pagesCfg?.isTicketingEnabled ||
+      templateData?.event?.enableTicketing ||
+      templateData?.static?.event?.enableTicketing ||
+      templateData?.event?.isTicketingEnabled ||
+      templateData?.static?.event?.isTicketingEnabled
+    );
+
+    if (pageId === "rsvp" && hasSubmittedRsvp && !isTicketing) {
       return (
         <RsvpChangeRequestPage
           key="rsvp-change"
@@ -434,6 +593,48 @@ function PartyInvitationFull({
       );
     }
     if (pageId === "rsvp") {
+      if (isTicketing) {
+        const ticketTypes =
+          templateData?.ticketTypes ||
+          templateData?.static?.ticketTypes ||
+          templateData?.event?.tickets ||
+          templateData?.static?.event?.tickets ||
+          [];
+        const isModalOpen = Boolean(
+          isTicketOpen || showPaymentSuccess || isTicketingPaymentOpen || showRsvpConfirmation
+        );
+        return (
+          <div
+            key="ticket-selection"
+            id="page-3"
+            data-invite-page="rsvp"
+            className="w-[390px] min-h-[844px] flex items-center justify-center relative overflow-hidden bg-transparent"
+            style={{
+              display: isModalOpen ? "none" : "flex",
+            }}
+          >
+            <TicketingSelectionPage
+              ticketTypes={ticketTypes}
+              theme="party"
+              defaultName={guest?.name || fields.guestName || "Kavindu Perera"}
+              defaultEmail={guest?.email || fields.guestEmail || "kavindu@gmail.com"}
+              onProceedToPayment={handleProceedToTicketingPayment}
+              purchasedBookingData={ticketingBookingData}
+              onViewPurchasedTickets={handleOpenTicket}
+              hasPurchasedTickets={Boolean(ticketingBookingData?.individualTickets?.length || ticketingBookingData?.totalAmount)}
+              onScrollNext={() => {
+                const rsvpIdx = visiblePages.indexOf("rsvp");
+                const next =
+                  rsvpIdx >= 0 && rsvpIdx < visiblePages.length - 1
+                    ? visiblePages[rsvpIdx + 1]
+                    : null;
+                if (next) scrollToPage(next);
+              }}
+            />
+          </div>
+        );
+      }
+
       return (
         <Page
           key={pageId}
@@ -492,6 +693,21 @@ function PartyInvitationFull({
         />
       );
     }
+    if (pageId === "ticketing") {
+      const tickets = meta.tickets || templateData?.event?.tickets || templateData?.static?.event?.tickets || [];
+      return (
+        <Page
+          key={pageId}
+          fields={fields}
+          contentScale={1}
+          ticketTypes={tickets}
+          defaultName={guest?.name || "Kavindu Perera"}
+          defaultEmail={guest?.email || "kavindu@gmail.com"}
+          onProceedToPayment={handleOpenTicketingPayment}
+          onScrollNext={handleExploreClick}
+        />
+      );
+    }
     return (
       <Page key={pageId} fields={fields} contentScale={1} />
     );
@@ -501,12 +717,13 @@ function PartyInvitationFull({
     return (
       <div
         ref={embeddedContainerRef}
-        className="relative overflow-y-auto partyInviteRoot scrollbar-none"
+        className={`relative ${(isTicketOpen || showPaymentSuccess || isTicketingPaymentOpen || showRsvpConfirmation) ? "overflow-hidden" : "overflow-y-auto"} partyInviteRoot scrollbar-none`}
         style={{
           width: 390,
           height: 844,
           borderRadius: 26,
           backgroundColor: "#060e1d",
+          overflow: (isTicketOpen || showPaymentSuccess || isTicketingPaymentOpen || showRsvpConfirmation) ? "hidden" : "auto",
           ...partyThemeVars(fields),
         }}
         aria-label="Party invitation"
@@ -535,7 +752,7 @@ function PartyInvitationFull({
               setMusicActive(true);
             }}
           />
-        ) : showPaymentSuccess ? (
+        ) : showPaymentSuccess && !ticketingBookingData ? (
           <div className="relative w-[390px] h-[844px] min-h-[844px] mx-auto overflow-hidden">
             <PaymentSuccessPage
               contentScale={1}
@@ -564,6 +781,65 @@ function PartyInvitationFull({
           <div className="relative w-[390px] flex flex-col">
             {visiblePages.map((pageId) => renderPage(pageId))}
           </div>
+        )}
+
+        <TicketingPaymentOverlay
+          isOpen={isTicketingPaymentOpen}
+          onClose={handleCloseTicketingPayment}
+          onBack={handleCloseTicketingPayment}
+          onPaySuccess={handleTicketingPaymentSuccess}
+          bookingData={ticketingBookingData || {}}
+          theme="party"
+          eventMeta={{
+            eventName: meta.eventName || "Annual Gala Night 2026",
+            eventDateTime: `${meta.eventDate || "Thu, 12 Nov 2026"} | ${meta.eventTime || "6:00 PM"}`,
+            eventVenue: meta.eventVenue || "Cinnamon Lakeside Colombo",
+          }}
+        />
+
+        {ticketingBookingData && (
+          <>
+            <PaymentSuccessOverlay
+              isOpen={showPaymentSuccess}
+              onClose={handleBackFromTicketing}
+              onBackToRsvp={handleBackFromTicketing}
+              onAddToCalendar={() => {
+                setShowPaymentSuccess(false);
+                setTimeout(() => scrollToPage("saveTheDate"), 120);
+              }}
+              onViewTicket={handleOpenTicket}
+              bookingData={ticketingBookingData}
+              theme="party"
+            />
+            <TicketQrOverlay
+              isOpen={isTicketOpen}
+              onClose={() => {
+                setIsTicketOpen(false);
+                setShowPaymentSuccess(true);
+              }}
+              onBackToPayment={() => {
+                setIsTicketOpen(false);
+                setShowPaymentSuccess(true);
+              }}
+              onAddToCalendar={() => {
+                setIsTicketOpen(false);
+                setTimeout(() => scrollToPage("saveTheDate"), 120);
+              }}
+              onScrollNext={() => {
+                setIsTicketOpen(false);
+                setTimeout(() => scrollToPage("landing"), 60);
+              }}
+              attendeeName={ticketingBookingData?.fullName || guest?.name || "Kavindu Perera"}
+              ticketId={ticketingBookingData?.bookingRef || "LN2026-0001"}
+              tickets={ticketingBookingData?.individualTickets || []}
+              eventName={meta.eventName || "Annual Gala Night 2026"}
+              eventDescription={fields.eventDescription || "An evening celebration, networking, & entertainment."}
+              eventDate={meta.eventDate || "Thursday, 12 November 2026"}
+              eventTime={meta.eventTime || "6.00 PM Onwards"}
+              eventVenue={meta.eventVenue || "Cinnamon Lakeside Colombo"}
+              theme="party"
+            />
+          </>
         )}
       </div>
     );
@@ -595,8 +871,8 @@ function PartyInvitationFull({
       />
 
       <InviteMobileScaler
-        mode={isVideoActive ? "cover" : "width"}
-        fixedHeight={isVideoActive ? INVITE_FRAME_H : undefined}
+        mode={(isVideoActive || isTicketOpen || showPaymentSuccess || isTicketingPaymentOpen || showRsvpConfirmation) ? "cover" : "width"}
+        fixedHeight={(isVideoActive || isTicketOpen || showPaymentSuccess || isTicketingPaymentOpen || showRsvpConfirmation) ? INVITE_FRAME_H : undefined}
         className="w-full flex justify-center items-center mx-auto"
       >
         <main
@@ -606,7 +882,9 @@ function PartyInvitationFull({
           style={{
             width: INVITE_FRAME_W,
             maxWidth: INVITE_FRAME_W,
-            height: isVideoActive ? INVITE_FRAME_H : undefined,
+            height: (isVideoActive || isTicketOpen || showPaymentSuccess || isTicketingPaymentOpen || showRsvpConfirmation) ? INVITE_FRAME_H : undefined,
+            maxHeight: (isTicketOpen || showPaymentSuccess || isTicketingPaymentOpen || showRsvpConfirmation) ? INVITE_FRAME_H : undefined,
+            overflow: (isTicketOpen || showPaymentSuccess || isTicketingPaymentOpen || showRsvpConfirmation) ? "hidden" : undefined,
             backgroundColor: "#060e1d",
             margin: "0 auto",
             display: "block",
@@ -631,7 +909,7 @@ function PartyInvitationFull({
                 }}
               />
             </div>
-          ) : showPaymentSuccess ? (
+          ) : showPaymentSuccess && !ticketingBookingData ? (
             <div className="relative w-[390px] h-[844px] min-h-[844px] mx-auto overflow-hidden" style={{ margin: "0 auto" }}>
               <PaymentSuccessPage
                 contentScale={1}
@@ -663,6 +941,65 @@ function PartyInvitationFull({
             >
               {visiblePages.map((pageId) => renderPage(pageId))}
             </div>
+          )}
+
+          <TicketingPaymentOverlay
+            isOpen={isTicketingPaymentOpen}
+            onClose={handleCloseTicketingPayment}
+            onBack={handleCloseTicketingPayment}
+            onPaySuccess={handleTicketingPaymentSuccess}
+            bookingData={ticketingBookingData || {}}
+            theme="party"
+            eventMeta={{
+              eventName: meta.eventName || "Annual Gala Night 2026",
+              eventDateTime: `${meta.eventDate || "Thu, 12 Nov 2026"} | ${meta.eventTime || "6:00 PM"}`,
+              eventVenue: meta.eventVenue || "Cinnamon Lakeside Colombo",
+            }}
+          />
+
+          {ticketingBookingData && (
+            <>
+              <PaymentSuccessOverlay
+                isOpen={showPaymentSuccess}
+                onClose={handleBackFromTicketing}
+                onBackToRsvp={handleBackFromTicketing}
+                onAddToCalendar={() => {
+                  setShowPaymentSuccess(false);
+                  setTimeout(() => scrollToPage("saveTheDate"), 120);
+                }}
+                onViewTicket={handleOpenTicket}
+                bookingData={ticketingBookingData}
+                theme="party"
+              />
+              <TicketQrOverlay
+                isOpen={isTicketOpen}
+                onClose={() => {
+                  setIsTicketOpen(false);
+                  setShowPaymentSuccess(true);
+                }}
+                onBackToPayment={() => {
+                  setIsTicketOpen(false);
+                  setShowPaymentSuccess(true);
+                }}
+                onAddToCalendar={() => {
+                  setIsTicketOpen(false);
+                  setTimeout(() => scrollToPage("saveTheDate"), 120);
+                }}
+                onScrollNext={() => {
+                  setIsTicketOpen(false);
+                  setTimeout(() => scrollToPage("landing"), 60);
+                }}
+                attendeeName={ticketingBookingData?.fullName || guest?.name || "Kavindu Perera"}
+                ticketId={ticketingBookingData?.bookingRef || "LN2026-0001"}
+                tickets={ticketingBookingData?.individualTickets || []}
+                eventName={meta.eventName || "Annual Gala Night 2026"}
+                eventDescription={fields.eventDescription || "An evening celebration, networking, & entertainment."}
+                eventDate={meta.eventDate || "Thursday, 12 November 2026"}
+                eventTime={meta.eventTime || "6.00 PM Onwards"}
+                eventVenue={meta.eventVenue || "Cinnamon Lakeside Colombo"}
+                theme="party"
+              />
+            </>
           )}
         </main>
       </InviteMobileScaler>

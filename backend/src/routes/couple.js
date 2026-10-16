@@ -32,6 +32,13 @@ const {
   updateNotification,
   deleteNotification
 } = require("../controllers/notificationsController");
+const {
+  getTicketingSettings,
+  toggleTicketing,
+  createTicketType,
+  updateTicketType,
+  deleteTicketType,
+} = require("../controllers/ticketingController");
 
 const router = express.Router();
 
@@ -62,5 +69,12 @@ router.post("/notifications/mark-read", requireAuth, markAllRead);
 router.post("/notifications/:id/mark-read", requireAuth, markOneRead);
 router.put("/notifications/:id", requireAuth, updateNotification);
 router.delete("/notifications/:id", requireAuth, deleteNotification);
+
+// Ticketing management
+router.get("/ticketing", requireAuth, getTicketingSettings);
+router.put("/ticketing/toggle", requireAuth, toggleTicketing);
+router.post("/ticketing/types", requireAuth, createTicketType);
+router.put("/ticketing/types/:id", requireAuth, updateTicketType);
+router.delete("/ticketing/types/:id", requireAuth, deleteTicketType);
 
 module.exports = router;

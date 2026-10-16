@@ -349,6 +349,34 @@ async function ensureEventsTable() {
       ADD COLUMN payment_link TEXT NULL AFTER google_maps_link;
     `);
   }
+
+  if (!(await columnExists("events", "is_ticketing_enabled"))) {
+    await sequelize.query(`
+      ALTER TABLE events
+      ADD COLUMN is_ticketing_enabled TINYINT(1) NOT NULL DEFAULT 0 AFTER payment_link;
+    `);
+  }
+}
+
+async function ensureTicketingSchema() {
+  if (!(await tableExists("ticket_types"))) {
+    await sequelize.query(`
+      CREATE TABLE ticket_types (
+        id VARCHAR(36) NOT NULL PRIMARY KEY,
+        event_id VARCHAR(36) NOT NULL,
+        name VARCHAR(100) NOT NULL,
+        price DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+        description TEXT NULL,
+        quantity INT NULL,
+        display_order INT NOT NULL DEFAULT 0,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_ticket_types_event (event_id),
+        CONSTRAINT fk_ticket_types_event
+          FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    `);
+  }
 }
 
 async function ensureCoreSchema() {
@@ -359,6 +387,8 @@ async function ensureCoreSchema() {
   await ensureRsvpChangeRequestsTable();
   await ensureNotificationsTable();
   await ensureEventsTable();
+  await ensureTicketingSchema();
 }
 
 module.exports = { ensureCoreSchema };
+

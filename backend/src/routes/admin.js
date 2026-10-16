@@ -16,6 +16,13 @@ const {
   uploadEventResource,
   deleteEventResource,
 } = require("../controllers/adminEventsController");
+const {
+  getTicketingSettings,
+  toggleTicketing,
+  createTicketType,
+  updateTicketType,
+  deleteTicketType,
+} = require("../controllers/ticketingController");
 
 const router = express.Router();
 
@@ -38,5 +45,12 @@ router.post(
   uploadEventResource
 );
 router.delete("/events/:id/resources/:kind/:filename", deleteEventResource);
+
+// Ticketing per event
+router.get("/events/:eventId/ticketing", getTicketingSettings);
+router.put("/events/:eventId/ticketing/toggle", toggleTicketing);
+router.post("/events/:eventId/ticketing/types", createTicketType);
+router.put("/events/:eventId/ticketing/types/:id", updateTicketType);
+router.delete("/events/:eventId/ticketing/types/:id", deleteTicketType);
 
 module.exports = router;

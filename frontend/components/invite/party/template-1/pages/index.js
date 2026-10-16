@@ -10,6 +10,7 @@ import LocationPage from "./LocationPage";
 import DetailsPage from "./DetailsPage";
 import SaveTheDatePage from "./SaveTheDatePage";
 import RsvpChangeRequestPage from "./RsvpChangeRequestPage";
+import TicketingPage from "./TicketingPage";
 
 export const PARTY_PAGE_WIDTH = 390;
 export const PARTY_PAGE_HEIGHT = 844;
@@ -32,6 +33,7 @@ export const PARTY_PAGE_COMPONENTS = {
   location: LocationPage,
   details: DetailsPage,
   saveTheDate: SaveTheDatePage,
+  ticketing: TicketingPage,
 };
 
 export const PARTY_PAGE_LABELS = {
@@ -42,6 +44,7 @@ export const PARTY_PAGE_LABELS = {
   location: "Location",
   details: "Important details",
   saveTheDate: "Save the date",
+  ticketing: "Ticketing",
 };
 
 export {
@@ -53,6 +56,7 @@ export {
   DetailsPage,
   SaveTheDatePage,
   RsvpChangeRequestPage,
+  TicketingPage,
 };
 
 export default PARTY_PAGE_COMPONENTS;

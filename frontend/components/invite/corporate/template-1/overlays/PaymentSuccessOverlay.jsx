@@ -8,8 +8,23 @@ export const PaymentSuccessOverlay = ({
   onBackToRsvp,
   onAddToCalendar,
   onViewTicket,
+  bookingData = null,
+  attendeeName: attendeeNameProp = 'Kavindu Perera',
+  bookingRef: bookingRefProp = 'LN2026-0001',
+  theme = 'corporate',
 }) => {
   const [toastMessage, setToastMessage] = useState(null);
+
+  const attendeeName = bookingData?.fullName || attendeeNameProp;
+  const bookingRef = bookingData?.bookingRef || bookingRefProp;
+  const isTicketing = Boolean(
+    bookingData &&
+      (bookingData.totalAmount !== undefined ||
+        bookingData.isTicketingFlow ||
+        (Array.isArray(bookingData.selectedTickets) && bookingData.selectedTickets.length > 0))
+  );
+  const totalAmount = bookingData?.totalAmount ?? 3000;
+  const isParty = theme === 'party';
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -22,7 +37,7 @@ export const PaymentSuccessOverlay = ({
     if (onViewTicket) {
       onViewTicket();
     } else {
-      showToast('Ticket LN2026-0001 ready. Email sent!');
+      showToast(`Ticket ${bookingRef} ready. Email sent!`);
     }
   };
 
@@ -39,6 +54,270 @@ export const PaymentSuccessOverlay = ({
 
   if (!isOpen) return null;
 
+  // TICKETING FLOW SUCCESS VIEW (Screenshots 1 & 2 - robust natural flow layout)
+  if (isTicketing) {
+    const ticketLines =
+      Array.isArray(bookingData?.selectedTickets) && bookingData.selectedTickets.length > 0
+        ? bookingData.selectedTickets
+            .filter((t) => Number(t.quantity) > 0)
+            .map(
+              (t) =>
+                `${t.quantity} x  ${t.name} (LKR ${Number(t.price).toLocaleString('en-US')})`
+            )
+        : [bookingData?.ticketsSummary || '3 x  Standard (LKR 1, 000)'];
+
+    const formattedTotal = Number(totalAmount).toLocaleString('en-US');
+
+    return (
+      <div
+        id="payment-success-view"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Payment Successful"
+        className="absolute top-0 left-0 w-[390px] h-[844px] rounded-[26px] overflow-hidden z-[110] shadow-card select-none animate-in fade-in zoom-in-95 duration-200"
+        style={{
+          background:
+            'linear-gradient(180deg, #F0F7FE 0%, #FFFFFF 30%, #FFFFFF 70%, #F0F7FE 100%)',
+        }}
+      >
+        <div className="relative w-[390px] h-[844px] mx-auto select-none overflow-hidden">
+          {/* Top Background Artwork */}
+          {isParty ? (
+            /* Party Top Foliage (Screenshot 2) */
+            <div
+              className="absolute top-0 left-0 w-[390px] h-[190px] pointer-events-none z-0 overflow-hidden"
+              aria-hidden="true"
+            >
+              <img
+                src="/assets/events/parties/templates/template-1/chrome/ticketing-page/top-bg.webp"
+                alt=""
+                className="w-[390px] h-[190px] object-cover object-top block"
+                width={390}
+                height={190}
+              />
+            </div>
+          ) : (
+            /* Corporate Top Wave (Screenshot 3) */
+            <div
+              className="absolute top-0 left-0 w-[390px] h-[162px] pointer-events-none z-0 overflow-hidden"
+              aria-hidden="true"
+            >
+              <img
+                src="/assets/events/corporate-events/templates/template-1/chrome/ticketing-page/top-background.webp"
+                alt=""
+                className="w-[390px] h-[162px] object-cover block"
+                style={{ transform: "rotate(180deg)" }}
+                width={390}
+                height={162}
+              />
+            </div>
+          )}
+
+          {/* Corporate Back Arrow Button (Screenshot 1: top left dark navy arrow) */}
+          {!isParty && (
+            <button
+              type="button"
+              id="back-to-ticketing-btn"
+              onClick={onBackToRsvp || onClose}
+              aria-label="Back"
+              className="absolute top-[20px] left-[20px] w-9 h-9 flex items-center justify-center text-[#0A2569] hover:opacity-75 active:scale-95 transition-all cursor-pointer z-20 p-0"
+            >
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#0A2569"
+                strokeWidth="2.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <line x1="19" y1="12" x2="5" y2="12" />
+                <polyline points="12 19 5 12 12 5" />
+              </svg>
+            </button>
+          )}
+
+          {/* Bottom Background Artwork */}
+          {isParty ? (
+            /* Party Bottom Foliage (Screenshot 2: navy & gold leaves upside down) */
+            <div
+              className="absolute bottom-0 left-0 w-[390px] h-[185px] pointer-events-none z-0 overflow-hidden"
+              aria-hidden="true"
+            >
+              <img
+                src="/assets/events/parties/templates/template-1/chrome/ticketing-page/bottom-bg.webp"
+                alt=""
+                className="w-[390px] h-[185px] object-cover block"
+                style={{ transform: 'rotate(180deg)' }}
+                width={390}
+                height={185}
+              />
+            </div>
+          ) : (
+            /* Corporate Bottom Wave & Green Leaves (Screenshot 1) */
+            <>
+              <div
+                className="absolute bottom-0 left-0 w-[390px] h-[155px] pointer-events-none z-0 overflow-hidden"
+                aria-hidden="true"
+              >
+                <img
+                  src="/assets/events/corporate-events/templates/template-1/chrome/ticketing-page/bottom-background.webp"
+                  alt=""
+                  className="w-[390px] h-[155px] object-cover block"
+                  width={390}
+                  height={155}
+                />
+              </div>
+              <img
+                src="/assets/events/corporate-events/templates/template-1/chrome/ticketing-page/bottom-leaves.webp"
+                alt=""
+                className="absolute bottom-0 right-0 w-[155px] h-[225px] object-contain pointer-events-none z-[1]"
+                width={155}
+                height={225}
+                aria-hidden="true"
+              />
+            </>
+          )}
+
+          {/* Main Content Column (Natural Flex Flow - Perfectly aligned, NO overlapping!) */}
+          <div
+            className={`relative z-10 w-[390px] h-full flex flex-col items-center px-6 ${
+              isParty ? 'pt-[78px]' : 'pt-[70px]'
+            } select-none`}
+          >
+            {/* 1. Checkmark with Confetti (Screenshots 1 & 2: centered green circle + confetti) */}
+            <div className="w-[200px] h-[120px] flex items-center justify-center flex-shrink-0 animate-tick-pop-in pointer-events-none">
+              <img
+                src={
+                  isParty
+                    ? '/assets/events/parties/templates/template-1/chrome/ticketing-page/top-success-mark.webp'
+                    : '/assets/events/corporate-events/templates/template-1/chrome/ticketing-page/top-success-mark.webp'
+                }
+                alt="Payment Successful"
+                className="w-full h-full object-contain block drop-shadow-sm"
+                width={200}
+                height={120}
+              />
+            </div>
+
+            {/* 2. Heading & Subtitle */}
+            <div className="flex flex-col items-center text-center mt-2 flex-shrink-0">
+              <h1 className="m-0 font-jakarta font-bold text-[30px] leading-[36px] text-[#0FA93E] tracking-[-0.015em]">
+                Payment Successful!
+              </h1>
+              <p className="m-0 font-inter font-normal text-[14.5px] leading-[20px] text-[#64748B] mt-1 tracking-tight">
+                Your tickets have been  confirmed.
+              </p>
+            </div>
+
+            {/* 3. Attendee Card (Kavindu Perera / LN2026-0001) */}
+            <div className="w-[326px] min-h-[66px] bg-[#E9EEFA] rounded-[16px] py-2.5 px-4 flex flex-col items-center justify-center text-center mt-3.5 flex-shrink-0 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+              <span className="font-jakarta font-bold text-[20px] leading-[24px] text-[#0A2569]">
+                {attendeeName}
+              </span>
+              <span className="font-jakarta font-medium text-[13px] leading-[17px] text-[#556987] mt-[3px] tracking-wide">
+                {bookingRef}
+              </span>
+            </div>
+
+            {/* 4. Purchased Details (Tickets Purchased & Total Paid) */}
+            <div className="w-[326px] flex flex-col gap-3.5 mt-4 flex-shrink-0 px-2">
+              {/* Row 1: Tickets Purchased */}
+              <div className="flex items-start gap-3.5">
+                <div className="w-[28px] h-[22px] flex items-center justify-center flex-shrink-0 pt-0.5">
+                  <svg width="28" height="19" viewBox="0 0 30 20" fill="#94A3B8" aria-hidden="true">
+                    <path d="M2 3a2 2 0 0 1 2-2h22a2 2 0 0 1 2 2v3.5a2.5 2.5 0 0 0 0 5V17a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-3.5a2.5 2.5 0 0 0 0-5V3z" />
+                  </svg>
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-jakarta font-bold text-[12.5px] leading-[16px] text-[#64748B] tracking-wider uppercase">
+                    Tickets Purchased
+                  </span>
+                  <div className="flex flex-col mt-0.5">
+                    {ticketLines.map((line, idx) => (
+                      <span
+                        key={idx}
+                        className="font-inter font-medium text-[14px] leading-[20px] text-[#475569]"
+                      >
+                        {line}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 2: Total Paid */}
+              <div className="flex items-start gap-3.5">
+                <div className="w-[28px] h-[22px] flex items-center justify-center flex-shrink-0 pt-0.5">
+                  <div className="w-[24px] h-[24px] rounded-full bg-[#94A3B8] flex items-center justify-center text-white font-bold text-[14px] leading-none select-none">
+                    $
+                  </div>
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-jakarta font-bold text-[12.5px] leading-[16px] text-[#64748B] tracking-wider uppercase">
+                    Total Paid
+                  </span>
+                  <span className="font-inter font-medium text-[14px] leading-[20px] text-[#475569] mt-0.5">
+                    LKR {formattedTotal}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* 5. Action Buttons Stack - Positioned directly below details with zero overlap! */}
+            <div className="w-[326px] flex flex-col gap-2.5 mt-5 flex-shrink-0">
+              <button
+                type="button"
+                id="view-my-tickets-btn"
+                onClick={handleViewTicket}
+                className="w-full h-[46px] bg-[#080480] hover:bg-[#060368] active:scale-[0.99] text-white font-jakarta font-bold text-[15px] rounded-xl flex items-center justify-center cursor-pointer shadow-[0_4px_14px_rgba(8,4,128,0.25)] transition-all"
+              >
+                View My Tickets
+              </button>
+
+              <button
+                type="button"
+                id="payment-add-calendar-btn"
+                onClick={handleAddToCalendar}
+                className="w-full h-[46px] bg-white border-[1.5px] border-[#080480] hover:bg-[#F8FAFC] active:scale-[0.99] text-[#080480] font-jakarta font-bold text-[15px] rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm"
+              >
+                <svg
+                  className="w-[20px] h-[20px] flex-shrink-0"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#0174EF"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="3" y="4" width="18" height="18" rx="3" ry="3" />
+                  <line x1="16" y1="2" x2="16" y2="6" />
+                  <line x1="8" y1="2" x2="8" y2="6" />
+                  <line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+                <span>Add to Calendar</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Toast Feedback */}
+          {toastMessage && (
+            <div
+              className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-[#080480] text-white font-inter text-[12.5px] font-semibold py-[10px] px-5 rounded-[20px] shadow-[0_8px_24px_rgba(8,4,128,0.35)] pointer-events-none z-30 whitespace-nowrap transition-all duration-200"
+              aria-live="polite"
+            >
+              {toastMessage}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // DEFAULT RSVP CONFIRMATION PAYMENT SUCCESS VIEW (Kept 100% as is per requirement)
   return (
     <div
       id="payment-success-view"
@@ -98,55 +377,53 @@ export const PaymentSuccessOverlay = ({
         </div>
 
         {/* Turn 1 - Screenshot 4: Text 'Payment Successful!' and 'Your registration is confimed.' (W: 377, H: 77, X: 6, Y: 263, Spacing: 0) */}
-        <div className="absolute top-[263px] left-[6px] w-[377px] h-[77px] flex flex-col items-center justify-start text-center z-[2]">
+        <div className="absolute top-[260px] left-[6px] w-[377px] h-[77px] flex flex-col items-center justify-start text-center z-[2]">
           <h1 className="m-0 font-jakarta font-bold text-[32px] leading-[40px] text-[#12A832] tracking-[-0.015em]">
             Payment Successful!
           </h1>
-          <p className="m-0 font-inter font-normal text-[17px] leading-[24px] text-[#6B7280] mt-[3px]">
+          <p className="m-0 font-inter font-normal text-[16px] leading-[22px] text-[#6B7280] mt-[3px]">
             Your registration is confimed.
           </p>
         </div>
 
-        {/* Turn 2 - Screenshot 1: Square behind text 'Kavindu Perera' (W: 343, H: 82, X: 21, Y: 361, Corner radius: 15) */}
-        <div className="absolute top-[361px] left-[21px] w-[343px] h-[82px] bg-[#E8EEF8] rounded-[15px] flex items-center justify-center z-[2]">
-          {/* Turn 1 - Screenshot 5: Text group 'Kavindu Perera' and 'LN2026-0001' (W: 201, H: 53, X: 92, Y: 376, Spacing: 3) */}
-          <div className="w-[201px] h-[53px] flex flex-col items-center justify-center text-center">
-            <span className="font-jakarta font-bold text-[22px] leading-[28px] text-[var(--corp-text-primary)]">
-              Kavindu Perera
+        {/* Turn 2 - Screenshot 1: Square behind text 'Kavindu Perera' */}
+        <div className="absolute top-[345px] left-[21px] w-[343px] min-h-[92px] bg-[#E8EEF8] rounded-[15px] p-3 flex flex-col items-center justify-center z-[2] shadow-sm border border-[#BFDBFE]/40">
+          <div className="w-full flex flex-col items-center justify-center text-center">
+            <span className="font-jakarta font-bold text-[21px] leading-[26px] text-[var(--corp-text-primary)]">
+              {attendeeName}
             </span>
-            <span className="font-jakarta font-medium text-[14px] leading-[18px] text-[#475467] mt-[3px]">
-              LN2026-0001
+            <span className="font-jakarta font-medium text-[13.5px] leading-[18px] text-[#475467] mt-[2px]">
+              {bookingRef}
             </span>
           </div>
         </div>
 
-        {/* Turn 2 - Screenshot 2: Text 'You will receive a confirmation email shortly.' (W: 261, H: 34, X: 64, Y: 454, Fill: #080480) */}
-        <div className="absolute top-[454px] left-[64px] w-[261px] h-[34px] flex items-center justify-center text-center z-[2]">
-          <p className="font-inter font-medium text-[14px] leading-[17px] text-[var(--corp-text-primary)] m-0">
+        {/* Turn 2 - Screenshot 2: Text 'You will receive a confirmation email shortly.' */}
+        <div className="absolute top-[470px] left-[64px] w-[261px] h-[34px] flex items-center justify-center text-center z-[2]">
+          <p className="font-inter font-medium text-[13.5px] leading-[17px] text-[var(--corp-text-primary)] m-0">
             You will receive a confirmation<br />email shortly.
           </p>
         </div>
 
-        {/* Turn 2 - Screenshot 3 & 4: Button 'View My Ticket' (W: 280, H: 40, X: 53, Y: 536, Padding: 0 16) */}
+        {/* Turn 2 - Screenshot 3 & 4: Button 'View My Tickets' */}
         <button
           type="button"
           id="view-my-ticket-btn"
           onClick={handleViewTicket}
-          className="absolute top-[536px] left-[53px] w-[280px] h-[40px] px-4 bg-[#080480] text-white rounded-lg flex items-center justify-center cursor-pointer shadow-[0_4px_14px_rgba(8,4,128,0.25)] z-[3] transition-all duration-150 hover:opacity-90 hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(8,4,128,0.32)] active:translate-y-[1px]"
+          className="absolute top-[524px] left-[53px] w-[280px] h-[42px] px-4 bg-[#080480] hover:bg-[#060368] text-white rounded-lg flex items-center justify-center cursor-pointer shadow-[0_4px_14px_rgba(8,4,128,0.25)] z-[3] transition-all duration-150 hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(8,4,128,0.32)] active:translate-y-[1px]"
           style={{ backgroundColor: '#080480', color: '#ffffff' }}
         >
-          {/* Turn 2 - Screenshot 4: Text 'View My Ticket' (W: 119, H: 19, X: 133, Y: 546, Inter Semi Bold 16px) */}
-          <span className="font-inter font-semibold text-[16px] leading-[19px] text-white">
+          <span className="font-inter font-semibold text-[15px] leading-[19px] text-white">
             View My Ticket
           </span>
         </button>
 
-        {/* Turn 2 - Screenshot 5: Button 'Add to Calendar' (W: 280, H: 40, X: 53, Y: 599, Padding: 0 16) */}
+        {/* Turn 2 - Screenshot 5: Button 'Add to Calendar' */}
         <button
           type="button"
           id="payment-add-calendar-btn"
           onClick={handleAddToCalendar}
-          className="absolute top-[599px] left-[53px] w-[280px] h-[40px] px-4 bg-white text-[#080480] border-[1.5px] border-[#080480] rounded-lg flex items-center justify-center gap-[9px] cursor-pointer z-[3] transition-all duration-150 hover:bg-[#F1F6FE] hover:-translate-y-[1px] active:translate-y-[1px]"
+          className="absolute top-[580px] left-[53px] w-[280px] h-[40px] px-4 bg-white text-[#080480] border-[1.5px] border-[#080480] rounded-lg flex items-center justify-center gap-[9px] cursor-pointer z-[3] transition-all duration-150 hover:bg-[#F1F6FE] hover:-translate-y-[1px] active:translate-y-[1px]"
           style={{ backgroundColor: '#ffffff', color: '#080480', borderColor: '#080480' }}
         >
           {/* Turn 3 - Screenshot 1: Calendar icon inside Add to Calendar button (W: 25, H: 22, X: 113, Y: 608) */}

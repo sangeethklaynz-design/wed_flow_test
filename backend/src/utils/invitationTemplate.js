@@ -59,7 +59,8 @@ async function loadWeddingRow(weddingId) {
       e.resource_pack_id AS resource_pack_id,
       e.location AS event_location,
       e.google_maps_link AS event_google_maps_link,
-      e.payment_link AS event_payment_link
+      e.payment_link AS event_payment_link,
+      e.is_ticketing_enabled AS is_ticketing_enabled
     FROM weddings w
     LEFT JOIN events e ON e.id = w.event_id
     WHERE w.id = ?
@@ -509,6 +510,24 @@ async function loadStaticInvitationBundle(weddingId) {
     milestones,
     scheduleEvents: await loadScheduleEventsForWedding(weddingId),
     contacts,
+    isTicketingEnabled: Boolean(Number(wedding.is_ticketing_enabled)),
+    ticketTypes: wedding.event_id
+      ? (
+          await sequelize.query(
+            `SELECT id, name, price, description, quantity, display_order
+             FROM ticket_types
+             WHERE event_id = ?
+             ORDER BY display_order ASC, created_at ASC;`,
+            { replacements: [wedding.event_id] }
+          )
+        )[0].map((t) => ({
+          id: t.id,
+          name: t.name,
+          price: Number(t.price),
+          description: t.description || "",
+          quantity: t.quantity != null ? Number(t.quantity) : null,
+        }))
+      : [],
   };
 }
 
@@ -588,10 +607,14 @@ function buildTemplateResponse(staticBundle, guestRow = null) {
       documents: staticBundle.documents || [],
       templateConfig: staticBundle.templateConfig || null,
       chromeBaseUrl: staticBundle.chromeBaseUrl || null,
+      isTicketingEnabled: Boolean(staticBundle.isTicketingEnabled),
+      ticketTypes: staticBundle.ticketTypes || [],
     },
     eventType: staticBundle.event?.type || "wedding",
     templateKey: staticBundle.event?.templateKey || "template-1",
     templateConfig: staticBundle.templateConfig || null,
+    isTicketingEnabled: Boolean(staticBundle.isTicketingEnabled),
+    ticketTypes: staticBundle.ticketTypes || [],
     chromeBaseUrl: staticBundle.chromeBaseUrl || null,
     guest: guestRow ? mapGuestTemplateBlock(guestRow) : null,
   };

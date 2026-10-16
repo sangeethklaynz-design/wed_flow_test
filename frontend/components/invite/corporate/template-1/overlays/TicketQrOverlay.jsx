@@ -1,16 +1,72 @@
 'use client';
 
 import React, { useState } from 'react';
+import { jsPDF } from 'jspdf';
 
 export const TicketQrOverlay = ({
   isOpen,
   onClose,
   onBackToPayment,
   onAddToCalendar,
+  onScrollNext,
+  showScrollExplore = true,
   attendeeName = 'Kavindu Perera',
   ticketId = 'LN2026-0001',
+  tickets = [],
+  eventName: eventNameProp,
+  eventDescription: eventDescriptionProp,
+  eventDate: eventDateProp,
+  eventTime: eventTimeProp,
+  eventVenue: eventVenueProp,
+  theme = 'corporate',
 }) => {
+  const isParty = theme === 'party';
+
+  const eventName =
+    eventNameProp ||
+    (isParty ? 'Annual Gala Night 2026' : 'Annual Business Summit – 2026');
+
+  const eventDescription =
+    eventDescriptionProp || 'An evening celebration, networking, & entertainment.';
+
+  const eventDate = isParty
+    ? (eventDateProp && eventDateProp.includes('November') ? eventDateProp : 'Thursday, 12 November 2026')
+    : (eventDateProp || 'Thursday, 12 November 2026');
+
+  const eventTime = isParty
+    ? (eventTimeProp && eventTimeProp.includes('Onwards') ? eventTimeProp : '6.00 PM Onwards')
+    : (eventTimeProp || '6.00 PM Onwards');
+
+  const eventVenue = eventVenueProp || 'Cinnamon Lakeside Colombo';
+
   const [toastMessage, setToastMessage] = useState(null);
+  const [currentTicketIndex, setCurrentTicketIndex] = useState(0);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const ticketRef = React.useRef(null);
+
+  // Build the list of tickets to display one by one
+  const ticketsList = React.useMemo(() => {
+    if (Array.isArray(tickets) && tickets.length > 0) {
+      return tickets;
+    }
+    // Default fallback to 3 individual tickets with unique sequential IDs
+    return [
+      { id: `${ticketId}-1`, typeName: 'Standard Ticket', price: 1000 },
+      { id: `${ticketId}-2`, typeName: 'Standard Ticket', price: 1000 },
+      { id: `${ticketId}-3`, typeName: 'Standard Ticket', price: 1000 },
+    ];
+  }, [tickets, ticketId]);
+
+  const activeTicket = ticketsList[currentTicketIndex] || ticketsList[0] || {
+    id: `${ticketId}-1`,
+    typeName: 'Standard Ticket',
+    price: 1000,
+  };
+  const activeTicketId = activeTicket.id || `${ticketId}-${currentTicketIndex + 1}`;
+  const activeTicketType = activeTicket.typeName || activeTicket.name || 'Standard Ticket';
+  const activeTicketPrice = activeTicket.price
+    ? `LKR ${Number(activeTicket.price).toLocaleString('en-US')}`
+    : 'LKR 1,000';
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -19,25 +75,104 @@ export const TicketQrOverlay = ({
     }, 2500);
   };
 
-  const handleDownloadTicket = () => {
-    showToast(`Downloading Ticket ${ticketId}...`);
-    // Create simple printable text or trigger download
-    const ticketData = `NEXORA ANNUAL BUSINESS SUMMIT 2026\nAttendee: ${attendeeName}\nTicket ID: ${ticketId}\nDate: Thursday, 12 November 2026\nTime: 9.00 AM Onwards\nVenue: Shangri-La Hotel, Colombo`;
-    const blob = new Blob([ticketData], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `Nexora-Ticket-${ticketId}.txt`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+  const handlePrevTicket = () => {
+    if (ticketsList.length > 1) {
+      setCurrentTicketIndex((prev) => (prev - 1 + ticketsList.length) % ticketsList.length);
+    }
+  };
+
+  const handleNextTicket = () => {
+    if (ticketsList.length > 1) {
+      setCurrentTicketIndex((prev) => (prev + 1) % ticketsList.length);
+    }
+  };
+
+  const handleScrollExplore = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (typeof onScrollNext === 'function') {
+      onScrollNext();
+    } else if (typeof onClose === 'function') {
+      onClose();
+    }
+  };
+
+  // Download exact visual replica of this ticket page as a crisp PDF
+  const handleDownloadTicket = async () => {
+    if (isDownloading) return;
+    setIsDownloading(true);
+    showToast(`Generating exact PDF for Ticket ${activeTicketId}...`);
+
+    try {
+      const ticketEl = ticketRef.current;
+      if (!ticketEl) {
+        throw new Error('Ticket container not found');
+      }
+
+      // Render ticket element directly to high-res PNG using html-to-image (full Tailwind v4 / oklab support)
+      const htmlToImage = await import('html-to-image');
+      const imgData = await htmlToImage.toPng(ticketEl, {
+        pixelRatio: 2,
+        backgroundColor: '#02122B',
+        filter: (element) => {
+          return element?.getAttribute ? element.getAttribute('data-pdf-ignore') !== 'true' : true;
+        },
+      });
+
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'px',
+        format: [390, 844],
+      });
+
+      pdf.addImage(imgData, 'PNG', 0, 0, 390, 844, undefined, 'FAST');
+      pdf.save(`Ticket-${activeTicketId}.pdf`);
+      showToast(`Downloaded Ticket-${activeTicketId}.pdf`);
+    } catch (err) {
+      console.warn('html-to-image capture issue, using vector PDF fallback:', err);
+      // Fallback vector generation if DOM capture encounters an unexpected browser error
+      try {
+        const doc = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: [105, 148],
+        });
+        doc.setFillColor(8, 4, 128);
+        doc.rect(0, 0, 105, 24, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.text(isParty ? 'GALA NIGHT' : 'NEXORA', 52.5, 12, { align: 'center' });
+        doc.setFontSize(8);
+        doc.text('OFFICIAL EVENT TICKET', 52.5, 18, { align: 'center' });
+        doc.setTextColor(8, 4, 128);
+        doc.setFontSize(11);
+        doc.text(eventName, 52.5, 32, { align: 'center' });
+        doc.setTextColor(71, 85, 105);
+        doc.setFontSize(7.5);
+        doc.text(eventDescription, 52.5, 37, { align: 'center' });
+        doc.setTextColor(8, 4, 128);
+        doc.setFontSize(12);
+        doc.text(attendeeName, 52.5, 50, { align: 'center' });
+        doc.setFontSize(9);
+        doc.text(activeTicketId, 52.5, 56, { align: 'center' });
+        doc.save(`Ticket-${activeTicketId}.pdf`);
+        showToast(`Downloaded Ticket-${activeTicketId}.pdf`);
+      } catch (fallbackErr) {
+        showToast(`Download failed: ${fallbackErr.message}`);
+      }
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   if (!isOpen) return null;
 
   return (
     <div
+      ref={ticketRef}
       id="ticket-qr-view"
       role="dialog"
       aria-modal="true"
@@ -48,28 +183,73 @@ export const TicketQrOverlay = ({
         '--corp-text-highlight': '#0084FF',
       }}
     >
-      <div className="relative w-[390px] h-[844px] mx-auto select-none">
-        {/* High-fidelity full backdrop (gradient and sky glow) */}
-        <img
-          src="/assets/events/corporate-events/templates/template-1/chrome/ticket-page/background full.webp"
-          alt=""
-          className="absolute inset-0 w-[390px] h-[844px] object-cover pointer-events-none z-0"
-          width={390}
-          height={844}
-          aria-hidden="true"
-        />
+      <div className="relative w-[390px] h-[844px] mx-auto select-none overflow-hidden">
+        {/* Full backdrop gradient & sky glow */}
+        {isParty ? (
+          <div
+            className="absolute inset-0 w-[390px] h-[844px] pointer-events-none z-0"
+            style={{
+              background:
+                'linear-gradient(180deg, #02122B 0%, #062254 18%, #D4E8FC 30%, #F0F6FD 65%, #CEE4FB 100%)',
+            }}
+            aria-hidden="true"
+          />
+        ) : (
+          <img
+            src="/assets/events/corporate-events/templates/template-1/chrome/ticket-page/background full.webp"
+            alt=""
+            className="absolute inset-0 w-[390px] h-[844px] object-cover pointer-events-none z-0"
+            width={390}
+            height={844}
+            aria-hidden="true"
+          />
+        )}
 
-        {/* Screenshot 5 (Turn 4): Bottom Background Image (W: 390, H: 155.96, X: 0, Y: 688) */}
-        <img
-          src="/assets/events/corporate-events/templates/template-1/chrome/ticket-page/bottom background.webp"
-          alt=""
-          className="absolute top-[688px] left-0 w-[390px] h-[156px] object-cover pointer-events-none z-[1]"
-          width={390}
-          height={156}
-          aria-hidden="true"
-        />
+        {/* Bottom Background Art: Corporate Skyline or Party Foliage & Wave */}
+        {isParty ? (
+          <>
+            {/* Party Bottom Wave Background */}
+            <div
+              className="absolute bottom-0 left-0 w-[390px] h-[155px] pointer-events-none z-[1] overflow-hidden"
+              aria-hidden="true"
+            >
+              <img
+                src="/assets/events/parties/templates/template-1/chrome/ticketing-page/bottom-background.webp"
+                alt=""
+                className="w-[390px] h-[155px] object-cover object-bottom block"
+                width={390}
+                height={155}
+              />
+            </div>
 
-        {/* Screenshot 4 (Turn 1): Upper Part Background Image (W: 390, H: 161, X: 0, Y: 0) */}
+            {/* Party Bottom Foliage framing bottom-left and bottom-right corners */}
+            <div
+              className="absolute bottom-0 left-0 w-[390px] h-[175px] pointer-events-none z-[2] overflow-hidden"
+              aria-hidden="true"
+            >
+              <img
+                src="/assets/events/parties/templates/template-1/chrome/ticketing-page/bottom-bg.webp"
+                alt=""
+                className="w-[390px] h-[175px] object-cover object-top block"
+                style={{ transform: 'rotate(180deg)' }}
+                width={390}
+                height={175}
+              />
+            </div>
+          </>
+        ) : (
+          /* Bottom City Skyline Art (Corporate) */
+          <img
+            src="/assets/events/corporate-events/templates/template-1/chrome/ticket-page/bottom background.webp"
+            alt=""
+            className="absolute bottom-0 left-0 w-[390px] h-[156px] object-cover object-bottom pointer-events-none z-[1]"
+            width={390}
+            height={156}
+            aria-hidden="true"
+          />
+        )}
+
+        {/* Upper Wave Art */}
         <img
           src="/assets/events/corporate-events/templates/template-1/chrome/ticket-page/upper background.webp"
           alt=""
@@ -79,20 +259,21 @@ export const TicketQrOverlay = ({
           aria-hidden="true"
         />
 
-        {/* Top Navigation Back Button (Returns to Payment Success page) */}
+        {/* Back Button in Top-Left Corner */}
         <button
           type="button"
           id="ticket-back-btn"
           onClick={onBackToPayment || onClose}
-          aria-label="Back to payment confirmation"
-          className="absolute top-4 left-4 w-9 h-9 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-white cursor-pointer z-[20] transition-all duration-150 hover:bg-white/35 active:scale-95 shadow-sm"
+          aria-label="Back"
+          className="absolute top-[20px] left-[20px] w-9 h-9 flex items-center justify-center text-white hover:opacity-75 active:scale-95 transition-all cursor-pointer z-[25] p-0"
         >
           <svg
-            className="w-5 h-5"
+            width="24"
+            height="24"
             viewBox="0 0 24 24"
             fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
+            stroke="#FFFFFF"
+            strokeWidth="2.6"
             strokeLinecap="round"
             strokeLinejoin="round"
             aria-hidden="true"
@@ -102,155 +283,252 @@ export const TicketQrOverlay = ({
           </svg>
         </button>
 
-        {/* Screenshot 2 (Turn 1): Organization Logo (W: 61.39, H: 60.97, X: 163.45, Y: 25) */}
-        <img
-          src="/assets/events/corporate-events/templates/template-1/chrome/ticket-page/organization logo.webp"
-          alt="Organization Logo"
-          className="absolute top-[25px] left-[163.5px] w-[61.4px] h-[61px] object-contain pointer-events-none z-[10]"
-          width={61}
-          height={61}
-        />
+        {/* Top Header Event Title / Logo */}
+        {isParty ? (
+          <div className="absolute top-[24px] left-0 w-[390px] flex flex-col items-center justify-center text-center z-[10] select-none pointer-events-none">
+            <span
+              className="font-serif italic font-normal text-[34px] leading-[38px] text-[#F3C465] drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)] tracking-wide"
+              style={{ fontFamily: "'Playfair Display', 'Petrona', 'Georgia', serif" }}
+            >
+              Annual
+            </span>
+            <span className="font-jakarta font-bold text-[19px] leading-[23px] text-white tracking-[0.24em] uppercase mt-[1px]">
+              GALA NIGHT
+            </span>
+          </div>
+        ) : (
+          <>
+            {/* Organization Logo */}
+            <img
+              src="/assets/events/corporate-events/templates/template-1/chrome/ticket-page/organization logo.webp"
+              alt="Organization Logo"
+              className="absolute top-[20px] left-[168px] w-[54px] h-[54px] object-contain pointer-events-none z-[10]"
+              width={54}
+              height={54}
+            />
 
-        {/* Screenshot 3 (Turn 1): Text 'NEXORA' (W: 127.42, H: 31.35, X: 130, Y: 83, Font 25px Regular) */}
-        <div
-          className="absolute top-[83px] left-[130px] w-[127.4px] h-[31.4px] flex items-center justify-center text-center font-petrona font-normal text-[25px] leading-[31px] text-white tracking-[0.28em] z-[10] select-none"
-        >
-          NEXORA
-        </div>
+            {/* Text 'NEXORA' */}
+            <div
+              className="absolute top-[76px] left-[130px] w-[127.4px] h-[28px] flex items-center justify-center text-center font-petrona font-normal text-[22px] leading-[28px] text-white tracking-[0.28em] z-[10] select-none"
+            >
+              NEXORA
+            </div>
+          </>
+        )}
 
-        {/* Screenshot 3 (Turn 4): Square / Rectangle behind details (W: 305, H: 565, X: 42, Y: 154, Corner radius: 15, Fill: #E1E6ED) */}
+        {/* White Rounded Ticket Card Container */}
         <div
-          className="absolute top-[154px] left-[42px] w-[305px] h-[565px] bg-[#E1E6ED] rounded-[15px] shadow-[0_10px_30px_rgba(2,18,43,0.08)] z-[3]"
+          className="absolute top-[120px] left-[35px] w-[320px] h-[516px] bg-[#EEF4FB] rounded-[20px] shadow-[0_12px_36px_rgba(2,18,43,0.12)] border border-white/70 z-[3]"
           aria-hidden="true"
         />
 
-        {/* Screenshot 5 (Turn 1): QR Code Image (W: 128, H: 128, X: 130, Y: 154) */}
-        <img
-          src="/assets/events/corporate-events/templates/template-1/chrome/ticket-page/QR.webp"
-          alt="Event Ticket QR Code"
-          className="absolute top-[154px] left-[130px] w-[128px] h-[128px] object-contain block z-[5]"
-          width={128}
-          height={128}
-        />
+        {/* Event Title and Small Event Description */}
+        <div className="absolute top-[128px] left-[38px] w-[314px] flex flex-col items-center justify-center text-center z-[5] select-none px-2">
+          {isParty ? (
+            <h2 className="font-jakarta font-bold text-[18px] leading-[22px] text-[#080480] m-0">
+              Annual Gala Night<br />2026
+            </h2>
+          ) : (
+            <h2 className="font-jakarta font-bold text-[17px] leading-[21px] text-[#080480] m-0">
+              {eventName}
+            </h2>
+          )}
+          <p className="font-inter font-normal text-[10.5px] leading-[14px] text-[#475569] mt-[4px] m-0 max-w-[215px] text-center">
+            {isParty ? (
+              <>
+                An evening celebration,<br />
+                networking, &amp; entertainment.
+              </>
+            ) : (
+              eventDescription
+            )}
+          </p>
+        </div>
 
-        {/* Screenshot 1 (Turn 2): Group 'Kavindu Perera' & 'LN2026-0001' (W: 156, H: 45, X: 126, Y: 274, Spacing: 4) */}
+        {/* QR Code Image (Clean space below description) */}
+        <div className="absolute top-[212px] left-[146px] w-[98px] h-[98px] z-[5] bg-white p-1 rounded-xl shadow-sm flex items-center justify-center">
+          <img
+            src="/assets/events/corporate-events/templates/template-1/chrome/ticket-page/QR.webp"
+            alt="Event Ticket QR Code"
+            className="w-full h-full object-contain block"
+            width={90}
+            height={90}
+          />
+        </div>
+
+        {/* Attendee Name & Unique Ticket ID */}
         <div
-          className="absolute top-[274px] left-[126px] w-[156px] h-[45px] z-[5] flex flex-col items-center justify-center text-center gap-[4px] select-none"
+          className="absolute top-[318px] left-[38px] w-[314px] z-[5] flex flex-col items-center justify-center text-center gap-[1px] select-none"
         >
-          <span className="font-jakarta font-bold text-[18px] leading-[22px] text-[var(--corp-text-primary)]">
+          <span className="font-jakarta font-bold text-[17px] leading-[21px] text-[#080480]">
             {attendeeName}
           </span>
-          <span className="font-inter font-normal text-[14px] leading-[17px] text-[#475569] tracking-[0.02em]">
-            {ticketId}
+          <span className="font-inter font-semibold text-[13px] leading-[16px] text-[#475569] tracking-[0.02em]">
+            {activeTicketId}
           </span>
         </div>
 
-        {/* Screenshot 2 (Turn 2): Text 'Annual Business Summit 2026' (W: 235, H: 56, X: 78, Y: 343, Plus Jakarta Sans Bold 22px) */}
-        <div
-          className="absolute top-[343px] left-[78px] w-[235px] h-[56px] z-[5] flex items-center justify-center text-center font-jakarta font-bold text-[22px] leading-[28px] text-[var(--corp-text-primary)] select-none"
-        >
-          Annual Business<br />Summit 2026
+        {/* Event Details: Date */}
+        <div className="absolute top-[360px] left-[54px] w-[282px] z-[5] flex items-center gap-2.5">
+          <div className="w-[30px] h-[30px] rounded-full bg-[#C4DEFD] flex items-center justify-center shrink-0">
+            <svg className="w-[16px] h-[16px]" viewBox="0 0 24 24" fill="none" stroke="#0174EF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+          </div>
+          <div className="flex flex-col text-left">
+            <span className="font-jakarta font-bold text-[10.5px] leading-none text-[#080480]">Date</span>
+            <span className="font-inter font-normal text-[10.5px] leading-tight text-[#080480] mt-0.5">{eventDate}</span>
+          </div>
         </div>
 
-        {/* Screenshot 3 (Turn 2): Calendar Icon (W: 40, H: 40, X: 66, Y: 415, Fill: #C4DEFD) */}
-        <div
-          className="absolute top-[415px] left-[66px] w-[40px] h-[40px] z-[5] rounded-full bg-[#C4DEFD] flex items-center justify-center flex-shrink-0 shadow-sm"
-        >
-          <svg className="w-[20px] h-[20px]" viewBox="0 0 24 24" fill="none" stroke="#0174EF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-            <line x1="16" y1="2" x2="16" y2="6" />
-            <line x1="8" y1="2" x2="8" y2="6" />
-            <line x1="3" y1="10" x2="21" y2="10" />
-          </svg>
-        </div>
-        {/* Screenshot 1 (Turn 3): Date Details (W: 211, H: 28, X: 118, Y: 419, Spacing: 6, Fill: #080480) */}
-        <div className="absolute top-[419px] left-[118px] w-[211px] h-[28px] z-[5] flex flex-col justify-between text-left select-none">
-          <span className="font-jakarta font-bold text-[12px] leading-none text-[var(--corp-text-primary)]">Date</span>
-          <span className="font-inter font-normal text-[11.5px] leading-none text-[var(--corp-text-primary)]">Thursday, 12 November 2026</span>
+        {/* Event Details: Time */}
+        <div className="absolute top-[398px] left-[54px] w-[282px] z-[5] flex items-center gap-2.5">
+          <div className="w-[30px] h-[30px] rounded-full bg-[#C4DEFD] flex items-center justify-center shrink-0">
+            <svg className="w-[16px] h-[16px]" viewBox="0 0 24 24" fill="none" stroke="#0174EF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+          </div>
+          <div className="flex flex-col text-left">
+            <span className="font-jakarta font-bold text-[10.5px] leading-none text-[#080480]">Time</span>
+            <span className="font-inter font-normal text-[10.5px] leading-tight text-[#080480] mt-0.5">{eventTime}</span>
+          </div>
         </div>
 
-        {/* Screenshot 4 (Turn 2): Clock Icon (W: 40, H: 40, X: 66, Y: 463, Fill: #C4DEFD) */}
-        <div
-          className="absolute top-[463px] left-[66px] w-[40px] h-[40px] z-[5] rounded-full bg-[#C4DEFD] flex items-center justify-center flex-shrink-0 shadow-sm"
-        >
-          <svg className="w-[20px] h-[20px]" viewBox="0 0 24 24" fill="none" stroke="#0174EF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="10" />
-            <polyline points="12 6 12 12 16 14" />
-          </svg>
-        </div>
-        {/* Screenshot 2 (Turn 3): Time Details (W: 211, H: 29, X: 118, Y: 465, Spacing: 7, Fill: #080480) */}
-        <div className="absolute top-[465px] left-[118px] w-[211px] h-[29px] z-[5] flex flex-col justify-between text-left select-none">
-          <span className="font-jakarta font-bold text-[12px] leading-none text-[var(--corp-text-primary)]">Time</span>
-          <span className="font-inter font-normal text-[11.5px] leading-none text-[var(--corp-text-primary)]">9.00 AM Onwards</span>
-        </div>
-
-        {/* Screenshot 5 (Turn 2): Location Icon (W: 40, H: 40, X: 66, Y: 510, Fill: #C4DEFD) */}
-        <div
-          className="absolute top-[510px] left-[66px] w-[40px] h-[40px] z-[5] rounded-full bg-[#C4DEFD] flex items-center justify-center flex-shrink-0 shadow-sm"
-        >
-          <svg className="w-[20px] h-[20px]" viewBox="0 0 24 24" fill="none" stroke="#0174EF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-            <circle cx="12" cy="10" r="3" />
-          </svg>
-        </div>
-        {/* Screenshot 3 (Turn 3): Venue Details (W: 211, H: 28, X: 118, Y: 513, Spacing: 6, Fill: #080480) */}
-        <div className="absolute top-[513px] left-[118px] w-[211px] h-[28px] z-[5] flex flex-col justify-between text-left select-none">
-          <span className="font-jakarta font-bold text-[12px] leading-none text-[var(--corp-text-primary)]">Venue</span>
-          <span className="font-inter font-normal text-[11.5px] leading-none text-[var(--corp-text-primary)]">Shangri-La Hotel, Colombo</span>
+        {/* Event Details: Venue */}
+        <div className="absolute top-[436px] left-[54px] w-[282px] z-[5] flex items-center gap-2.5">
+          <div className="w-[30px] h-[30px] rounded-full bg-[#C4DEFD] flex items-center justify-center shrink-0">
+            <svg className="w-[16px] h-[16px]" viewBox="0 0 24 24" fill="none" stroke="#0174EF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg>
+          </div>
+          <div className="flex flex-col text-left">
+            <span className="font-jakarta font-bold text-[10.5px] leading-none text-[#080480]">Venue</span>
+            <span className="font-inter font-normal text-[10.5px] leading-tight text-[#080480] mt-0.5 truncate max-w-[215px]">{eventVenue}</span>
+          </div>
         </div>
 
-        {/* Screenshot 4 & 5 (Turn 3): Download Ticket Button (W: 284.98, H: 40, X: 54, Y: 578) with Content (W: 167.93, H: 25, X: 112.01, Y: 584, Spacing: 7) */}
+        {/* Ticket Type & Price Badge Box */}
+        <div className="absolute top-[476px] left-[52px] w-[286px] h-[38px] bg-[#D1E2F8] rounded-[10px] flex flex-col items-center justify-center text-center z-[5] border border-[#BFDBFE]/60">
+          <span className="font-jakarta font-bold text-[12.5px] leading-tight text-[#080480]">
+            {activeTicketType}
+          </span>
+          <span className="font-inter font-bold text-[12px] leading-tight text-[#080480]">
+            {activeTicketPrice}
+          </span>
+        </div>
+
+        {/* Download Ticket Button (Downloads real PDF) */}
         <button
           type="button"
           id="ticket-download-btn"
           onClick={handleDownloadTicket}
-          className="absolute top-[578px] left-[54px] w-[285px] h-[40px] px-4 bg-[#080480] text-white rounded-lg flex items-center justify-center cursor-pointer shadow-[0_4px_14px_rgba(8,4,128,0.25)] hover:opacity-90 hover:-translate-y-[1px] active:translate-y-[1px] transition-all duration-150 z-[6]"
+          className="absolute top-[522px] left-[52px] w-[286px] h-[38px] px-4 bg-[#080480] hover:bg-[#060368] text-white rounded-[10px] flex items-center justify-center gap-2 cursor-pointer shadow-[0_4px_14px_rgba(8,4,128,0.25)] hover:opacity-95 active:scale-[0.99] transition-all z-[6]"
           style={{ backgroundColor: '#080480', color: '#ffffff' }}
         >
-          <div className="w-[168px] h-[25px] flex items-center justify-center gap-[7px]">
-            <svg className="w-[18px] h-[18px] flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-            <span className="font-inter font-semibold text-[14px] leading-none whitespace-nowrap text-white">
-              Download Ticket
-            </span>
-          </div>
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          <span className="font-jakarta font-bold text-[13px] text-white">
+            Download Ticket
+          </span>
         </button>
 
-        {/* Screenshot 1 & 2 (Turn 4): Add to Calendar Button (W: 284.98, H: 40, X: 54, Y: 637) with Content (W: 162.84, H: 22, X: 115.07, Y: 646, Spacing: 9) */}
-        <button
-          type="button"
-          id="ticket-add-calendar-btn"
-          onClick={onAddToCalendar}
-          className="absolute top-[637px] left-[54px] w-[285px] h-[40px] px-4 bg-white text-[#080480] border-[1.5px] border-[#080480] rounded-lg flex items-center justify-center cursor-pointer hover:bg-[#F1F6FE] hover:-translate-y-[1px] active:translate-y-[1px] transition-all duration-150 z-[6]"
-          style={{ backgroundColor: '#ffffff', color: '#080480', borderColor: '#080480' }}
-        >
-          <div className="w-[163px] h-[22px] flex items-center justify-center gap-[9px]">
-            <svg className="w-[18px] h-[18px] flex-shrink-0" viewBox="0 0 25 22" fill="none" stroke="#0174EF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <rect x="2" y="3.5" width="21" height="16.5" rx="3" />
-              <line x1="18" y1="1.5" x2="18" y2="5.5" />
-              <line x1="7" y1="1.5" x2="7" y2="5.5" />
-              <line x1="2" y1="8.5" x2="23" y2="8.5" />
-            </svg>
-            <span className="font-inter font-semibold text-[14px] leading-none whitespace-nowrap text-[#080480]">
-              Add to Calendar
-            </span>
-          </div>
-        </button>
+        {/* Navigation Buttons: Previous Ticket & Next Ticket on EVERY ticket page */}
+        <div className="absolute top-[568px] left-[52px] w-[286px] flex items-center justify-between gap-2.5 z-[6]">
+          <button
+            type="button"
+            id="prev-ticket-btn"
+            onClick={handlePrevTicket}
+            disabled={ticketsList.length <= 1}
+            aria-label="Previous Ticket"
+            className="flex-1 h-[38px] bg-white border-[1.5px] border-[#080480] text-[#080480] hover:bg-[#F1F6FE] rounded-[10px] flex items-center justify-center gap-1 font-jakarta font-bold text-[11.5px] shadow-sm transition-all cursor-pointer active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <span className="text-[13px] leading-none">&larr;</span>
+            <span>Previous Ticket</span>
+          </button>
 
-        {/* Screenshot 4 (Turn 4): Bottom Slogan Text 'See you at the event!' (W: 235, H: 29, X: 76, Y: 728, Fill: #080480) */}
-        <div
-          className="absolute top-[728px] left-[76px] w-[235px] h-[29px] flex items-center justify-center text-center font-caveat font-semibold text-[24px] leading-tight text-[var(--corp-text-primary)] italic z-[10] pointer-events-none drop-shadow-sm select-none"
-        >
-          See you at the event!
+          <button
+            type="button"
+            id="next-ticket-btn"
+            onClick={handleNextTicket}
+            disabled={ticketsList.length <= 1}
+            aria-label="Next Ticket"
+            className="flex-1 h-[38px] bg-white border-[1.5px] border-[#080480] text-[#080480] hover:bg-[#F1F6FE] rounded-[10px] flex items-center justify-center gap-1 font-jakarta font-bold text-[11.5px] shadow-sm transition-all cursor-pointer active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <span>Next Ticket</span>
+            <span className="text-[13px] leading-none">&rarr;</span>
+          </button>
         </div>
 
-        {/* Toast Feedback */}
+        {/* Ticket Counter Indicator */}
+        <div className="absolute top-[612px] left-[52px] w-[286px] text-center font-inter font-semibold text-[10.5px] text-[#475569] z-[6] tracking-wide select-none">
+          Ticket {currentTicketIndex + 1} of {ticketsList.length}
+        </div>
+
+        {/* Scroll to Explore / Explore Invitation Button (Clearly Visible & Prominently Styled) */}
+        {showScrollExplore !== false && (
+          <div
+            role="button"
+            id="ticket-scroll-explore-btn"
+            data-pdf-ignore="true"
+            tabIndex={0}
+            onClick={handleScrollExplore}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleScrollExplore();
+              }
+            }}
+            className="absolute bottom-[28px] left-1/2 -translate-x-1/2 flex flex-col items-center justify-center cursor-pointer group z-[35] select-none"
+            style={{ width: '160px' }}
+            aria-label={isParty ? 'Scroll down to explore' : 'Explore invitation'}
+          >
+            <div
+              className="w-[42px] h-[42px] rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-105 group-hover:translate-y-[2px]"
+              style={{
+                border: '1.5px solid rgba(8, 4, 128, 0.45)',
+                background: 'rgba(255, 255, 255, 0.96)',
+                backdropFilter: 'blur(10px)',
+                WebkitBackdropFilter: 'blur(10px)',
+                color: '#080480',
+                boxShadow: '0 4px 18px rgba(0, 0, 0, 0.2), 0 0 12px rgba(8, 4, 128, 0.14)',
+                animation: 'floatBounce 2.4s ease-in-out infinite',
+              }}
+            >
+              <svg
+                width="19"
+                height="19"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#080480"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M7 10l5 5 5-5" />
+              </svg>
+            </div>
+            <div className="mt-[6px] px-3.5 py-[3px] rounded-full bg-white/95 backdrop-blur-md border border-white/80 shadow-[0_2px_10px_rgba(0,0,0,0.18)] flex items-center justify-center transition-all group-hover:bg-white group-hover:scale-105">
+              <span className="font-instrument font-bold text-[9px] leading-none text-[#080480] uppercase tracking-[0.24em] whitespace-nowrap">
+                {isParty ? 'SCROLL  TO  EXPLORE' : 'EXPLORE  INVITATION'}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Toast Feedback (excluded from PDF snapshot) */}
         {toastMessage && (
           <div
-            className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-[var(--corp-text-primary)] text-white font-instrument text-[12.5px] font-semibold py-[10px] px-5 rounded-[20px] shadow-[0_8px_24px_rgba(8,4,128,0.35)] pointer-events-none z-30 whitespace-nowrap transition-all duration-200"
+            data-pdf-ignore="true"
+            className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-[#080480] text-white font-inter text-[12.5px] font-semibold py-[10px] px-5 rounded-[20px] shadow-[0_8px_24px_rgba(8,4,128,0.35)] pointer-events-none z-30 whitespace-nowrap transition-all duration-200"
             aria-live="polite"
           >
             {toastMessage}
