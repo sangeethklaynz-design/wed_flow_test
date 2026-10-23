@@ -8,6 +8,7 @@ export const PaymentSuccessOverlay = ({
   onBackToRsvp,
   onAddToCalendar,
   onViewTicket,
+  onDownloadAllTickets,
   bookingData = null,
   attendeeName: attendeeNameProp = 'Kavindu Perera',
   bookingRef: bookingRefProp = 'LN2026-0001',
@@ -39,6 +40,19 @@ export const PaymentSuccessOverlay = ({
     } else {
       showToast(`Ticket ${bookingRef} ready. Email sent!`);
     }
+  };
+
+  const handleDownloadAllTickets = () => {
+    if (typeof onDownloadAllTickets === 'function') {
+      onDownloadAllTickets();
+      return;
+    }
+    showToast('Downloading all tickets...');
+    setTimeout(() => {
+      if (typeof onViewTicket === 'function') {
+        onViewTicket();
+      }
+    }, 500);
   };
 
   const handleAddToCalendar = () => {
@@ -275,6 +289,29 @@ export const PaymentSuccessOverlay = ({
                 className="w-full h-[46px] bg-[#080480] hover:bg-[#060368] active:scale-[0.99] text-white font-jakarta font-bold text-[15px] rounded-xl flex items-center justify-center cursor-pointer shadow-[0_4px_14px_rgba(8,4,128,0.25)] transition-all"
               >
                 View My Tickets
+              </button>
+
+              <button
+                type="button"
+                id="download-all-tickets-btn"
+                onClick={handleDownloadAllTickets}
+                className="w-full h-[46px] bg-white border-[1.5px] border-[#080480] hover:bg-[#F8FAFC] active:scale-[0.99] text-[#080480] font-jakarta font-bold text-[15px] rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm"
+              >
+                <svg
+                  className="w-[18px] h-[18px] flex-shrink-0"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#0174EF"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                <span>Download All Tickets</span>
               </button>
 
               <button

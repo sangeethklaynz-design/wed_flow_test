@@ -107,7 +107,7 @@ export function PartyPagePreview({
   onRsvpSuccess = null,
   previewBypassValidation = false,
 }) {
-  const { fields } = resolveFields(templateData, templateConfig);
+  const { pagesCfg, fields } = resolveFields(templateData, templateConfig);
   const location = resolveEventLocation(templateData);
   const meta = resolveEventMeta(templateData);
   const GROWING_PAGES = new Set([
@@ -837,6 +837,7 @@ function PartyInvitationFull({
               eventDate={meta.eventDate || "Thursday, 12 November 2026"}
               eventTime={meta.eventTime || "6.00 PM Onwards"}
               eventVenue={meta.eventVenue || "Cinnamon Lakeside Colombo"}
+              bookingData={ticketingBookingData}
               theme="party"
             />
           </>
@@ -997,6 +998,7 @@ function PartyInvitationFull({
                 eventDate={meta.eventDate || "Thursday, 12 November 2026"}
                 eventTime={meta.eventTime || "6.00 PM Onwards"}
                 eventVenue={meta.eventVenue || "Cinnamon Lakeside Colombo"}
+                bookingData={ticketingBookingData}
                 theme="party"
               />
             </>

@@ -6,7 +6,6 @@ import {
   DEFAULT_RSVP_QUESTIONS,
   parseOptionList,
 } from '@/lib/corporateLayoutMetrics';
-import { corporatePageGradientStyle } from '@/lib/corporatePageStyles';
 import { apiRequest } from '@/lib/api';
 
 function fieldKey(question, index) {
@@ -37,7 +36,10 @@ export const RsvpPage = ({
       const type = String(q?.inputType || 'text').toLowerCase();
       if (type === 'radio') {
         const opts = parseOptionList(q?.options);
-        next[key] = opts[0] || '';
+        next[key] = opts[0] || "Yes, I'll attend";
+      } else if (type === 'dropdown') {
+        const opts = parseOptionList(q?.options);
+        next[key] = opts[0] || 'Veg or Non-Veg';
       } else {
         next[key] = '';
       }
@@ -48,14 +50,14 @@ export const RsvpPage = ({
   const [answers, setAnswers] = useState(initialAnswers);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [rsvpError, setRsvpError] = useState('');
-  const [btnText, setBtnText] = useState('Submit RSVP');
+  const [btnText, setBtnText] = useState('Confirm RSVP');
   const [btnGreen, setBtnGreen] = useState(false);
 
   const questionKeyList = React.useMemo(() => {
     return questions.map((q, i) => `${fieldKey(q, i)}:${q?.inputType}`).join('|');
   }, [questions]);
 
-  // When question schema changes (e.g. admin template editor), merge any new keys without wiping existing user answers
+  // Merge schema updates smoothly without losing user input
   React.useEffect(() => {
     setAnswers((prev) => {
       let changed = false;
@@ -67,7 +69,10 @@ export const RsvpPage = ({
           const type = String(q?.inputType || 'text').toLowerCase();
           if (type === 'radio') {
             const opts = parseOptionList(q?.options);
-            next[key] = opts[0] || '';
+            next[key] = opts[0] || "Yes, I'll attend";
+          } else if (type === 'dropdown') {
+            const opts = parseOptionList(q?.options);
+            next[key] = opts[0] || 'Veg or Non-Veg';
           } else {
             next[key] = '';
           }
@@ -101,36 +106,30 @@ export const RsvpPage = ({
     }
 
     // Determine guest count
-    let attendingCount = 0;
-    const limit = Math.max(1, Number(maxGuests) || 1);
+    let attendingCount = 1;
     if (status === 'ATTENDING') {
-      const guestsIndex = questions.findIndex((q) =>
-        /number of guest|guests? count|how many guest|attendee/i.test(q?.label || '')
+      const gIndex = questions.findIndex((q) =>
+        /number of guest|guests? count|how many guest/i.test(q?.label || '')
       );
-      if (guestsIndex >= 0) {
-        const gKey = fieldKey(questions[guestsIndex], guestsIndex);
-        const digits = String(answers[gKey] || '').replace(/\D/g, '');
+      if (gIndex >= 0) {
+        const gKey = fieldKey(questions[gIndex], gIndex);
+        const digits = String(answers[gKey] ?? '').replace(/\D/g, '');
+        const limit = maxGuests > 1 ? maxGuests : 1;
         let n = Number(digits);
-        if (!digits || !Number.isInteger(n) || n < 1) {
-          n = 1;
-        }
-        if (n > limit) {
-          n = limit;
-        }
+        if (!digits || !Number.isInteger(n) || n < 1) n = 1;
+        if (n > limit) n = limit;
         attendingCount = n;
-      } else {
-        attendingCount = 1;
       }
     }
 
-    // Format extra notes/wishes from non-attendance and non-guest fields
+    // Format extra notes / special requirements
     const notes = [];
     questions.forEach((q, i) => {
       const k = fieldKey(q, i);
       const lbl = q?.label || `Field ${i + 1}`;
       if (
         /attend/i.test(lbl) ||
-        /number of guest|guest count|how many guest/i.test(lbl)
+        /number of guest|guests? count|how many guest/i.test(lbl)
       ) {
         return;
       }
@@ -141,19 +140,35 @@ export const RsvpPage = ({
     });
     const wishesPayload = notes.join('\n');
 
-    // Extract meal preference & special requirements for downstream display
+    // Extract first name, last name, full name
+    const fNameQ = questions.find((q) => /first\s*name/i.test(q?.label || ''));
+    const lNameQ = questions.find((q) => /last\s*name/i.test(q?.label || ''));
+    const fNameVal = fNameQ ? answers[fieldKey(fNameQ, questions.indexOf(fNameQ))] : '';
+    const lNameVal = lNameQ ? answers[fieldKey(lNameQ, questions.indexOf(lNameQ))] : '';
+    const fullNameVal = [fNameVal, lNameVal].filter(Boolean).join(' ') || answers[fieldKey(questions[0], 0)] || '';
+
+    // Extract phone & nic
+    const phoneQ = questions.find((q) => /phone|mobile|whatsapp/i.test(q?.label || ''));
+    const phoneVal = phoneQ ? answers[fieldKey(phoneQ, questions.indexOf(phoneQ))] : '';
+    const nicQ = questions.find((q) => /nic|identity/i.test(q?.label || ''));
+    const nicVal = nicQ ? answers[fieldKey(nicQ, questions.indexOf(nicQ))] : '';
+
     const mealQ = questions.find((q) => /meal/i.test(q?.label || ''));
     const mealVal = mealQ ? answers[fieldKey(mealQ, questions.indexOf(mealQ))] : '';
-    const reqQ = questions.find((q) =>
-      /special requirement|dietary|wishes|note/i.test(q?.label || '')
-    );
+
+    const reqQ = questions.find((q) => /special requirement|requirement|preference|note/i.test(q?.label || ''));
     const reqVal = reqQ ? answers[fieldKey(reqQ, questions.indexOf(reqQ))] : '';
 
     const successPayload = {
       ...answers,
+      fullName: fullNameVal,
+      firstName: fNameVal,
+      lastName: lNameVal,
+      nic: nicVal,
       attendance: attendanceVal,
       attendingStatus: status === 'ATTENDING' ? 'confirmed' : 'declined',
       attendingCount,
+      guestCount: attendingCount,
       guests: attendingCount,
       meal: mealVal,
       mealPreference: mealVal,
@@ -163,14 +178,13 @@ export const RsvpPage = ({
     };
 
     if (!guestToken) {
-      // Preview mode (admin / template modal)
       setIsSubmitting(true);
       setBtnText(status === 'ATTENDING' ? 'RSVP Confirmed ✓' : 'RSVP Declined ✓');
       setBtnGreen(true);
       setTimeout(() => {
         if (typeof onRsvpSuccess === 'function') onRsvpSuccess(successPayload);
         setIsSubmitting(false);
-        setBtnText('Submit RSVP');
+        setBtnText('Confirm RSVP');
         setBtnGreen(false);
       }, 350);
       return;
@@ -179,19 +193,15 @@ export const RsvpPage = ({
     setIsSubmitting(true);
     setBtnText('Submitting...');
     try {
-      const nameQ = questions.find((q) => /full\s*name|your\s*name|^name$/i.test(q?.label || ''));
-      const nameVal = nameQ ? answers[fieldKey(nameQ, questions.indexOf(nameQ))] : '';
-      const phoneQ = questions.find((q) => /phone|mobile|whatsapp/i.test(q?.label || ''));
-      const phoneVal = phoneQ ? answers[fieldKey(phoneQ, questions.indexOf(phoneQ))] : '';
-
       await apiRequest(`/api/public/invite/${encodeURIComponent(guestToken)}/rsvp`, {
         method: 'POST',
         body: {
           status,
           attendingCount,
           wishes: wishesPayload,
-          fullName: nameVal || undefined,
+          fullName: fullNameVal || undefined,
           whatsappNumber: phoneVal || undefined,
+          nic: nicVal || undefined,
         },
       });
 
@@ -203,7 +213,7 @@ export const RsvpPage = ({
       }, 350);
     } catch (err) {
       setRsvpError(err?.message || 'Could not save RSVP. Please try again.');
-      setBtnText('Submit RSVP');
+      setBtnText('Confirm RSVP');
       setBtnGreen(false);
     } finally {
       setIsSubmitting(false);
@@ -211,48 +221,61 @@ export const RsvpPage = ({
   };
 
   const inputClass =
-    'w-full h-[40px] bg-white border border-[#CFDFFD] rounded-lg px-[14px] font-instrument text-[13px] text-[#0F172A] shadow-[0_1px_3px_rgba(8,4,128,0.04)] focus:outline-none focus:border-[#2563EB] focus:ring-[2.5px] focus:ring-[#2563EB]/15 placeholder:text-[#94A3B8]';
+    'w-full h-[42px] bg-white border border-[#CBD5E1] rounded-[10px] px-3.5 font-sans text-[13px] text-[#0F172A] shadow-sm focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 placeholder:text-[#94A3B8] transition-all';
 
   return (
     <section
       id="page-3"
       data-page="3"
       data-invite-page="rsvp"
-      className="relative w-[390px] flex-shrink-0 snap-start snap-always bg-rsvp-grad select-none"
-      style={{ height: "auto", minHeight: pageHeight, ...corporatePageGradientStyle(fields) }}
+      className="relative w-[390px] flex-shrink-0 snap-start snap-always select-none overflow-hidden"
+      style={{
+        height: 'auto',
+        minHeight: Math.max(844, pageHeight),
+        background:
+          'linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 30%, #F0F6FE 70%, #DCEAFC 100%)',
+      }}
     >
       <div
-        className="relative z-[2] w-[390px] mx-auto select-none flex flex-col px-[37px] pb-7"
-        style={{ minHeight: pageHeight }}
+        className="relative z-[2] w-[390px] mx-auto select-none flex flex-col px-[28px] pb-9"
+        style={{ minHeight: Math.max(844, pageHeight) }}
       >
-        <div className="pt-[28px] w-full flex flex-col items-center justify-start text-center shrink-0 mb-5">
-          <h2 className="font-petrona font-bold text-[27px] leading-[1.15] text-[var(--corp-text-primary)] tracking-[-0.01em] m-0">
+        {/* Title & Subtitle (Matches Screenshot 1 Exactly) */}
+        <div className="pt-[32px] pb-4 w-full flex flex-col items-center justify-start text-center shrink-0">
+          <h2
+            className="font-serif font-bold text-[28px] leading-[34px] text-[#080480] tracking-[-0.01em] m-0"
+            style={{ fontFamily: "'Playfair Display', 'Petrona', 'Georgia', serif" }}
+          >
             Confirm Your Attendance
           </h2>
-          <p className="font-instrument font-medium text-[11.5px] leading-[1.25] text-[var(--corp-text-primary)] mt-[5px] tracking-[0.02em]">
-            We&apos;d be delighted to have you with us
+          <p className="font-sans font-medium text-[12px] leading-[16px] text-[#1E293B] mt-[6px] tracking-normal">
+            We&apos;d be an delighted to have you with us
           </p>
         </div>
 
+        {/* RSVP Form */}
         <form
           id="rsvp-form"
           onSubmit={handleSubmit}
           noValidate={previewBypassValidation}
-          className="w-full flex flex-col gap-5 flex-1"
+          className="w-full flex flex-col gap-3.5 flex-1 mt-1"
           data-dynamic-field="rsvpQuestions"
         >
           {questions.map((question, index) => {
             const key = fieldKey(question, index);
             const type = String(question?.inputType || 'text').toLowerCase();
             const label = question?.label || `Field ${index + 1}`;
+            const placeholder = question?.placeholder || '';
+            const helperText = question?.helperText || '';
             const opts = parseOptionList(question?.options);
 
-            if (type === 'textarea' || type === 'text_container') {
+            // Textarea (e.g. Any Special Requirements)
+            if (type === 'textarea' || type === 'text_container' || type === 'textcontainer') {
               return (
-                <div key={key} className="w-full flex flex-col gap-[6px]">
+                <div key={key} className="w-full flex flex-col gap-1">
                   <label
                     htmlFor={key}
-                    className="font-instrument font-bold text-[12.5px] leading-[1.15] text-[var(--corp-text-primary)] tracking-[0.01em]"
+                    className="font-sans font-bold text-[12.5px] leading-tight text-[#080480] tracking-normal"
                   >
                     {label}
                   </label>
@@ -261,27 +284,34 @@ export const RsvpPage = ({
                     name={key}
                     value={answers[key] || ''}
                     onChange={(e) => setAnswer(key, e.target.value)}
-                    className="w-full h-[94px] bg-white border border-[#CFDFFD] rounded-lg p-[10px_14px] font-instrument text-[13px] text-[#0F172A] resize-none shadow-[0_1px_3px_rgba(8,4,128,0.04)] focus:outline-none focus:border-[#2563EB] focus:ring-[2.5px] focus:ring-[#2563EB]/15 placeholder:text-[#94A3B8]"
-                    placeholder="Your answer"
+                    className="w-full h-[78px] bg-white border border-[#CBD5E1] rounded-[10px] p-3 font-sans text-[13px] text-[#0F172A] resize-none shadow-sm focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 placeholder:text-[#94A3B8] transition-all"
+                    placeholder={placeholder || 'e.g. Food preference'}
                   />
                 </div>
               );
             }
 
+            // Radio group (e.g. Will you attend?)
             if (type === 'radio') {
+              let radioOpts = opts.length ? opts : ["Yes, I'll attend", "Sorry, I can't attend"];
+              if (/attend/i.test(label) && (radioOpts.length !== 2 || radioOpts.some((o) => o.toLowerCase() === 'yes'))) {
+                radioOpts = ["Yes, I'll attend", "Sorry, I can't attend"];
+              }
               return (
-                <div key={key} className="w-full flex flex-col gap-[6px]">
-                  <span className="font-instrument font-bold text-[12.5px] leading-[1.15] text-[var(--corp-text-primary)] tracking-[0.01em]">
+                <div key={key} className="w-full flex flex-col gap-1 pt-0.5">
+                  <span className="font-sans font-bold text-[12.5px] leading-tight text-[#080480] tracking-normal">
                     {label}
                   </span>
-                  <div className="flex flex-col gap-2 mt-[2px]">
-                    {(opts.length ? opts : ['Yes', 'No']).map((opt, optIdx) => {
+                  <div className="flex flex-col gap-2.5 mt-1">
+                    {radioOpts.map((opt, optIdx) => {
                       const id = `${key}_${optIdx}`;
-                      const checked = answers[key] === opt;
+                      const checked =
+                        answers[key] === opt ||
+                        (!answers[key] && optIdx === 0);
                       return (
                         <label
                           key={id}
-                          className="flex items-center gap-[10px] cursor-pointer relative select-none py-[2px]"
+                          className="flex items-center gap-2.5 cursor-pointer relative select-none py-0.5"
                           htmlFor={id}
                         >
                           <input
@@ -291,18 +321,20 @@ export const RsvpPage = ({
                             value={opt}
                             checked={checked}
                             onChange={() => setAnswer(key, opt)}
-                            className="custom-radio-input absolute opacity-0 cursor-pointer w-0 h-0"
-                            required={!previewBypassValidation && optIdx === 0}
+                            className="sr-only"
                           />
+                          <div
+                            className={`w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center transition-colors shrink-0 ${
+                              checked ? 'border-[#2563EB] bg-white' : 'border-[#94A3B8] bg-white'
+                            }`}
+                          >
+                            {checked && (
+                              <div className="w-[8.5px] h-[8.5px] rounded-full bg-[#2563EB]" />
+                            )}
+                          </div>
                           <span
-                            className="radio-custom-indicator w-[18px] h-[18px] rounded-full border-2 border-[#94A3B8] bg-white inline-flex items-center justify-center flex-shrink-0 transition-colors"
-                            aria-hidden="true"
-                          />
-                          <span
-                            className={`font-instrument text-[13px] leading-[1.2] transition-colors ${
-                              checked
-                                ? 'text-[#1E293B] font-semibold'
-                                : 'text-[#475569] font-medium'
+                            className={`font-sans text-[13px] leading-tight transition-colors ${
+                              checked ? 'font-bold text-[#334155]' : 'font-normal text-[#64748B]'
                             }`}
                           >
                             {opt}
@@ -315,41 +347,43 @@ export const RsvpPage = ({
               );
             }
 
+            // Dropdown (e.g. Meal Preference)
             if (type === 'dropdown') {
+              const dropOpts = opts.length
+                ? opts
+                : ['Veg or Non-Veg', 'Vegetarian', 'Non-Vegetarian'];
               return (
-                <div key={key} className="w-full flex flex-col gap-[6px]">
+                <div key={key} className="w-full flex flex-col gap-1">
                   <label
                     htmlFor={key}
-                    className="font-instrument font-bold text-[12.5px] leading-[1.15] text-[var(--corp-text-primary)] tracking-[0.01em]"
+                    className="font-sans font-bold text-[12.5px] leading-tight text-[#080480] tracking-normal"
                   >
                     {label}
                   </label>
-                  <div className="relative w-full h-[40px]">
+                  <div className="relative w-full h-[42px]">
                     <select
                       id={key}
                       name={key}
-                      value={answers[key] || ''}
+                      value={answers[key] || dropOpts[0] || ''}
                       onChange={(e) => setAnswer(key, e.target.value)}
-                      className="w-full h-[40px] bg-white border border-[#CFDFFD] rounded-lg px-[14px] pr-[34px] font-instrument text-[13px] text-[#4944DF] appearance-none cursor-pointer shadow-[0_1px_3px_rgba(8,4,128,0.04)] focus:outline-none focus:border-[#2563EB] focus:ring-[2.5px] focus:ring-[#2563EB]/15"
-                      required={!previewBypassValidation}
+                      className="w-full h-[42px] bg-white border border-[#CBD5E1] rounded-[10px] px-3.5 pr-9 font-sans text-[13px] text-[#334155] appearance-none cursor-pointer shadow-sm focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 transition-all"
                     >
-                      <option value="" disabled hidden>
-                        Select…
-                      </option>
-                      {opts.map((opt) => (
-                        <option key={opt} value={opt}>
+                      {dropOpts.map((opt, optIdx) => (
+                        <option
+                          key={opt}
+                          value={opt}
+                          disabled={optIdx === 0 && opt.toLowerCase().includes('or')}
+                        >
                           {opt}
                         </option>
                       ))}
                     </select>
                     <svg
-                      className="absolute right-[14px] top-1/2 -translate-y-1/2 pointer-events-none"
-                      width="14"
-                      height="14"
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none w-4 h-4 text-[#080480]"
                       viewBox="0 0 24 24"
                       fill="none"
-                      stroke="var(--corp-text-primary)"
-                      strokeWidth="2.2"
+                      stroke="currentColor"
+                      strokeWidth="2.4"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       aria-hidden="true"
@@ -361,13 +395,34 @@ export const RsvpPage = ({
               );
             }
 
-            // text (default) — includes Number of Guests
+            // Default Text input (First Name, Last Name, Email, Mobile, NIC, Number of Guests)
             const isGuestCount = /number of guest|guests? count|how many guest/i.test(label);
+            const isNic = /nic|national identity/i.test(label);
+            const defaultPlaceholder =
+              placeholder ||
+              (isGuestCount
+                ? '1'
+                : /first\s*name/i.test(label)
+                ? 'Kavindu'
+                : /last\s*name/i.test(label)
+                ? 'Perera'
+                : /email/i.test(label)
+                ? 'kavindu@gmail.com'
+                : /mobile|phone/i.test(label)
+                ? '+94  77  123  4567'
+                : isNic
+                ? '199012345678'
+                : label);
+
+            const fieldHelper =
+              helperText ||
+              (isNic ? 'You can update your NIC later when purchasing tickets if you need.' : '');
+
             return (
-              <div key={key} className="w-full flex flex-col gap-[6px]">
+              <div key={key} className="w-full flex flex-col gap-1">
                 <label
                   htmlFor={key}
-                  className="font-instrument font-bold text-[12.5px] leading-[1.15] text-[var(--corp-text-primary)] tracking-[0.01em]"
+                  className="font-sans font-bold text-[12.5px] leading-tight text-[#080480] tracking-normal"
                 >
                   {label}
                   {isGuestCount && maxGuests > 1 ? (
@@ -394,29 +449,34 @@ export const RsvpPage = ({
                     }
                   }}
                   className={inputClass}
-                  placeholder={isGuestCount ? `1 (Max: ${maxGuests})` : label}
-                  required={
-                    !previewBypassValidation && !/optional/i.test(label)
-                  }
+                  placeholder={defaultPlaceholder}
+                  required={!previewBypassValidation && !/optional/i.test(label)}
                 />
+                {fieldHelper ? (
+                  <p className="font-sans text-[10px] leading-tight text-[#94A3B8] mt-0.5 m-0">
+                    {fieldHelper}
+                  </p>
+                ) : null}
               </div>
             );
           })}
 
           {rsvpError ? (
-            <div className="w-full bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg p-2.5 text-center font-instrument">
+            <div className="w-full bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg p-2.5 text-center font-sans">
               {rsvpError}
             </div>
           ) : null}
 
+          {/* Confirm RSVP Submit Button (Matches Screenshot 1 Exactly) */}
           <button
             type="submit"
             id="rsvp-submit-btn"
             disabled={isSubmitting}
-            style={{ backgroundColor: btnGreen ? '#059669' : undefined }}
-            className={`mt-1 w-full max-w-[280px] mx-auto h-[40px] px-4 rounded-lg font-instrument font-bold text-[13.5px] text-white tracking-[0.02em] cursor-pointer shadow-[0_4px_14px_rgba(8,4,128,0.28)] flex items-center justify-center transition-all duration-150 hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(8,4,128,0.35)] active:translate-y-[1px] ${
-              !btnGreen ? 'bg-[var(--corp-text-primary)] hover:opacity-90' : ''
-            }`}
+            style={{
+              backgroundColor: btnGreen ? '#059669' : '#080480',
+              color: '#ffffff',
+            }}
+            className="w-full h-[46px] rounded-[12px] font-sans font-bold text-[14.5px] text-white tracking-wide cursor-pointer shadow-[0_4px_14px_rgba(8,4,128,0.25)] flex items-center justify-center transition-all duration-150 hover:bg-[#060368] active:scale-[0.99] mt-3 disabled:opacity-50"
           >
             {btnText}
           </button>
@@ -427,46 +487,22 @@ export const RsvpPage = ({
               tabIndex={0}
               onClick={onScrollNext}
               onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
+                if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
                   onScrollNext?.();
                 }
               }}
-              className="mt-[22px] mb-[12px] flex flex-col items-center justify-between cursor-pointer group mx-auto z-10 select-none"
-              style={{ width: "117px", minHeight: "62px" }}
+              className="mt-4 mb-2 flex flex-col items-center justify-center cursor-pointer group mx-auto select-none"
               aria-label="Scroll down to explore"
             >
-              <div
-                className="w-[40px] h-[40px] rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-105 group-hover:translate-y-[3px]"
-                style={{
-                  border: "1.5px solid rgba(8, 4, 128, 0.4)",
-                  background: "rgba(255, 255, 255, 0.85)",
-                  backdropFilter: "blur(8px)",
-                  WebkitBackdropFilter: "blur(8px)",
-                  color: "var(--corp-text-primary, #080480)",
-                  boxShadow: "0 4px 16px rgba(0, 0, 0, 0.08), 0 0 10px rgba(8, 4, 128, 0.06)",
-                  animation: "floatBounce 2.4s ease-in-out infinite",
-                }}
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
+              <div className="px-3.5 py-1.5 rounded-full bg-white/95 border border-[#BED5EE] shadow-sm flex items-center gap-1.5 transition-all group-hover:scale-105">
+                <span className="font-sans font-bold text-[9px] text-[#080480] uppercase tracking-[0.2em]">
+                  Scroll to Explore
+                </span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#080480" strokeWidth="2.5">
                   <path d="M7 10l5 5 5-5" />
                 </svg>
               </div>
-              <span
-                className="w-[117px] h-[11px] flex items-center justify-center font-instrument text-[8px] font-semibold text-[var(--corp-text-primary, #080480)] uppercase transition-colors duration-300 whitespace-nowrap tracking-[0.22em] group-hover:text-[var(--corp-text-highlight, #0084FF)] mt-2"
-              >
-                EXPLORE  INVITATION
-              </span>
             </div>
           ) : null}
         </form>

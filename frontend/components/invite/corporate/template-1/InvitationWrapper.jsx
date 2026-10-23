@@ -116,7 +116,7 @@ export function CorporatePagePreview({
   previewBypassValidation = false,
   documentFiles = null,
 }) {
-  const { fields } = resolveFields(templateData, templateConfig);
+  const { pagesCfg, fields } = resolveFields(templateData, templateConfig);
   const location = resolveEventLocation(templateData);
   const media = resolveEventMedia(templateData);
   const pageHeight = computeCorporatePageHeight(pageId, fields);
@@ -884,6 +884,7 @@ function CorporateInvitationFull({
           eventDate={fields.eventDate || 'Thursday, 12 November 2026'}
           eventTime={fields.eventTime || '6:00 PM Onwards'}
           eventVenue={location.locationName || 'Cinnamon Lakeside Colombo'}
+          bookingData={ticketingBookingData}
           theme="corporate"
         />
       </div>
@@ -1020,6 +1021,7 @@ function CorporateInvitationFull({
             eventDate={fields.eventDate || 'Thursday, 12 November 2026'}
             eventTime={fields.eventTime || '6:00 PM Onwards'}
             eventVenue={location.locationName || 'Cinnamon Lakeside Colombo'}
+            bookingData={ticketingBookingData}
             theme="corporate"
           />
         </main>

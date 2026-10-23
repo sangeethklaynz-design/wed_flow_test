@@ -267,39 +267,57 @@ export const PARTY_TEMPLATE_1_MANIFEST = {
       },
       "defaultValue": [
         {
-          "label": "Full name",
+          "label": "First Name",
           "inputType": "text",
-          "options": ""
+          "options": "",
+          "placeholder": "Kavindu"
         },
         {
-          "label": "Email",
+          "label": "Last Name",
           "inputType": "text",
-          "options": ""
+          "options": "",
+          "placeholder": "Perera"
         },
         {
-          "label": "Phone Number",
+          "label": "Email Address",
           "inputType": "text",
-          "options": ""
+          "options": "",
+          "placeholder": "kavindu@gmail.com"
+        },
+        {
+          "label": "Mobile Number",
+          "inputType": "text",
+          "options": "",
+          "placeholder": "+94  77  123  4567"
+        },
+        {
+          "label": "NIC (National Identity Card)",
+          "inputType": "text",
+          "options": "",
+          "placeholder": "199012345678",
+          "helperText": "You can update your NIC later when purchasing tickets if you need."
         },
         {
           "label": "Will you attend?",
           "inputType": "radio",
-          "options": "Yes I'll attend, Sorry I can't attend"
+          "options": "Yes, I'll attend | Sorry, I can't attend"
         },
         {
           "label": "Number of Guests",
           "inputType": "text",
-          "options": ""
+          "options": "",
+          "placeholder": "1"
         },
         {
           "label": "Meal Preference",
           "inputType": "dropdown",
-          "options": "Vegetarian, Non-Vegetarian"
+          "options": "Veg or Non-Veg | Vegetarian | Non-Vegetarian"
         },
         {
           "label": "Any Special Requirements (Optional)",
           "inputType": "textarea",
-          "options": ""
+          "options": "",
+          "placeholder": "e.g. Food preference"
         }
       ]
     },

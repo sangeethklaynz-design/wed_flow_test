@@ -4,6 +4,8 @@ import CorporateInvitationExperience from "@/components/invite/corporate/templat
 import PartyInvitationExperience from "@/components/invite/party/template-1/InvitationWrapper";
 import PaymentSuccessOverlay from "@/components/invite/corporate/template-1/overlays/PaymentSuccessOverlay";
 import TicketQrOverlay from "@/components/invite/corporate/template-1/overlays/TicketQrOverlay";
+import { RsvpPage as CorporateRsvpPage } from "@/components/invite/corporate/template-1/pages/RsvpPage";
+import PartyRsvpPage from "@/components/invite/party/template-1/pages/RsvpPage";
 import FinanceTab from "@/components/finance/FinanceTab";
 import AdminFinanceTab from "@/components/admin/AdminFinanceTab";
 import { Home, Mail, Users, Calendar, CreditCard, Ticket, Bell, LogOut, ArrowRight } from "lucide-react";
@@ -184,6 +186,36 @@ export default function TicketingFlowVerificationPage() {
           }}
         >
           7. Party Tickets/QR (Direct)
+        </button>
+        <button
+          id="btn-tab-corporate-rsvp"
+          onClick={() => setActiveTab("corporate-rsvp")}
+          style={{
+            padding: "10px 18px",
+            borderRadius: 8,
+            border: "none",
+            fontWeight: "bold",
+            cursor: "pointer",
+            background: activeTab === "corporate-rsvp" ? "#2563eb" : "#334155",
+            color: "#fff",
+          }}
+        >
+          8. Corporate RSVP (Screenshot 1)
+        </button>
+        <button
+          id="btn-tab-party-rsvp"
+          onClick={() => setActiveTab("party-rsvp")}
+          style={{
+            padding: "10px 18px",
+            borderRadius: 8,
+            border: "none",
+            fontWeight: "bold",
+            cursor: "pointer",
+            background: activeTab === "party-rsvp" ? "#2563eb" : "#334155",
+            color: "#fff",
+          }}
+        >
+          9. Party RSVP (Screenshot 1)
         </button>
         <button
           id="btn-tab-finance"
@@ -569,17 +601,19 @@ export default function TicketingFlowVerificationPage() {
               onAddToCalendar={() => alert("Add to Calendar Clicked")}
               onScrollNext={() => alert("Explore Invitation Clicked")}
               attendeeName="Kavindu Perera"
-              ticketId="LN2026-0001"
+              ticketId="WL 2026-001"
               tickets={[
-                { id: "LN2026-0001-1", typeName: "Standard Ticket", price: 1000 },
-                { id: "LN2026-0001-2", typeName: "Standard Ticket", price: 1000 },
-                { id: "LN2026-0001-3", typeName: "Standard Ticket", price: 1000 },
+                { id: "WL 2026-001-1", typeName: "STANDARD", price: 2000, quantity: 2, seatNo: "GENERAL ADMISSION" },
+                { id: "WL 2026-001-2", typeName: "STANDARD", price: 2000, quantity: 2, seatNo: "GENERAL ADMISSION" },
               ]}
-              eventName="Annual Business Summit – 2026"
-              eventDescription="An evening celebration, networking, & entertainment."
-              eventDate="Thursday, 12 November 2026"
+              eventName="Annual Business Summit   2026"
+              eventDescription="IDEAS TODAY. OPPORTUNITIES TOMORROW"
+              eventDate="12 November 2026"
               eventTime="6.00 PM Onwards"
               eventVenue="Cinnamon Lakeside Colombo"
+              paymentReference="TXN987514213"
+              bookingDateTime="21 Oct 2026,  03:14 PM"
+              paymentMethod="Google Pay"
               theme="corporate"
             />
           )}
@@ -605,6 +639,24 @@ export default function TicketingFlowVerificationPage() {
               eventVenue="Cinnamon Lakeside Colombo"
               theme="party"
             />
+          )}
+
+          {activeTab === "corporate-rsvp" && (
+            <div className="w-[390px] h-[844px] overflow-y-auto overflow-x-hidden relative rounded-[26px]">
+              <CorporateRsvpPage
+                previewBypassValidation={true}
+                onRsvpSuccess={(data) => alert("Corporate RSVP Confirmed: " + JSON.stringify(data))}
+              />
+            </div>
+          )}
+
+          {activeTab === "party-rsvp" && (
+            <div className="w-[390px] h-[844px] overflow-y-auto overflow-x-hidden relative rounded-[26px]">
+              <PartyRsvpPage
+                previewBypassValidation={true}
+                onRsvpSuccess={(data) => alert("Party RSVP Confirmed: " + JSON.stringify(data))}
+              />
+            </div>
           )}
         </div>
       )}

@@ -18,11 +18,35 @@ export function TicketingPaymentOverlay({
   const isParty = theme === "party";
 
   const {
-    fullName = "Kavindu Perera",
+    fullName: rawFullName = "Kavindu Perera",
     selectedTickets = [],
     totalAmount = 3000,
     totalCount = 3,
   } = bookingData;
+
+  const firstName =
+    bookingData?.firstName ||
+    (rawFullName ? rawFullName.trim().split(/\s+/)[0] : "Kavindu") ||
+    "Kavindu";
+  const lastName =
+    bookingData?.lastName ||
+    (rawFullName && rawFullName.trim().split(/\s+/).length > 1
+      ? rawFullName.trim().split(/\s+/).slice(1).join(" ")
+      : "Perera") ||
+    "Perera";
+  const email =
+    bookingData?.email ||
+    bookingData?.emailAddress ||
+    "kavindu@gmail.com";
+  const mobileNumber =
+    bookingData?.mobileNumber ||
+    bookingData?.phone ||
+    bookingData?.whatsappNumber ||
+    "+94 77 123 4567";
+  const nic =
+    bookingData?.nic ||
+    bookingData?.nicNumber ||
+    "199012345678";
 
   const eventName =
     eventMeta.eventName ||
@@ -105,9 +129,59 @@ export function TicketingPaymentOverlay({
             </p>
           </div>
 
-          {/* Order Summary Card */}
+          {/* Attendee Details Card (Matching Screenshot 1) */}
           <div className="w-full bg-[#EFF6FE] border-[1.5px] border-[#D0E2FB] rounded-[14px] p-4 mt-4 shadow-[0_1px_4px_rgba(191,219,254,0.25)]">
-            <div className="flex items-center justify-between pb-3 border-b border-[#D0E2FB]/70">
+            <div className="flex items-center justify-between pb-2.5 border-b border-[#D0E2FB]/70">
+              <span className="font-bold text-[14px] text-[#0A2569]">
+                Attendee Details
+              </span>
+              <button
+                type="button"
+                id="edit-attendee-btn"
+                onClick={onBack || onClose}
+                className="text-[12.5px] font-semibold text-[#2563EB] underline hover:text-[#1D4ED8] cursor-pointer"
+              >
+                Edit
+              </button>
+            </div>
+
+            <div className="space-y-2 pt-3 text-[12px]">
+              <div className="flex justify-between items-center">
+                <span className="text-[#64748B]">First Name</span>
+                <span className="font-semibold text-[#0A2569] text-right">
+                  {firstName}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-[#64748B]">Last Name</span>
+                <span className="font-semibold text-[#0A2569] text-right">
+                  {lastName}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-[#64748B]">Email Address</span>
+                <span className="font-semibold text-[#0A2569] text-right">
+                  {email}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-[#64748B]">Mobile Number</span>
+                <span className="font-semibold text-[#0A2569] text-right">
+                  {mobileNumber}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-[#64748B]">NIC</span>
+                <span className="font-semibold text-[#0A2569] text-right">
+                  {nic}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Order Summary Card (Matching Screenshot 1) */}
+          <div className="w-full bg-[#EFF6FE] border-[1.5px] border-[#D0E2FB] rounded-[14px] p-4 mt-3 shadow-[0_1px_4px_rgba(191,219,254,0.25)]">
+            <div className="flex items-center justify-between pb-2.5 border-b border-[#D0E2FB]/70">
               <span className="font-bold text-[14px] text-[#0A2569]">
                 Order Summary
               </span>
@@ -129,7 +203,7 @@ export function TicketingPaymentOverlay({
                 </span>
               </div>
               <div className="flex justify-between items-start">
-                <span className="text-[#64748B]">Date & Time</span>
+                <span className="text-[#64748B]">Date &amp; Time</span>
                 <span className="font-medium text-[#0A2569] text-right">
                   {eventDateTime}
                 </span>
@@ -143,10 +217,7 @@ export function TicketingPaymentOverlay({
 
               {/* Each Selected Ticket Type & Quantity */}
               {ticketsToDisplay.map((t, idx) => (
-                <div
-                  key={t.id || t.name || idx}
-                  className={idx > 0 ? "pt-2 space-y-2 border-t border-[#D0E2FB]/50" : "space-y-2"}
-                >
+                <React.Fragment key={t.id || t.name || idx}>
                   <div className="flex justify-between items-start">
                     <span className="text-[#64748B]">Ticket Type</span>
                     <span className="font-medium text-[#0A2569] text-right max-w-[190px]">
@@ -159,7 +230,7 @@ export function TicketingPaymentOverlay({
                       {t.quantity}
                     </span>
                   </div>
-                </div>
+                </React.Fragment>
               ))}
             </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { Clock, ArrowRight, Check } from "lucide-react";
 
 function TicketStubIcon({ color = "#94A3B8" }) {
   return (
@@ -35,46 +36,28 @@ export function TicketingSelectionPage({
   purchasedBookingData = null,
   onViewPurchasedTickets = null,
   hasPurchasedTickets = false,
+  initialReservedCount = 1,
 }) {
-  const [mounted, setMounted] = useState(false);
-  const [persistedBooking, setPersistedBooking] = useState(purchasedBookingData || null);
-
-  React.useEffect(() => {
-    setMounted(true);
-    if (purchasedBookingData) {
-      setPersistedBooking(purchasedBookingData);
-      return;
-    }
-    try {
-      const saved =
-        localStorage.getItem("wedflow_purchased_tickets") ||
-        sessionStorage.getItem("wedflow_purchased_tickets");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed && (parsed.selectedTickets || parsed.individualTickets)) {
-          setPersistedBooking(parsed);
-        }
-      }
-    } catch (e) {
-      // ignore
-    }
-  }, [purchasedBookingData]);
   const normalizedTickets = useMemo(() => {
     if (Array.isArray(ticketTypes) && ticketTypes.length > 0) {
       return ticketTypes.map((t, idx) => {
-        let badgeColor = "#94A3B8"; // Standard default silver
+        let badgeColor = "#94A3B8";
+        let defaultStock = "850 left";
         const lowerName = String(t.name || "").toLowerCase();
         if (lowerName.includes("vip") || idx === 1) {
-          badgeColor = "#F59E0B"; // Gold
+          badgeColor = "#F59E0B";
+          defaultStock = "120 left";
         } else if (lowerName.includes("premium") || idx === 2) {
-          badgeColor = "#EF4444"; // Red
+          badgeColor = "#EF4444";
+          defaultStock = "50 left";
         } else if (idx > 2) {
           badgeColor = "#3B82F6";
+          defaultStock = "100 left";
         }
         return {
           id: String(t.id || idx + 1),
           name: t.name || `Ticket Type ${idx + 1}`,
-          price: Number(t.price) || 0,
+          price: Number(t.price) || (idx === 0 ? 1000 : idx === 1 ? 2000 : 5000),
           description:
             t.description ||
             (idx === 0
@@ -83,6 +66,7 @@ export function TicketingSelectionPage({
               ? "Priority seating & refreshments"
               : "Exclusive lounge access"),
           color: badgeColor,
+          stockLeft: t.stockLeft || defaultStock,
         };
       });
     }
@@ -93,6 +77,7 @@ export function TicketingSelectionPage({
         price: 1000,
         description: "General entry to the event",
         color: "#94A3B8",
+        stockLeft: "850 left",
       },
       {
         id: "vip",
@@ -100,6 +85,7 @@ export function TicketingSelectionPage({
         price: 2000,
         description: "Priority seating & refreshments",
         color: "#F59E0B",
+        stockLeft: "120 left",
       },
       {
         id: "premium",
@@ -107,21 +93,45 @@ export function TicketingSelectionPage({
         price: 5000,
         description: "Exclusive lounge access",
         color: "#EF4444",
+        stockLeft: "50 left",
       },
     ];
   }, [ticketTypes]);
 
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [errorMsg, setErrorMsg] = useState("");
+  // Initial quantities: matching Screenshot 1 where 3 Standard tickets are selected, VIP has 0, Premium has 0
   const [quantities, setQuantities] = useState(() => {
     const initial = {};
     normalizedTickets.forEach((t, idx) => {
-      // In Figma Screenshot 1: Standard has 3 tickets selected, VIP has 0, Premium has 0
       initial[t.id] = idx === 0 ? 3 : 0;
     });
     return initial;
   });
+
+  // 24-Hour Real Countdown Timer
+  const [timeLeft, setTimeLeft] = useState(() => {
+    return {
+      hours: 23,
+      minutes: 59,
+      seconds: 45,
+    };
+  });
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev.seconds > 0) {
+          return { ...prev, seconds: prev.seconds - 1 };
+        } else if (prev.minutes > 0) {
+          return { ...prev, minutes: prev.minutes - 1, seconds: 59 };
+        } else if (prev.hours > 0) {
+          return { hours: prev.hours - 1, minutes: 59, seconds: 59 };
+        }
+        return { hours: 0, minutes: 0, seconds: 0 };
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   const handleQuantityChange = (id, delta) => {
     setQuantities((prev) => {
@@ -134,62 +144,23 @@ export function TicketingSelectionPage({
   const { totalAmount, totalCount, breakdownText } = useMemo(() => {
     let sum = 0;
     let count = 0;
-    const selectedList = [];
-
     normalizedTickets.forEach((t) => {
       const qty = quantities[t.id] || 0;
       if (qty > 0) {
         sum += t.price * qty;
         count += qty;
-        selectedList.push({
-          ticket: t,
-          qty,
-          subtotal: t.price * qty,
-        });
       }
     });
 
-    let text = "0 tickets selected";
-    if (selectedList.length === 1) {
-      const item = selectedList[0];
-      text = `LKR ${item.ticket.price.toLocaleString("en-US")} × ${item.qty} ticket${item.qty > 1 ? "s" : ""}`;
-    } else if (selectedList.length > 1) {
-      text = `${count} tickets selected`;
-    }
+    const standardTicket = normalizedTickets[0];
+    const unitPrice = standardTicket ? standardTicket.price : 1000;
+    const text = `LKR ${unitPrice.toLocaleString("en-US")} × ${count} ticket${count === 1 ? "" : "s"}`;
 
-    return { totalAmount: sum, totalCount: count, breakdownText: text, selectedList };
+    return { totalAmount: sum, totalCount: count, breakdownText: text };
   }, [normalizedTickets, quantities]);
 
   const handleProceed = (e) => {
     if (e && e.preventDefault) e.preventDefault();
-    setErrorMsg("");
-
-    if (!fullName.trim()) {
-      setErrorMsg("Please enter your full name.");
-      const el = document.getElementById("ticket-guest-fullname");
-      if (el) el.focus();
-      return;
-    }
-
-    if (!email.trim()) {
-      setErrorMsg("Please enter your email.");
-      const el = document.getElementById("ticket-guest-email");
-      if (el) el.focus();
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) {
-      setErrorMsg("Please enter a valid email address.");
-      const el = document.getElementById("ticket-guest-email");
-      if (el) el.focus();
-      return;
-    }
-
-    if (totalCount === 0) {
-      setErrorMsg("Please select at least 1 ticket to proceed.");
-      return;
-    }
 
     const selectedTickets = normalizedTickets
       .filter((t) => (quantities[t.id] || 0) > 0)
@@ -201,374 +172,264 @@ export function TicketingSelectionPage({
 
     if (onProceedToPayment) {
       onProceedToPayment({
-        fullName: fullName.trim(),
-        email: email.trim(),
-        selectedTickets,
-        totalAmount,
-        totalCount,
+        fullName: defaultName,
+        email: defaultEmail,
+        selectedTickets: selectedTickets.length
+          ? selectedTickets
+          : [
+              {
+                ...normalizedTickets[0],
+                quantity: 1,
+                subtotal: normalizedTickets[0].price,
+              },
+            ],
+        totalAmount: totalAmount || (normalizedTickets[0]?.price ?? 1000),
+        totalCount: totalCount || 1,
         quantities,
       });
     }
   };
 
-  const isParty = theme === "party";
-
   return (
     <div
       id="ticketing-selection-page"
-      className="relative w-[390px] min-h-[844px] flex flex-col items-center justify-between overflow-hidden select-none"
+      className="relative w-[390px] min-h-[844px] flex flex-col items-center overflow-x-hidden overflow-y-auto select-none px-4 pt-5 pb-8"
       style={{
         width: 390,
         minHeight: 844,
-        background: isParty
-          ? "linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 62%, #E2EDFA 82%, #CADFF8 100%)"
-          : "linear-gradient(180deg, #E8F3FD 0%, #FFFFFF 28%, #FFFFFF 72%, #E8F3FD 100%)",
+        background:
+          "linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 30%, #F0F6FE 70%, #DCEAFC 100%)",
+        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
       }}
     >
-      {/* Page Top Design Image */}
-      <div
-        className={`absolute top-0 left-0 w-[390px] ${
-          isParty ? "h-[205px]" : "h-[162px]"
-        } pointer-events-none z-0 overflow-hidden`}
-        aria-hidden="true"
-      >
-        <img
-          src={
-            isParty
-              ? "/assets/events/parties/templates/template-1/chrome/ticketing-page/top-bg.webp"
-              : "/assets/events/corporate-events/templates/template-1/chrome/ticketing-page/top-background.webp"
-          }
-          alt=""
-          className={`w-[390px] ${
-            isParty ? "h-[205px] object-top" : "h-[162px]"
-          } object-cover block`}
-          style={{ transform: isParty ? "none" : "rotate(180deg)" }}
-          width={390}
-          height={isParty ? 205 : 162}
+      {/* 1. Header Card (Matching Screenshot 1) */}
+      <div className="relative w-full rounded-[18px] border-2 border-[#0070F3] bg-[#EAF3FE] overflow-hidden pt-7 pb-8 px-4 flex flex-col items-center text-center shadow-sm">
+        {/* Soft Wave Decor in Background */}
+        <div
+          className="absolute inset-0 pointer-events-none opacity-85"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 50% -20%, #BFE0FD 0%, transparent 70%), linear-gradient(180deg, #EAF3FE 0%, #D5EAFD 100%)",
+          }}
         />
+
+        <div className="relative z-10 flex flex-col items-center">
+          <h1
+            className="font-serif font-bold text-[24px] leading-[30px] text-[#080480] tracking-[-0.01em] m-0"
+            style={{ fontFamily: "'Playfair Display', 'Petrona', 'Georgia', serif" }}
+          >
+            Select Your Tickets
+          </h1>
+          <p className="font-sans font-medium text-[11.5px] leading-[16px] text-[#334155] mt-1.5 m-0">
+            Choose your ticket type &amp; quantity to continue
+          </p>
+        </div>
       </div>
 
-      {/* Corporate only: Page Bottom Design Image (Party removes bottom page design per user specification) */}
-      {!isParty && (
-        <div
-          className="absolute bottom-0 left-0 w-[390px] h-[162px] pointer-events-none z-0 overflow-hidden"
-          aria-hidden="true"
-        >
-          <img
-            src="/assets/events/corporate-events/templates/template-1/chrome/ticketing-page/bottom-background.webp"
-            alt=""
-            className="w-[390px] h-[162px] object-cover block"
-            style={{ transform: "rotate(0deg)" }}
-            width={390}
-            height={162}
-          />
+      {/* 2. Overlapping Center Checkmark & RSVP Confirmed Text */}
+      <div className="relative z-20 flex flex-col items-center -mt-5 mb-3">
+        <div className="w-[42px] h-[42px] rounded-full bg-[#0070F3] border-[3px] border-white shadow-md flex items-center justify-center text-white">
+          <Check className="w-5 h-5 stroke-[3]" />
         </div>
-      )}
+        <h2 className="font-sans font-bold text-[18px] leading-tight text-[#16A34A] mt-2 tracking-normal m-0">
+          Your RSVP is confirmed!
+        </h2>
+      </div>
 
-      {/* Top Left Back Button */}
-      <button
-        type="button"
-        id="ticketing-selection-back-btn"
-        onClick={onBack || onScrollNext}
-        aria-label="Back"
-        className="absolute top-[20px] left-[20px] w-9 h-9 flex items-center justify-center text-[#0A2569] hover:opacity-75 active:scale-95 transition-all cursor-pointer z-20 p-0"
-      >
-        <svg
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="#0A2569"
-          strokeWidth="2.6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <line x1="19" y1="12" x2="5" y2="12" />
-          <polyline points="12 19 5 12 12 5" />
-        </svg>
-      </button>
+      {/* 3. 24-Hour Reservation & Timer Card (Matching Screenshot 1) */}
+      <div className="w-full rounded-[18px] bg-[#E8F2FD] border border-[#CDE3FD] p-4 flex flex-col items-center text-center shadow-[0_2px_8px_rgba(11,114,231,0.06)] mb-4">
+        {/* Clock Icon Badge */}
+        <div className="w-[44px] h-[44px] rounded-full bg-[#D4E8FC] flex items-center justify-center mb-2.5 text-[#0070F3]">
+          <Clock className="w-6 h-6 stroke-[2.2]" />
+        </div>
 
-      {/* Main Content Area */}
-      <div
-        className={`relative z-10 w-[364px] ${
-          isParty ? "pt-[116px]" : "pt-[65px]"
-        } pb-12 flex flex-col items-center`}
-      >
-        {/* Screenshot 5: Text 'Select Your Tickets' (W: 364, H: 32, X: 13, Y: 65, Font: Petrona Bold 28px, Line height: 32px) */}
-        <h1
-          id="select-your-tickets-heading"
-          className="w-[364px] h-[32px] font-petrona font-bold text-[28px] leading-[32px] text-[#0A2569] text-center m-0 p-0 tracking-[-0.01em]"
-        >
-          Select Your Tickets
-        </h1>
+        {/* Heading */}
+        <h3 className="font-sans font-bold text-[15.5px] leading-[20px] text-[#080480] m-0 tracking-[-0.01em]">
+          Complete Your Payment
+          <br />
+          Within 24 Hours
+        </h3>
 
-        {/* Subtitle */}
-        <p className="w-[364px] text-center font-normal text-[13px] leading-[18px] text-[#425C7F] mt-[6px] m-0">
-          Choose your ticket type & quantity to continue
+        {/* Description */}
+        <p className="font-sans text-[11px] leading-[15px] text-[#475569] mt-2 mb-3 max-w-[270px]">
+          1 ticket has been reserved for you for 24 hours. You can purchase it below or add more tickets.
         </p>
 
-        {/* Confirmed Tickets Access Banner - viewable anytime after payment */}
-        {mounted && (persistedBooking || hasPurchasedTickets) && (
-          <div
-            id="purchased-tickets-banner"
-            className="w-[364px] mt-[14px] bg-[#EEF5FE] border-[1.5px] border-[#080480] rounded-[13px] px-[14px] py-[10px] flex items-center justify-between shadow-[0_2px_8px_rgba(8,4,128,0.12)] animate-in fade-in"
-          >
-            <div className="flex items-center gap-[10px]">
-              <div className="w-[32px] h-[32px] rounded-full bg-[#080480] text-white flex items-center justify-center shrink-0">
-                <svg className="w-[17px] h-[17px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              </div>
-              <div className="flex flex-col text-left">
-                <span className="font-bold text-[13px] leading-tight text-[#080480]">
-                  Tickets Confirmed
-                </span>
-                <span className="text-[11px] leading-tight text-[#556987] mt-[2px]">
-                  {persistedBooking?.individualTickets?.length || persistedBooking?.totalCount || 1} Ticket(s) Available Anytime
-                </span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              id="view-tickets-anytime-btn"
-              onClick={() => {
-                if (typeof onViewPurchasedTickets === "function") {
-                  onViewPurchasedTickets(persistedBooking);
-                } else if (typeof window !== "undefined") {
-                  window.location.hash = "#ticket";
-                }
-              }}
-              className="h-[32px] px-[12px] bg-[#080480] hover:bg-[#060368] active:scale-95 text-white rounded-[8px] font-jakarta font-bold text-[12px] flex items-center gap-1 shadow-sm transition-all cursor-pointer"
-            >
-              <span>View Tickets</span>
-              <span className="text-[13px]">&rarr;</span>
-            </button>
-          </div>
-        )}
-
-        {/* Inputs Group */}
-        <div className="w-[364px] mt-[24px] space-y-[10px]">
-          {/* Full Name */}
-          <div className="flex flex-col text-left">
-            <label
-              htmlFor="ticket-guest-fullname"
-              className="text-[13px] font-bold text-[#0A2569] mb-[5px] pl-[1px]"
-            >
-              Full name
-            </label>
-            <input
-              id="ticket-guest-fullname"
-              type="text"
-              required
-              value={fullName}
-              onChange={(e) => {
-                setFullName(e.target.value);
-                if (errorMsg) setErrorMsg("");
-              }}
-              placeholder="Kavindu Perera"
-              className={`w-full h-[44px] px-[14px] bg-white rounded-xl border-[1.5px] ${
-                errorMsg && !fullName.trim() ? "border-[#EF4444]" : "border-[#BFDBFE]"
-              } text-[#0F172A] text-[14px] font-medium placeholder-[#94A3B8] focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#93C5FD]/40 transition-all shadow-[0_1px_3px_rgba(0,0,0,0.02)]`}
-            />
+        {/* Live Countdown Timer Blocks: [ 23 Hours ] : [ 59 Minutes ] : [ 45 Seconds ] */}
+        <div className="flex items-center justify-center gap-2">
+          {/* Hours */}
+          <div className="w-[58px] py-1.5 bg-[#DEEDFD] rounded-[10px] border border-[#BEDCFD] flex flex-col items-center">
+            <span className="font-sans font-extrabold text-[19px] leading-none text-[#080480] tabular-nums">
+              {String(timeLeft.hours).padStart(2, "0")}
+            </span>
+            <span className="font-sans text-[9px] font-medium text-[#64748B] mt-1">
+              Hours
+            </span>
           </div>
 
-          {/* Email */}
-          <div className="flex flex-col text-left">
-            <label
-              htmlFor="ticket-guest-email"
-              className="text-[13px] font-bold text-[#0A2569] mb-[5px] pl-[1px]"
-            >
-              Email
-            </label>
-            <input
-              id="ticket-guest-email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                if (errorMsg) setErrorMsg("");
-              }}
-              placeholder="kavindu@gmail.com"
-              className={`w-full h-[44px] px-[14px] bg-white rounded-xl border-[1.5px] ${
-                errorMsg && !email.trim() ? "border-[#EF4444]" : "border-[#BFDBFE]"
-              } text-[#0F172A] text-[14px] font-medium placeholder-[#94A3B8] focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#93C5FD]/40 transition-all shadow-[0_1px_3px_rgba(0,0,0,0.02)]`}
-            />
+          <span className="font-sans font-bold text-[18px] text-[#080480] pb-2">:</span>
+
+          {/* Minutes */}
+          <div className="w-[58px] py-1.5 bg-[#DEEDFD] rounded-[10px] border border-[#BEDCFD] flex flex-col items-center">
+            <span className="font-sans font-extrabold text-[19px] leading-none text-[#080480] tabular-nums">
+              {String(timeLeft.minutes).padStart(2, "0")}
+            </span>
+            <span className="font-sans text-[9px] font-medium text-[#64748B] mt-1">
+              Minutes
+            </span>
+          </div>
+
+          <span className="font-sans font-bold text-[18px] text-[#080480] pb-2">:</span>
+
+          {/* Seconds */}
+          <div className="w-[58px] py-1.5 bg-[#DEEDFD] rounded-[10px] border border-[#BEDCFD] flex flex-col items-center">
+            <span className="font-sans font-extrabold text-[19px] leading-none text-[#080480] tabular-nums">
+              {String(timeLeft.seconds).padStart(2, "0")}
+            </span>
+            <span className="font-sans text-[9px] font-medium text-[#64748B] mt-1">
+              Seconds
+            </span>
           </div>
         </div>
+      </div>
 
-        {/* Ticket Type Cards (Standard, VIP, Premium) */}
-        <div className="w-[364px] mt-[22px] flex flex-col gap-[14px]">
+      {/* 4. Available Tickets Section (Matching Screenshot 1) */}
+      <div className="w-full flex flex-col mb-4">
+        <h4 className="font-sans font-bold text-[13px] leading-tight text-[#080480] mb-2 pl-0.5">
+          Available Tickets
+        </h4>
+
+        <div className="flex flex-col gap-2.5">
           {normalizedTickets.map((t) => {
             const qty = quantities[t.id] || 0;
             return (
               <div
                 key={t.id}
-                className="w-[364px] min-h-[66px] bg-[#EEF6FE] border-[1.5px] border-[#93C5FD] rounded-[13px] px-[13px] py-[9px] flex items-center justify-between shadow-[0_1px_4px_rgba(147,197,253,0.18)] transition-all hover:border-[#60A5FA]"
+                className="w-full bg-[#F4F9FF] border border-[#A5CDFA] rounded-[12px] p-3 flex flex-col gap-1 shadow-sm transition-all hover:border-[#60A5FA]"
               >
-                {/* Left: Ticket Icon & Details */}
-                <div className="flex items-center gap-[11px] min-w-0 pr-2">
-                  <TicketStubIcon color={t.color} />
-                  <div className="flex flex-col text-left min-w-0">
-                    <span className="font-bold text-[15px] leading-[19px] text-[#0A2569] tracking-[-0.01em]">
-                      LKR {t.price.toLocaleString("en-US")}
-                    </span>
-                    <span className="font-bold text-[13px] leading-[17px] text-[#0A2569]">
-                      {t.name}
-                    </span>
-                    <span className="text-[11px] leading-[15px] text-[#64748B] truncate max-w-[170px]">
-                      {t.description}
+                <div className="flex items-center justify-between">
+                  {/* Left: Icon & Details */}
+                  <div className="flex items-center gap-2.5 min-w-0 pr-1">
+                    <TicketStubIcon color={t.color} />
+                    <div className="flex flex-col text-left min-w-0">
+                      <span className="font-sans font-extrabold text-[14px] leading-tight text-[#080480]">
+                        LKR {t.price.toLocaleString("en-US")}
+                      </span>
+                      <span className="font-sans font-bold text-[12px] leading-tight text-[#1E293B]">
+                        {t.name}
+                      </span>
+                      <span className="font-sans text-[10px] leading-tight text-[#94A3B8] truncate max-w-[155px]">
+                        {t.description}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Right: Quantity Counter [- 3 +] */}
+                  <div className="flex flex-col items-end">
+                    <div className="w-[96px] h-[32px] bg-[#D7E8FD] rounded-[8px] flex items-center justify-between px-1.5 border border-[#BFDBFE]">
+                      <button
+                        type="button"
+                        onClick={() => handleQuantityChange(t.id, -1)}
+                        disabled={qty <= 0}
+                        aria-label={`Decrease ${t.name}`}
+                        className="w-[24px] h-[24px] rounded flex items-center justify-center font-bold text-[#080480] text-[16px] leading-none hover:bg-white/40 active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer"
+                      >
+                        –
+                      </button>
+                      <span className="font-sans font-bold text-[13px] text-[#080480] min-w-[20px] text-center tabular-nums">
+                        {qty}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleQuantityChange(t.id, 1)}
+                        disabled={qty >= 20}
+                        aria-label={`Increase ${t.name}`}
+                        className="w-[24px] h-[24px] rounded flex items-center justify-center font-bold text-[#080480] text-[16px] leading-none hover:bg-white/40 active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer"
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    {/* Stock Remaining */}
+                    <span className="font-sans text-[10px] font-semibold text-[#DC2626] mt-1 mr-0.5">
+                      {t.stockLeft}
                     </span>
                   </div>
-                </div>
-
-                {/* Right: Quantity Counter [- 3 +] */}
-                <div className="w-[104px] h-[34px] bg-[#DBEAFE] rounded-[8px] flex items-center justify-between px-[5px] shrink-0 border border-[#BFDBFE]/60 shadow-inner">
-                  <button
-                    type="button"
-                    onClick={() => handleQuantityChange(t.id, -1)}
-                    disabled={qty <= 0}
-                    aria-label={`Decrease quantity of ${t.name}`}
-                    className="w-[26px] h-[26px] rounded flex items-center justify-center font-bold text-[#0A2569] text-[18px] leading-none hover:bg-white/50 active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer"
-                  >
-                    –
-                  </button>
-                  <span className="font-bold text-[14px] text-[#0A2569] min-w-[22px] text-center tabular-nums">
-                    {qty}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleQuantityChange(t.id, 1)}
-                    disabled={qty >= 20}
-                    aria-label={`Increase quantity of ${t.name}`}
-                    className="w-[26px] h-[26px] rounded flex items-center justify-center font-bold text-[#0A2569] text-[18px] leading-none hover:bg-white/50 active:scale-95 disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer"
-                  >
-                    +
-                  </button>
                 </div>
               </div>
             );
           })}
         </div>
+      </div>
 
-        {/* Total Amount Summary */}
-        <div className="w-[364px] h-[48px] bg-[#D7E8FC] rounded-[10px] px-[14px] mt-[22px] flex items-center justify-between border border-[#BFDBFE]/70 shadow-sm">
-          <div className="flex flex-col text-left">
-            <span className="font-bold text-[13px] leading-[16px] text-[#0A2569]">
-              Total Amount
-            </span>
-            <span className="text-[11px] leading-[14px] text-[#4B6282] mt-[1px]">
-              {breakdownText}
-            </span>
-          </div>
-          <span className="font-bold text-[16px] leading-none text-[#0A2569] tabular-nums">
-            LKR {totalAmount.toLocaleString("en-US")}
-          </span>
-        </div>
+      {/* 5. Order Summary Section (Matching Screenshot 1) */}
+      <div className="w-full flex flex-col mb-4">
+        <h4 className="font-sans font-bold text-[13px] leading-tight text-[#080480] mb-2 pl-0.5">
+          Order Summary
+        </h4>
 
-        {/* Validation Error Message */}
-        {errorMsg && (
-          <div
-            id="ticket-error-msg"
-            className="w-[364px] mt-3 py-2 px-3 bg-[#FEF2F2] border border-[#FECACA] text-[#DC2626] text-[12px] font-medium rounded-lg text-center animate-in fade-in duration-200"
-          >
-            {errorMsg}
-          </div>
-        )}
-
-        {/* Proceed to Payment Button */}
-        <button
-          type="button"
-          id="proceed-to-payment-btn"
-          onClick={handleProceed}
-          className={`w-[364px] h-[46px] ${
-            isParty
-              ? "bg-[#080480] hover:bg-[#060366] shadow-[0_4px_14px_rgba(8,4,128,0.3)]"
-              : "bg-[#0B156B] hover:bg-[#071052] shadow-[0_4px_14px_rgba(11,21,107,0.3)]"
-          } active:scale-[0.98] text-white rounded-xl ${
-            errorMsg ? "mt-[16px]" : "mt-[32px]"
-          } flex items-center justify-center gap-[9px] font-bold text-[15px] transition-all cursor-pointer`}
-        >
-          <span>Proceed to Payment</span>
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <line x1="5" y1="12" x2="19" y2="12" />
-            <polyline points="12 5 19 12 12 19" />
-          </svg>
-        </button>
-
-        {/* Scroll to Explore Button (matching RSVP pages) */}
-        {onScrollNext !== false && (
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={(e) => {
-              if (typeof onScrollNext === "function") {
-                onScrollNext(e);
-              }
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                if (typeof onScrollNext === "function") {
-                  onScrollNext();
-                }
-              }
-            }}
-            className="mt-[18px] mb-[10px] flex flex-col items-center justify-between cursor-pointer group mx-auto z-10 select-none"
-            style={{ width: "117px", minHeight: "62px" }}
-            aria-label="Scroll down to explore"
-          >
-            <div
-              className="w-[40px] h-[40px] rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-105 group-hover:translate-y-[3px]"
-              style={{
-                border: "1.5px solid rgba(8, 4, 128, 0.4)",
-                background: "rgba(255, 255, 255, 0.95)",
-                backdropFilter: "blur(8px)",
-                WebkitBackdropFilter: "blur(8px)",
-                color: isParty ? "var(--party-text-title, #080480)" : "var(--corp-text-primary, #080480)",
-                boxShadow: "0 4px 16px rgba(0, 0, 0, 0.12), 0 0 10px rgba(8, 4, 128, 0.08)",
-                animation: "floatBounce 2.4s ease-in-out infinite",
-              }}
-            >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
+        {/* List of each ticket type summary card */}
+        <div className="flex flex-col gap-2">
+          {normalizedTickets.map((t) => {
+            const qty = quantities[t.id] || 0;
+            const subtotal = t.price * qty;
+            return (
+              <div
+                key={t.id}
+                className="w-full bg-white border border-[#E2E8F0] rounded-[10px] px-3.5 py-2.5 flex items-center justify-between shadow-[0_1px_3px_rgba(0,0,0,0.03)]"
               >
-                <path d="M7 10l5 5 5-5" />
-              </svg>
-            </div>
-            <div className="mt-[6px] px-3.5 py-[3px] rounded-full bg-white/95 backdrop-blur-md border border-white/80 shadow-[0_2px_10px_rgba(0,0,0,0.12)] flex items-center justify-center transition-all group-hover:bg-white group-hover:scale-105">
-              <span
-                className="font-instrument text-[9px] font-bold uppercase transition-colors duration-300 whitespace-nowrap tracking-[0.22em]"
-                style={{
-                  color: isParty ? "var(--party-text-title, #080480)" : "var(--corp-text-primary, #080480)",
-                }}
-              >
-                {isParty ? "SCROLL  TO  EXPLORE" : "EXPLORE  INVITATION"}
+                <span className="font-sans font-bold text-[12.5px] text-[#080480]">
+                  {t.name} x {qty}
+                </span>
+                <span className="font-sans font-bold text-[13px] text-[#080480]">
+                  LKR {subtotal.toLocaleString("en-US")}
+                </span>
+              </div>
+            );
+          })}
+
+          {/* Total Amount Card */}
+          <div className="w-full bg-[#CCE2FD] border border-[#B5D5FA] rounded-[10px] px-3.5 py-2.5 flex items-center justify-between shadow-sm mt-0.5">
+            <div className="flex flex-col text-left">
+              <span className="font-sans font-bold text-[12.5px] text-[#080480] leading-tight">
+                Total Amount
+              </span>
+              <span className="font-sans text-[10.5px] text-[#64748B] mt-0.5 leading-tight">
+                {breakdownText}
               </span>
             </div>
+            <span className="font-sans font-extrabold text-[15px] text-[#080480]">
+              LKR {totalAmount.toLocaleString("en-US")}
+            </span>
           </div>
-        )}
+        </div>
       </div>
+
+      {/* 6. Proceed to Payment Button (Matching Screenshot 1) */}
+      <button
+        type="button"
+        id="proceed-to-payment-btn"
+        onClick={handleProceed}
+        className="w-full h-[46px] rounded-[12px] bg-[#080480] hover:bg-[#060368] active:scale-[0.99] font-sans font-bold text-[14.5px] text-white flex items-center justify-center gap-2 cursor-pointer shadow-[0_4px_14px_rgba(8,4,128,0.25)] transition-all duration-150 mt-1"
+      >
+        <span>Proceed to Payment</span>
+        <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+      </button>
+
+      {/* Optional Confirmed Tickets quick access */}
+      {hasPurchasedTickets && (
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof onViewPurchasedTickets === "function") {
+              onViewPurchasedTickets(purchasedBookingData);
+            }
+          }}
+          className="mt-3 text-[11px] font-bold text-[#080480] underline cursor-pointer"
+        >
+          View Already Purchased Tickets
+        </button>
+      )}
     </div>
   );
 }

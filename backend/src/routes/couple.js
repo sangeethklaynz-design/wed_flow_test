@@ -15,6 +15,7 @@ const {
   cancelRsvp,
   resendInvite,
   markInviteShared,
+  sendInviteToAll,
   togglePin,
 } = require("../controllers/guestsController");
 const {
@@ -56,6 +57,7 @@ router.post("/guests/:id/cancel-rsvp", requireAuth, cancelRsvp);
 router.post("/guests/:id/resend-invite", requireAuth, resendInvite);
 router.post("/guests/:id/mark-invite-shared", requireAuth, markInviteShared);
 router.post("/guests/:id/toggle-pin", requireAuth, togglePin);
+router.post("/guests/send-all", requireAuth, sendInviteToAll);
 
 router.get("/schedule", requireAuth, listSchedule);
 router.get("/schedule/download", requireAuth, downloadSchedule);

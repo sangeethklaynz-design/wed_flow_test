@@ -513,6 +513,44 @@ async function togglePin(req, res) {
   }
 }
 
+async function sendInviteToAll(req, res) {
+  try {
+    const { wedding, error } = await assertWedding(req);
+    if (error) {
+      return res.status(error.status).json({
+        error: "Not Found",
+        message: error.message,
+      });
+    }
+
+    await sequelize.query(
+      `UPDATE guests SET invite_shared_at = NOW() WHERE wedding_id = ?;`,
+      { replacements: [wedding.id] }
+    );
+
+    const rows = await fetchGuestsForWedding(wedding.id);
+    await createNotification(
+      wedding.id,
+      "invites_sent_all",
+      "Public Invitations Sent",
+      `Public invitation link broadcast to ${rows.length} guests. 24 hours window given to confirm RSVP.`,
+      null
+    );
+
+    return res.status(200).json({
+      message: "Invitations sent to all guests successfully",
+      count: rows.length,
+      guests: rows.map(mapGuestRow),
+    });
+  } catch (err) {
+    console.error("sendInviteToAll error:", err);
+    return res.status(500).json({
+      error: "Internal Server Error",
+      message: "Failed to send invites to all",
+    });
+  }
+}
+
 module.exports = {
   listGuests,
   getGuest,
@@ -522,6 +560,7 @@ module.exports = {
   cancelRsvp,
   resendInvite,
   markInviteShared,
+  sendInviteToAll,
   togglePin,
   fetchGuestsForWedding,
   mapGuestRow,
