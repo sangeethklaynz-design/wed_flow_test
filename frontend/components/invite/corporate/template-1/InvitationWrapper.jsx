@@ -155,37 +155,6 @@ export function CorporatePagePreview({
   }
 
   if (pageId === 'rsvp') {
-    const isTicketing = Boolean(
-      templateData?.isTicketingEnabled ||
-      templateData?.static?.isTicketingEnabled ||
-      templateData?.templateConfig?.isTicketingEnabled ||
-      templateConfig?.isTicketingEnabled ||
-      pagesCfg?.isTicketingEnabled ||
-      templateData?.event?.enableTicketing ||
-      templateData?.static?.event?.enableTicketing ||
-      templateData?.event?.isTicketingEnabled ||
-      templateData?.static?.event?.isTicketingEnabled
-    );
-
-    if (isTicketing) {
-      const ticketTypes =
-        templateData?.ticketTypes ||
-        templateData?.static?.ticketTypes ||
-        templateData?.event?.tickets ||
-        templateData?.static?.event?.tickets ||
-        [];
-      return (
-        <div {...frameProps} style={{ ...frameProps.style, backgroundColor: '#FFFFFF' }}>
-          <TicketingSelectionPage
-            ticketTypes={ticketTypes}
-            theme="corporate"
-            onProceedToPayment={() => {}}
-            onScrollNext={() => {}}
-          />
-        </div>
-      );
-    }
-
     return (
       <div {...frameProps}>
         <Page
@@ -198,6 +167,25 @@ export function CorporatePagePreview({
               ? onRsvpSuccess
               : () => {}
           }
+          onScrollNext={() => {}}
+        />
+      </div>
+    );
+  }
+
+  if (pageId === 'ticketing') {
+    const ticketTypes =
+      templateData?.ticketTypes ||
+      templateData?.static?.ticketTypes ||
+      templateData?.event?.tickets ||
+      templateData?.static?.event?.tickets ||
+      [];
+    return (
+      <div {...frameProps} style={{ ...frameProps.style, backgroundColor: '#FFFFFF' }}>
+        <TicketingSelectionPage
+          ticketTypes={ticketTypes}
+          theme="corporate"
+          onProceedToPayment={() => {}}
           onScrollNext={() => {}}
         />
       </div>
@@ -261,11 +249,19 @@ function CorporateInvitationFull({
   const wrapperRef = useRef(null);
   const [scale, setScale] = useState(1);
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
+  const [isTicketingOpen, setIsTicketingOpen] = useState(false);
   const [isTicketingPaymentOpen, setIsTicketingPaymentOpen] = useState(false);
   const [ticketingBookingData, setTicketingBookingData] = useState(null);
 
   useEffect(() => {
     try {
+      const isRsvped = guestAlreadyRsvped(templateData);
+      if (!isRsvped) {
+        localStorage.removeItem('wedflow_purchased_tickets');
+        sessionStorage.removeItem('wedflow_purchased_tickets');
+        setTicketingBookingData(null);
+        return;
+      }
       const saved =
         localStorage.getItem('wedflow_purchased_tickets') ||
         sessionStorage.getItem('wedflow_purchased_tickets');
@@ -278,7 +274,7 @@ function CorporateInvitationFull({
     } catch (e) {
       // ignore
     }
-  }, []);
+  }, [templateData]);
   const [isPaymentSuccessOpen, setIsPaymentSuccessOpen] = useState(false);
   const [isTicketOpen, setIsTicketOpen] = useState(false);
   const [isInvitationRoute, setIsInvitationRoute] = useState(false);
@@ -315,6 +311,33 @@ function CorporateInvitationFull({
     }
     return null;
   });
+
+  useEffect(() => {
+    const isRsvped = guestAlreadyRsvped(templateData);
+    setHasSubmittedRsvp(isRsvped);
+    if (!isRsvped) {
+      setRsvpData(null);
+      setTicketingBookingData(null);
+      setIsConfirmationOpen(false);
+      setIsTicketingOpen(false);
+      setIsTicketingPaymentOpen(false);
+      setIsPaymentSuccessOpen(false);
+      setIsTicketOpen(false);
+      try {
+        localStorage.removeItem('wedflow_purchased_tickets');
+        sessionStorage.removeItem('wedflow_purchased_tickets');
+      } catch (e) {}
+      if (typeof window !== 'undefined') {
+        const h = window.location.hash;
+        if (h && (h === '#ticketing' || h === '#ticketing-payment' || h === '#payment-success' || h === '#ticket' || h === '#rsvp-confirmation')) {
+          try {
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+          } catch (e) {}
+        }
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      }
+    }
+  }, [templateData]);
 
   const { pagesCfg, fields } = resolveFields(templateData, templateConfigProp);
   const location = resolveEventLocation(templateData);
@@ -360,74 +383,114 @@ function CorporateInvitationFull({
     return () => window.removeEventListener('resize', updateViewportScale);
   }, [embedded]);
 
+  const isTicketing = Boolean(
+    templateData?.isTicketingEnabled ||
+    templateData?.static?.isTicketingEnabled ||
+    templateData?.templateConfig?.isTicketingEnabled ||
+    templateConfigProp?.isTicketingEnabled ||
+    pagesCfg?.isTicketingEnabled ||
+    templateData?.event?.enableTicketing ||
+    templateData?.static?.event?.enableTicketing ||
+    templateData?.event?.isTicketingEnabled ||
+    templateData?.static?.event?.isTicketingEnabled
+  );
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const h = window.location.hash;
-      if (
+      if (h === '#ticketing' && isTicketing && hasSubmittedRsvp) {
+        setIsConfirmationOpen(false);
+        setIsPaymentSuccessOpen(false);
+        setIsTicketOpen(false);
+        setIsTicketingPaymentOpen(false);
+        setIsTicketingOpen(true);
+      } else if (
         h === '#rsvp-confirmation' ||
         h === '#payment-success' ||
-        h === '#ticketing-payment'
+        h === '#ticketing-payment' ||
+        (!hasSubmittedRsvp && h === '#ticketing')
       ) {
-        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        if (!hasSubmittedRsvp) {
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
       }
     }
-  }, []);
+  }, [isTicketing, hasSubmittedRsvp]);
 
   useEffect(() => {
     if (!interactive) return undefined;
 
     const handleHashChange = () => {
       const h = window.location.hash;
-      if (h === '#ticketing-payment') {
-        if (ticketingBookingData) {
+      if (h === '#ticketing') {
+        if (isTicketing && hasSubmittedRsvp) {
           setIsConfirmationOpen(false);
           setIsPaymentSuccessOpen(false);
           setIsTicketOpen(false);
+          setIsTicketingPaymentOpen(false);
+          setIsTicketingOpen(true);
+        } else if (!hasSubmittedRsvp) {
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+          handleScrollToPage1();
+        }
+      } else if (h === '#ticketing-payment') {
+        if (ticketingBookingData && hasSubmittedRsvp) {
+          setIsConfirmationOpen(false);
+          setIsPaymentSuccessOpen(false);
+          setIsTicketOpen(false);
+          setIsTicketingOpen(false);
           setIsTicketingPaymentOpen(true);
         }
       } else if (h === '#ticket' || h === '#tickets' || h === '#ticket-qr') {
-        setIsConfirmationOpen(false);
-        setIsPaymentSuccessOpen(false);
-        setIsTicketingPaymentOpen(false);
-        setIsTicketOpen(true);
-        if (typeof window !== 'undefined') {
-          window.scrollTo({ top: 0, behavior: 'instant' });
-        }
-        if (containerRef.current) {
-          containerRef.current.scrollTo({ top: 0, behavior: 'instant' });
+        if (hasSubmittedRsvp) {
+          setIsConfirmationOpen(false);
+          setIsPaymentSuccessOpen(false);
+          setIsTicketingPaymentOpen(false);
+          setIsTicketingOpen(false);
+          setIsTicketOpen(true);
+          if (typeof window !== 'undefined') {
+            window.scrollTo({ top: 0, behavior: 'instant' });
+          }
+          if (containerRef.current) {
+            containerRef.current.scrollTo({ top: 0, behavior: 'instant' });
+          }
         }
       } else if (h === '#payment-success') {
-        if (ticketingBookingData) {
+        if (ticketingBookingData && hasSubmittedRsvp) {
           setIsConfirmationOpen(false);
           setIsTicketingPaymentOpen(false);
+          setIsTicketingOpen(false);
           setIsPaymentSuccessOpen(true);
           setIsTicketOpen(false);
-        } else if (rsvpData) {
+        } else if (rsvpData && hasSubmittedRsvp) {
           setIsConfirmationOpen(false);
           setIsTicketingPaymentOpen(false);
+          setIsTicketingOpen(false);
           setIsPaymentSuccessOpen(true);
           setIsTicketOpen(false);
         }
       } else if (h === '#rsvp-confirmation') {
-        if (rsvpData) {
+        if (rsvpData && hasSubmittedRsvp) {
           setIsConfirmationOpen(true);
           setIsTicketingPaymentOpen(false);
+          setIsTicketingOpen(false);
           setIsPaymentSuccessOpen(false);
           setIsTicketOpen(false);
         }
-      } else if (h === '#page-1' || h === '#ticketing' || !h) {
+      } else if (h === '#page-1' || !h) {
         setIsConfirmationOpen(false);
         setIsTicketingPaymentOpen(false);
+        setIsTicketingOpen(false);
         setIsPaymentSuccessOpen(false);
         setIsTicketOpen(false);
-        const page1 = document.getElementById('page-1');
-        if (page1) page1.scrollIntoView({ behavior: 'smooth' });
+        handleScrollToPage1();
       } else if (
         h === '#page-7' ||
         h === '#add-to-calendar'
       ) {
         setIsConfirmationOpen(false);
         setIsTicketingPaymentOpen(false);
+        setIsTicketingOpen(false);
         setIsPaymentSuccessOpen(false);
         setIsTicketOpen(false);
         setTimeout(() => {
@@ -444,7 +507,7 @@ function CorporateInvitationFull({
 
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, [interactive, ticketingBookingData, rsvpData]);
+  }, [interactive, ticketingBookingData, rsvpData, isTicketing]);
 
   const handleExploreClick = () => {
     const target =
@@ -488,13 +551,35 @@ function CorporateInvitationFull({
       onRsvpSuccessProp(answers);
       return;
     }
-    setIsPaymentSuccessOpen(false);
-    setIsConfirmationOpen(true);
-    setHash('#rsvp-confirmation');
+
+    if (isTicketing) {
+      setIsConfirmationOpen(false);
+      setIsPaymentSuccessOpen(false);
+      setIsTicketOpen(false);
+      setIsTicketingPaymentOpen(false);
+      setIsTicketingOpen(true);
+      setHash('#ticketing');
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      }
+      if (containerRef.current) {
+        containerRef.current.scrollTo({ top: 0, behavior: 'instant' });
+      }
+    } else {
+      setIsPaymentSuccessOpen(false);
+      setIsConfirmationOpen(true);
+      setHash('#rsvp-confirmation');
+    }
   };
 
   const handleCloseConfirmation = () => {
     setIsConfirmationOpen(false);
+    handleScrollToPage1();
+    setHash('#page-1');
+  };
+
+  const handleCloseTicketingSelection = () => {
+    setIsTicketingOpen(false);
     handleScrollToPage1();
     setHash('#page-1');
   };
@@ -512,6 +597,12 @@ function CorporateInvitationFull({
     );
     const booking = {
       ...data,
+      firstName: data?.firstName || rsvpData?.firstName || (rsvpData?.fullName ? rsvpData.fullName.split(' ')[0] : 'Kavindu'),
+      lastName: data?.lastName || rsvpData?.lastName || (rsvpData?.fullName && rsvpData.fullName.split(' ').length > 1 ? rsvpData.fullName.split(' ').slice(1).join(' ') : 'Perera'),
+      fullName: data?.fullName || rsvpData?.fullName || `${data?.firstName || 'Kavindu'} ${data?.lastName || 'Perera'}`,
+      email: data?.email || rsvpData?.email || rsvpData?.emailAddress || guest?.email || 'kavindu@gmail.com',
+      mobileNumber: data?.mobileNumber || rsvpData?.mobileNumber || rsvpData?.phone || guest?.mobileNumber || '+94 77 123 4567',
+      nic: data?.nic || rsvpData?.nic || '199012345678',
       bookingRef,
       ticketsSummary: (data.selectedTickets || [])
         .map((t) => `${t.quantity} x ${t.name} (LKR ${Number(t.price).toLocaleString('en-US')})`)
@@ -519,6 +610,7 @@ function CorporateInvitationFull({
       individualTickets,
     };
     setTicketingBookingData(booking);
+    setIsTicketingOpen(false);
     setIsConfirmationOpen(false);
     setIsPaymentSuccessOpen(false);
     setIsTicketOpen(false);
@@ -550,7 +642,8 @@ function CorporateInvitationFull({
     setIsTicketingPaymentOpen(false);
     setIsPaymentSuccessOpen(false);
     setIsTicketOpen(false);
-    setHash('#page-1');
+    setIsTicketingOpen(true);
+    setHash('#ticketing');
   };
 
   const handleBackFromTicketingPaymentSuccess = () => {
@@ -673,42 +766,6 @@ function CorporateInvitationFull({
       );
     }
     if (pageId === 'rsvp') {
-      if (isTicketing) {
-        const ticketTypes =
-          templateData?.ticketTypes ||
-          templateData?.static?.ticketTypes ||
-          templateData?.event?.tickets ||
-          templateData?.static?.event?.tickets ||
-          [];
-        const isModalOpen = Boolean(
-          isTicketOpen || isPaymentSuccessOpen || isTicketingPaymentOpen || isConfirmationOpen
-        );
-        return (
-          <div
-            key="ticket-selection"
-            id="page-1"
-            data-invite-page="rsvp"
-            className="w-[390px] min-h-[844px] flex items-center justify-center relative overflow-hidden bg-transparent"
-            style={{
-              display: isModalOpen ? 'none' : 'flex',
-            }}
-          >
-            <TicketingSelectionPage
-              ticketTypes={ticketTypes}
-              theme="corporate"
-              defaultName={guest?.name || fields.guestName || 'Kavindu Perera'}
-              defaultEmail={guest?.email || fields.guestEmail || 'kavindu@gmail.com'}
-              onProceedToPayment={handleProceedToTicketingPayment}
-              onScrollNext={handleExploreClick}
-              onBack={handleExploreClick}
-              purchasedBookingData={ticketingBookingData}
-              onViewPurchasedTickets={handleOpenTicket}
-              hasPurchasedTickets={Boolean(ticketingBookingData?.individualTickets?.length || ticketingBookingData?.totalAmount)}
-            />
-          </div>
-        );
-      }
-
       return (
         <Page
           key={pageId}
@@ -828,6 +885,40 @@ function CorporateInvitationFull({
           </div>
         )}
 
+        {isTicketingOpen ? (
+          <div
+            id="ticketing-selection-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Ticketing Selection"
+            className="absolute top-0 left-0 w-[390px] h-[844px] overflow-y-auto z-[99] bg-white select-none animate-in fade-in duration-200"
+            style={{
+              width: 390,
+              height: 844,
+              maxHeight: 844,
+            }}
+          >
+            <TicketingSelectionPage
+              ticketTypes={
+                templateData?.ticketTypes ||
+                templateData?.static?.ticketTypes ||
+                templateData?.event?.tickets ||
+                templateData?.static?.event?.tickets ||
+                []
+              }
+              theme="corporate"
+              defaultName={rsvpData?.fullName || guest?.name || fields.guestName || 'Kavindu Perera'}
+              defaultEmail={rsvpData?.email || rsvpData?.emailAddress || guest?.email || fields.guestEmail || 'kavindu@gmail.com'}
+              onProceedToPayment={handleProceedToTicketingPayment}
+              onScrollNext={handleCloseTicketingSelection}
+              onBack={handleCloseTicketingSelection}
+              purchasedBookingData={ticketingBookingData}
+              onViewPurchasedTickets={handleOpenTicket}
+              hasPurchasedTickets={Boolean(ticketingBookingData?.individualTickets?.length || ticketingBookingData?.totalAmount)}
+            />
+          </div>
+        ) : null}
+
         <RsvpConfirmationOverlay
           isOpen={isConfirmationOpen}
           canAttend={
@@ -917,8 +1008,8 @@ function CorporateInvitationFull({
       />
 
       <InviteMobileScaler
-        mode={(isVideoActive || isTicketOpen || isPaymentSuccessOpen || isTicketingPaymentOpen || isConfirmationOpen) ? 'cover' : 'width'}
-        fixedHeight={(isVideoActive || isTicketOpen || isPaymentSuccessOpen || isTicketingPaymentOpen || isConfirmationOpen) ? INVITE_FRAME_H : undefined}
+        mode={(isVideoActive || isTicketOpen || isPaymentSuccessOpen || isTicketingPaymentOpen || isConfirmationOpen || isTicketingOpen) ? 'cover' : 'width'}
+        fixedHeight={(isVideoActive || isTicketOpen || isPaymentSuccessOpen || isTicketingPaymentOpen || isConfirmationOpen || isTicketingOpen) ? INVITE_FRAME_H : undefined}
         className="w-full flex justify-center items-center mx-auto"
       >
         <main
@@ -928,9 +1019,9 @@ function CorporateInvitationFull({
           style={{
             width: INVITE_FRAME_W,
             maxWidth: INVITE_FRAME_W,
-            height: (isVideoActive || isTicketOpen || isPaymentSuccessOpen || isTicketingPaymentOpen || isConfirmationOpen) ? INVITE_FRAME_H : undefined,
-            maxHeight: (isTicketOpen || isPaymentSuccessOpen || isTicketingPaymentOpen || isConfirmationOpen) ? INVITE_FRAME_H : undefined,
-            overflow: (isTicketOpen || isPaymentSuccessOpen || isTicketingPaymentOpen || isConfirmationOpen) ? 'hidden' : undefined,
+            height: (isVideoActive || isTicketOpen || isPaymentSuccessOpen || isTicketingPaymentOpen || isConfirmationOpen || isTicketingOpen) ? INVITE_FRAME_H : undefined,
+            maxHeight: (isTicketOpen || isPaymentSuccessOpen || isTicketingPaymentOpen || isConfirmationOpen || isTicketingOpen) ? INVITE_FRAME_H : undefined,
+            overflow: (isTicketOpen || isPaymentSuccessOpen || isTicketingPaymentOpen || isConfirmationOpen || isTicketingOpen) ? 'hidden' : undefined,
             backgroundColor: '#02122B',
             margin: '0 auto',
             display: 'block',
@@ -964,6 +1055,40 @@ function CorporateInvitationFull({
               {visiblePages.map((pageId) => renderPage(pageId))}
             </div>
           )}
+
+          {isTicketingOpen ? (
+            <div
+              id="ticketing-selection-overlay"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Ticketing Selection"
+              className="absolute top-0 left-0 w-[390px] h-[844px] overflow-y-auto z-[99] bg-white select-none animate-in fade-in duration-200"
+              style={{
+                width: 390,
+                height: 844,
+                maxHeight: 844,
+              }}
+            >
+              <TicketingSelectionPage
+                ticketTypes={
+                  templateData?.ticketTypes ||
+                  templateData?.static?.ticketTypes ||
+                  templateData?.event?.tickets ||
+                  templateData?.static?.event?.tickets ||
+                  []
+                }
+                theme="corporate"
+                defaultName={rsvpData?.fullName || guest?.name || fields.guestName || 'Kavindu Perera'}
+                defaultEmail={rsvpData?.email || rsvpData?.emailAddress || guest?.email || fields.guestEmail || 'kavindu@gmail.com'}
+                onProceedToPayment={handleProceedToTicketingPayment}
+                onScrollNext={handleCloseTicketingSelection}
+                onBack={handleCloseTicketingSelection}
+                purchasedBookingData={ticketingBookingData}
+                onViewPurchasedTickets={handleOpenTicket}
+                hasPurchasedTickets={Boolean(ticketingBookingData?.individualTickets?.length || ticketingBookingData?.totalAmount)}
+              />
+            </div>
+          ) : null}
 
           <RsvpConfirmationOverlay
             isOpen={isConfirmationOpen}

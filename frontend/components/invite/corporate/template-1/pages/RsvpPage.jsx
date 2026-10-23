@@ -147,7 +147,9 @@ export const RsvpPage = ({
     const lNameVal = lNameQ ? answers[fieldKey(lNameQ, questions.indexOf(lNameQ))] : '';
     const fullNameVal = [fNameVal, lNameVal].filter(Boolean).join(' ') || answers[fieldKey(questions[0], 0)] || '';
 
-    // Extract phone & nic
+    // Extract email, phone & nic
+    const emailQ = questions.find((q) => /email/i.test(q?.label || ''));
+    const emailVal = emailQ ? answers[fieldKey(emailQ, questions.indexOf(emailQ))] : '';
     const phoneQ = questions.find((q) => /phone|mobile|whatsapp/i.test(q?.label || ''));
     const phoneVal = phoneQ ? answers[fieldKey(phoneQ, questions.indexOf(phoneQ))] : '';
     const nicQ = questions.find((q) => /nic|identity/i.test(q?.label || ''));
@@ -164,7 +166,12 @@ export const RsvpPage = ({
       fullName: fullNameVal,
       firstName: fNameVal,
       lastName: lNameVal,
+      email: emailVal,
+      emailAddress: emailVal,
+      mobileNumber: phoneVal,
+      phone: phoneVal,
       nic: nicVal,
+      nicNumber: nicVal,
       attendance: attendanceVal,
       attendingStatus: status === 'ATTENDING' ? 'confirmed' : 'declined',
       attendingCount,

@@ -681,6 +681,24 @@ export const TicketQrOverlay = ({
           })}
         </div>
 
+        {/* Download All Tickets Button at bottom */}
+        <div className="w-[342px] mx-auto my-4 flex flex-col items-center" data-pdf-ignore="true">
+          <button
+            type="button"
+            id="ticket-download-all-btn"
+            onClick={handleDownloadAllTickets}
+            disabled={Boolean(downloadingTicketId)}
+            className="w-full h-[46px] rounded-[12px] bg-white hover:bg-[#F8FAFC] active:scale-[0.99] border-2 border-[#080480] font-sans font-bold text-[14px] text-[#080480] flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#080480" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            <span>Download All Tickets ({ticketsList.length} PDFs)</span>
+          </button>
+        </div>
+
         {/* Global Explore Button if needed */}
         {showScrollExplore && (
           <div

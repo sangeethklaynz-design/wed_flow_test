@@ -432,6 +432,10 @@ async function resendInvite(req, res) {
       `UPDATE rsvps SET attending_status = 'PENDING', attending_count = 0, wishes = NULL, submitted_at = NULL WHERE guest_id = ?;`,
       { replacements: [guestId] }
     );
+    await sequelize.query(
+      `DELETE FROM rsvp_change_requests WHERE guest_id = ?;`,
+      { replacements: [guestId] }
+    );
 
     const rows = await fetchGuestsForWedding(wedding.id, guestId);
     await createNotification(wedding.id, "invite_resent", "Invitation resent", `${existing[0].full_name}'s invitation has been reset. They can now RSVP again.`, guestId);
