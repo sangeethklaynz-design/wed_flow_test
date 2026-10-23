@@ -7,11 +7,33 @@ export default function RsvpChangeRequestPage({
   rsvpData,
   guestToken = "",
   contentScale = 1,
+  isTicketing = false,
+  hasPurchasedTickets = false,
+  purchasedBookingData = null,
+  onViewPurchasedTickets = null,
 }) {
   const [reason, setReason] = useState("");
   const [requestSubmitted, setRequestSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  const showTicketOption = Boolean(
+    isTicketing ||
+    hasPurchasedTickets ||
+    purchasedBookingData ||
+    (typeof window !== "undefined" && (
+      localStorage.getItem("wedflow_purchased_tickets") ||
+      sessionStorage.getItem("wedflow_purchased_tickets")
+    ))
+  );
+
+  const handleViewTickets = () => {
+    if (typeof onViewPurchasedTickets === "function") {
+      onViewPurchasedTickets();
+    } else if (typeof window !== "undefined") {
+      window.location.hash = "#ticket";
+    }
+  };
 
   // Pre-fill with submitted RSVP values or sensible defaults
   const attendance = rsvpData?.attendance || "yes";
@@ -88,6 +110,48 @@ export default function RsvpChangeRequestPage({
             transform: `translateX(-50%) scale(${contentScale})`,
           }}
         >
+        {/* Top Option: View Already Purchased Tickets */}
+        {showTicketOption && (
+          <div style={{ width: "100%", maxWidth: "320px", margin: "4px auto 12px", position: "relative", zIndex: 20 }}>
+            <button
+              type="button"
+              id="party-view-purchased-tickets-top-btn"
+              onClick={handleViewTickets}
+              style={{
+                width: "100%",
+                height: "44px",
+                padding: "0 14px",
+                borderRadius: "14px",
+                backgroundColor: "#080480",
+                color: "#FFFFFF",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                boxShadow: "0 4px 14px rgba(8,4,128,0.22)",
+                cursor: "pointer",
+                border: "none",
+                fontFamily: "'Plus Jakarta Sans', sans-serif",
+                fontWeight: 700,
+                fontSize: "12.5px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="6" width="20" height="12" rx="2" />
+                    <line x1="6" y1="12" x2="6" y2="12.01" />
+                    <line x1="10" y1="12" x2="14" y2="12" />
+                  </svg>
+                </div>
+                <span>View Already Purchased Tickets</span>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+          </div>
+        )}
+
         {/* 1. Heading "Need to Make a Change?" - Figma: X: 62, Y: 99, W: 264, H: 88, Plus Jakarta Sans Bold 35 */}
         <h1 className={styles.headingTitle}>
           Need to Make<br />a Change?

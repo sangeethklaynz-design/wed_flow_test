@@ -36,6 +36,7 @@ const {
 const {
   getTicketingSettings,
   toggleTicketing,
+  updateTicketingSettings,
   createTicketType,
   updateTicketType,
   deleteTicketType,
@@ -75,6 +76,7 @@ router.delete("/notifications/:id", requireAuth, deleteNotification);
 // Ticketing management
 router.get("/ticketing", requireAuth, getTicketingSettings);
 router.put("/ticketing/toggle", requireAuth, toggleTicketing);
+router.put("/ticketing/settings", requireAuth, updateTicketingSettings);
 router.post("/ticketing/types", requireAuth, createTicketType);
 router.put("/ticketing/types/:id", requireAuth, updateTicketType);
 router.delete("/ticketing/types/:id", requireAuth, deleteTicketType);

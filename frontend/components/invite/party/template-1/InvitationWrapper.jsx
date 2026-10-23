@@ -419,6 +419,13 @@ function PartyInvitationFull({
         setIsTicketingOpen(false);
         setIsTicketOpen(false);
         setShowRsvpConfirmation(true);
+      } else if (h === "#rsvp" || h === "#page-3") {
+        setShowPaymentSuccess(false);
+        setIsTicketingPaymentOpen(false);
+        setIsTicketingOpen(false);
+        setShowRsvpConfirmation(false);
+        setIsTicketOpen(false);
+        scrollToPage("rsvp");
       } else if (h === "#page-1" || !h) {
         setShowPaymentSuccess(false);
         setIsTicketingPaymentOpen(false);
@@ -539,8 +546,55 @@ function PartyInvitationFull({
     scrollToFirst();
   };
 
+  const handleBackFromTicketingSelection = () => {
+    setIsTicketingOpen(false);
+    if (typeof window !== "undefined") {
+      try {
+        window.history.pushState(null, "", "#rsvp");
+      } catch (e) {}
+    }
+    setTimeout(() => {
+      scrollToPage("rsvp");
+    }, 50);
+  };
+
   const handleOpenTicket = () => {
+    if (!ticketingBookingData) {
+      const bookingRef = 'LN2026-0001';
+      const attendee =
+        rsvpData?.fullName ||
+        guest?.full_name ||
+        guest?.fullName ||
+        guest?.name ||
+        fields.guestName ||
+        'Kavindu Perera';
+      const email =
+        rsvpData?.email ||
+        rsvpData?.emailAddress ||
+        guest?.email ||
+        fields.guestEmail ||
+        'kavindu@gmail.com';
+      setTicketingBookingData({
+        bookingRef,
+        fullName: attendee,
+        email,
+        individualTickets: [
+          {
+            id: `${bookingRef}-1`,
+            name: 'Standard',
+            typeName: 'STANDARD',
+            price: 1000,
+            quantity: 1,
+            seatNo: 'GENERAL ADMISSION',
+            attendeeName: attendee,
+          },
+        ],
+      });
+    }
     setShowPaymentSuccess(false);
+    setIsTicketingOpen(false);
+    setIsTicketingPaymentOpen(false);
+    setShowRsvpConfirmation(false);
     setIsTicketOpen(true);
     if (typeof window !== "undefined") {
       window.scrollTo({ top: 0, behavior: "instant" });
@@ -670,13 +724,17 @@ function PartyInvitationFull({
       templateData?.static?.event?.isTicketingEnabled
     );
 
-    if (pageId === "rsvp" && hasSubmittedRsvp && !isTicketing) {
+    if (pageId === "rsvp" && hasSubmittedRsvp) {
       return (
         <RsvpChangeRequestPage
           key="rsvp-change"
           rsvpData={rsvpData}
           guestToken={guestToken || ""}
           contentScale={1}
+          isTicketing={isTicketing}
+          hasPurchasedTickets={Boolean(ticketingBookingData?.individualTickets?.length || ticketingBookingData?.totalAmount)}
+          purchasedBookingData={ticketingBookingData}
+          onViewPurchasedTickets={handleOpenTicket}
         />
       );
     }
@@ -880,7 +938,7 @@ function PartyInvitationFull({
               defaultEmail={rsvpData?.email || rsvpData?.emailAddress || guest?.email || fields.guestEmail || "kavindu@gmail.com"}
               onProceedToPayment={handleProceedToTicketingPayment}
               onScrollNext={handleCloseTicketingSelection}
-              onBack={handleCloseTicketingSelection}
+              onBack={handleBackFromTicketingSelection}
               purchasedBookingData={ticketingBookingData}
               onViewPurchasedTickets={handleOpenTicket}
               hasPurchasedTickets={Boolean(ticketingBookingData?.individualTickets?.length || ticketingBookingData?.totalAmount)}
@@ -1076,7 +1134,7 @@ function PartyInvitationFull({
                 defaultEmail={rsvpData?.email || rsvpData?.emailAddress || guest?.email || fields.guestEmail || "kavindu@gmail.com"}
                 onProceedToPayment={handleProceedToTicketingPayment}
                 onScrollNext={handleCloseTicketingSelection}
-                onBack={handleCloseTicketingSelection}
+                onBack={handleBackFromTicketingSelection}
                 purchasedBookingData={ticketingBookingData}
                 onViewPurchasedTickets={handleOpenTicket}
                 hasPurchasedTickets={Boolean(ticketingBookingData?.individualTickets?.length || ticketingBookingData?.totalAmount)}

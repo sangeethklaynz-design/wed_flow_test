@@ -356,6 +356,20 @@ async function ensureEventsTable() {
       ADD COLUMN is_ticketing_enabled TINYINT(1) NOT NULL DEFAULT 0 AFTER payment_link;
     `);
   }
+
+  if (!(await columnExists("events", "total_ticket_limit"))) {
+    await sequelize.query(`
+      ALTER TABLE events
+      ADD COLUMN total_ticket_limit INT NOT NULL DEFAULT 1000 AFTER is_ticketing_enabled;
+    `);
+  }
+
+  if (!(await columnExists("events", "free_ticket_allocation"))) {
+    await sequelize.query(`
+      ALTER TABLE events
+      ADD COLUMN free_ticket_allocation INT NOT NULL DEFAULT 50 AFTER total_ticket_limit;
+    `);
+  }
 }
 
 async function ensureTicketingSchema() {

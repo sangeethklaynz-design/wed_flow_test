@@ -121,15 +121,48 @@ async function getTicketingSettings(req, res) {
     }
 
     const [eventRows] = await sequelize.query(
-      "SELECT id, name, is_ticketing_enabled, template_config FROM events WHERE id = ? LIMIT 1;",
+      "SELECT id, name, is_ticketing_enabled, total_ticket_limit, free_ticket_allocation, template_config FROM events WHERE id = ? LIMIT 1;",
       { replacements: [eventId] }
-    );
+    ).catch(async () => {
+      // Fallback if columns haven't been added yet
+      return sequelize.query(
+        "SELECT id, name, is_ticketing_enabled, template_config FROM events WHERE id = ? LIMIT 1;",
+        { replacements: [eventId] }
+      );
+    });
+
     if (!eventRows.length) {
       return res.status(404).json({
         error: "Not Found",
         message: "Event not found",
       });
     }
+
+    let config = {};
+    if (eventRows[0]?.template_config) {
+      try {
+        config =
+          typeof eventRows[0].template_config === "string"
+            ? JSON.parse(eventRows[0].template_config)
+            : eventRows[0].template_config;
+      } catch {
+        config = {};
+      }
+    }
+
+    const totalTicketLimit =
+      eventRows[0].total_ticket_limit != null
+        ? Number(eventRows[0].total_ticket_limit)
+        : config?.totalTicketLimit != null
+        ? Number(config.totalTicketLimit)
+        : 1000;
+
+    const freeTicketAllocation =
+      eventRows[0].free_ticket_allocation != null
+        ? Number(eventRows[0].free_ticket_allocation)
+        : config?.freeTicketAllocation != null
+        ? Number(config.freeTicketAllocation)
+        : 50;
 
     await seedDefaultTicketsIfEmpty(eventId);
 
@@ -146,6 +179,8 @@ async function getTicketingSettings(req, res) {
       eventId,
       eventName: eventRows[0].name,
       isTicketingEnabled: Boolean(Number(eventRows[0].is_ticketing_enabled)),
+      totalTicketLimit,
+      freeTicketAllocation,
       ticketTypes: ticketTypes.map((t) => ({
         id: t.id,
         name: t.name,
@@ -166,6 +201,88 @@ async function getTicketingSettings(req, res) {
   }
 }
 
+async function updateTicketingSettings(req, res) {
+  try {
+    const eventId = await resolveEventId(req);
+    if (!eventId) {
+      return res.status(404).json({
+        error: "Not Found",
+        message: "No event found for this account",
+      });
+    }
+
+    const [eventRows] = await sequelize.query(
+      "SELECT template_config FROM events WHERE id = ? LIMIT 1;",
+      { replacements: [eventId] }
+    );
+
+    let config = {};
+    if (eventRows[0]?.template_config) {
+      try {
+        config =
+          typeof eventRows[0].template_config === "string"
+            ? JSON.parse(eventRows[0].template_config)
+            : eventRows[0].template_config;
+      } catch {
+        config = {};
+      }
+    }
+
+    let isEnabled = config.isTicketingEnabled ?? false;
+    if (req.body?.isTicketingEnabled !== undefined) {
+      isEnabled = Boolean(req.body.isTicketingEnabled);
+      config.isTicketingEnabled = isEnabled;
+    }
+
+    let totalLimit = config.totalTicketLimit ?? 1000;
+    if (req.body?.totalTicketLimit !== undefined) {
+      totalLimit = Math.max(1, Number(req.body.totalTicketLimit) || 1000);
+      config.totalTicketLimit = totalLimit;
+    }
+
+    let freeAllocation = config.freeTicketAllocation ?? 50;
+    if (req.body?.freeTicketAllocation !== undefined) {
+      freeAllocation = Math.max(0, Number(req.body.freeTicketAllocation) || 0);
+      config.freeTicketAllocation = freeAllocation;
+    }
+
+    try {
+      await sequelize.query(
+        "UPDATE events SET is_ticketing_enabled = ?, total_ticket_limit = ?, free_ticket_allocation = ?, template_config = ?, updated_at = NOW() WHERE id = ?;",
+        {
+          replacements: [
+            isEnabled ? 1 : 0,
+            totalLimit,
+            freeAllocation,
+            JSON.stringify(config),
+            eventId,
+          ],
+        }
+      );
+    } catch {
+      await sequelize.query(
+        "UPDATE events SET is_ticketing_enabled = ?, template_config = ?, updated_at = NOW() WHERE id = ?;",
+        {
+          replacements: [isEnabled ? 1 : 0, JSON.stringify(config), eventId],
+        }
+      );
+    }
+
+    return res.status(200).json({
+      ok: true,
+      isTicketingEnabled: isEnabled,
+      totalTicketLimit: totalLimit,
+      freeTicketAllocation: freeAllocation,
+    });
+  } catch (err) {
+    console.error("updateTicketingSettings error:", err);
+    return res.status(500).json({
+      error: "Internal Server Error",
+      message: "Failed to update ticketing settings",
+    });
+  }
+}
+
 async function toggleTicketing(req, res) {
   try {
     const eventId = await resolveEventId(req);
@@ -177,12 +294,6 @@ async function toggleTicketing(req, res) {
     }
 
     const isEnabled = Boolean(req.body?.isTicketingEnabled);
-
-    // Update is_ticketing_enabled column
-    await sequelize.query(
-      "UPDATE events SET is_ticketing_enabled = ?, updated_at = NOW() WHERE id = ?;",
-      { replacements: [isEnabled ? 1 : 0, eventId] }
-    );
 
     // Also update template_config JSON
     const [eventRows] = await sequelize.query(
@@ -203,14 +314,27 @@ async function toggleTicketing(req, res) {
     }
 
     config.isTicketingEnabled = isEnabled;
-    await sequelize.query(
-      "UPDATE events SET template_config = ?, updated_at = NOW() WHERE id = ?;",
-      { replacements: [JSON.stringify(config), eventId] }
-    );
+    if (req.body?.totalTicketLimit !== undefined) {
+      config.totalTicketLimit = Math.max(1, Number(req.body.totalTicketLimit) || 1000);
+    }
+    if (req.body?.freeTicketAllocation !== undefined) {
+      config.freeTicketAllocation = Math.max(0, Number(req.body.freeTicketAllocation) || 0);
+    }
+
+    try {
+      await sequelize.query(
+        "UPDATE events SET is_ticketing_enabled = ?, template_config = ?, updated_at = NOW() WHERE id = ?;",
+        { replacements: [isEnabled ? 1 : 0, JSON.stringify(config), eventId] }
+      );
+    } catch {
+      // ignore
+    }
 
     return res.status(200).json({
       ok: true,
       isTicketingEnabled: isEnabled,
+      totalTicketLimit: config.totalTicketLimit || 1000,
+      freeTicketAllocation: config.freeTicketAllocation || 50,
     });
   } catch (err) {
     console.error("toggleTicketing error:", err);
@@ -422,6 +546,7 @@ async function deleteTicketType(req, res) {
 module.exports = {
   getTicketingSettings,
   toggleTicketing,
+  updateTicketingSettings,
   createTicketType,
   updateTicketType,
   deleteTicketType,

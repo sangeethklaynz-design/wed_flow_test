@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, FileText, Eye, Pencil, Trash2, AlertCircle } from "lucide-react";
+import { Plus, FileText, Eye, Pencil, Trash2, AlertCircle, Ticket, Gift, Minus } from "lucide-react";
 import clsx from "clsx";
 import { NotificationBell } from "@/components/ui/NotificationPanel";
 import RowActionsMenu from "@/components/ui/RowActionsMenu";
@@ -15,8 +15,11 @@ export default function TicketingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [isTicketingEnabled, setIsTicketingEnabled] = useState(false);
+  const [totalTicketLimit, setTotalTicketLimit] = useState(1000);
+  const [freeTicketAllocation, setFreeTicketAllocation] = useState(50);
   const [ticketTypes, setTicketTypes] = useState([]);
   const [toggling, setToggling] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
 
   // RowActionsMenu open state
   const [openActionId, setOpenActionId] = useState(null);
@@ -31,7 +34,19 @@ export default function TicketingPage() {
 
   const loadTicketingData = useCallback(async () => {
     const token = getAccessToken();
-    if (!token) return;
+    if (!token) {
+      // In local preview/dev without auth, provide graceful default values
+      setIsTicketingEnabled(true);
+      setTotalTicketLimit(1000);
+      setFreeTicketAllocation(50);
+      setTicketTypes([
+        { id: "1", name: "Standard", price: 1000, description: "General Admission" },
+        { id: "2", name: "VIP", price: 2000, description: "Access to VIP Lounge" },
+        { id: "3", name: "Premium", price: 5000, description: "Front Row Seating" },
+      ]);
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     setError("");
@@ -39,6 +54,12 @@ export default function TicketingPage() {
       const data = await apiRequest("/api/couple/ticketing", { token });
       if (data) {
         setIsTicketingEnabled(Boolean(data.isTicketingEnabled));
+        if (data.totalTicketLimit != null) {
+          setTotalTicketLimit(Number(data.totalTicketLimit));
+        }
+        if (data.freeTicketAllocation != null) {
+          setFreeTicketAllocation(Number(data.freeTicketAllocation));
+        }
         setTicketTypes(data.ticketTypes || []);
       }
     } catch (err) {
@@ -52,6 +73,41 @@ export default function TicketingPage() {
   useEffect(() => {
     loadTicketingData();
   }, [loadTicketingData]);
+
+  const saveSettingsToServer = async (updates) => {
+    const token = getAccessToken();
+    if (!token) return;
+    try {
+      setSavingSettings(true);
+      await apiRequest("/api/couple/ticketing/settings", {
+        method: "PUT",
+        token,
+        body: updates,
+      });
+    } catch (err) {
+      console.error("Failed to update ticketing settings:", err);
+      setError(err?.message || "Failed to update ticketing settings");
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  const handleUpdateTicketLimit = (newVal) => {
+    const validVal = Math.max(1, Number(newVal) || 1);
+    setTotalTicketLimit(validVal);
+    if (freeTicketAllocation > validVal) {
+      setFreeTicketAllocation(validVal);
+      saveSettingsToServer({ totalTicketLimit: validVal, freeTicketAllocation: validVal });
+    } else {
+      saveSettingsToServer({ totalTicketLimit: validVal });
+    }
+  };
+
+  const handleUpdateFreeAllocation = (newVal) => {
+    const validVal = Math.min(totalTicketLimit, Math.max(0, Number(newVal) || 0));
+    setFreeTicketAllocation(validVal);
+    saveSettingsToServer({ freeTicketAllocation: validVal });
+  };
 
   const handleToggleTicketing = async () => {
     const token = getAccessToken();
@@ -184,58 +240,153 @@ export default function TicketingPage() {
         </div>
       ) : null}
 
-      {/* Selection Part: Ticketing Options (Screenshot 3) */}
+      {/* Selection Part: Ticketing Options (Screenshot 1) */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 sm:p-8 mb-6 md:mb-8 w-full">
         <h2 className="text-[#054380] font-bold text-base sm:text-lg mb-4">
           Ticketing Options
         </h2>
 
-        <div className="border border-[#D1D5DB] rounded-2xl p-4 sm:p-5 flex items-center justify-between gap-4 transition-all hover:border-[#0B72E7]/40 w-full">
-          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-[#EEF2F6] flex items-center justify-center shrink-0 border border-[#E2E8F0]">
-              <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-[#054380]" strokeWidth={2} />
+        <div className="flex flex-col gap-3.5 w-full">
+          {/* Row 1: Enable Ticketing for Guests */}
+          <div className="border border-[#D1D5DB] rounded-2xl p-4 sm:p-5 flex items-center justify-between gap-4 transition-all hover:border-[#0B72E7]/40 w-full">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-[#EEF2F6] flex items-center justify-center shrink-0 border border-[#E2E8F0]">
+                <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-[#054380]" strokeWidth={2} />
+              </div>
+              <div className="min-w-0">
+                <p className="font-bold text-[#054380] text-sm sm:text-base leading-snug">
+                  Enable Ticketing for Guests
+                </p>
+                <p className="text-xs sm:text-sm text-[#64748B] mt-0.5 leading-snug">
+                  Replace RSVP page with ticket selection and payment
+                </p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="font-bold text-[#054380] text-sm sm:text-base leading-snug">
-                Enable Ticketing for Guests
+
+            <button
+              type="button"
+              role="switch"
+              aria-checked={isTicketingEnabled}
+              aria-label="Enable Ticketing for Guests"
+              onClick={handleToggleTicketing}
+              disabled={toggling}
+              className={clsx(
+                "relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+                isTicketingEnabled ? "bg-[#0B72E7]" : "bg-[#CBD5E1]",
+                toggling && "opacity-60 cursor-not-allowed"
+              )}
+            >
+              <span
+                className={clsx(
+                  "pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                  isTicketingEnabled ? "translate-x-5" : "translate-x-0"
+                )}
+              />
+            </button>
+          </div>
+
+          {/* Row 2: Total Event Ticket Limit */}
+          <div className="border border-[#D1D5DB] rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all hover:border-[#0B72E7]/40 w-full">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0 md:min-w-[260px] flex-1">
+              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-[#EEF2F6] flex items-center justify-center shrink-0 border border-[#E2E8F0]">
+                <Ticket className="w-5 h-5 sm:w-6 sm:h-6 text-[#054380]" strokeWidth={2} />
+              </div>
+              <p className="font-bold text-[#054380] text-sm sm:text-base leading-snug whitespace-nowrap">
+                Total Event Ticket Limit
               </p>
-              <p className="text-xs sm:text-sm text-[#64748B] mt-0.5 leading-snug">
-                Replace RSVP page with ticket selection and payment
+            </div>
+
+            <div className="flex items-center justify-start md:justify-center shrink-0">
+              <div className="flex items-center justify-between border border-[#CBD5E1] rounded-2xl bg-white h-[42px] px-3 w-[150px] shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => handleUpdateTicketLimit(totalTicketLimit > 100 ? totalTicketLimit - 50 : Math.max(1, totalTicketLimit - 10))}
+                  className="w-7 h-7 flex items-center justify-center text-[#054380] hover:bg-[#EEF2F6] rounded-lg transition-colors font-bold text-lg active:scale-95 cursor-pointer select-none"
+                  aria-label="Decrease total ticket limit"
+                >
+                  <Minus className="w-4 h-4 stroke-[2.5]" />
+                </button>
+                <input
+                  type="number"
+                  value={totalTicketLimit}
+                  onChange={(e) => setTotalTicketLimit(e.target.value === "" ? "" : Number(e.target.value))}
+                  onBlur={() => handleUpdateTicketLimit(totalTicketLimit)}
+                  className="w-16 text-center font-bold text-[#054380] text-base border-none outline-none focus:ring-0 select-none bg-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleUpdateTicketLimit(totalTicketLimit >= 100 ? totalTicketLimit + 50 : totalTicketLimit + 10)}
+                  className="w-7 h-7 flex items-center justify-center text-[#054380] hover:bg-[#EEF2F6] rounded-lg transition-colors font-bold text-lg active:scale-95 cursor-pointer select-none"
+                  aria-label="Increase total ticket limit"
+                >
+                  <Plus className="w-4 h-4 stroke-[2.5]" />
+                </button>
+              </div>
+            </div>
+
+            <div className="md:w-[320px] shrink-0 text-left">
+              <p className="text-xs text-[#64748B] leading-tight">
+                This is the maximum number of tickets that can be sold including free tickets.
               </p>
             </div>
           </div>
 
-          <button
-            type="button"
-            role="switch"
-            aria-checked={isTicketingEnabled}
-            aria-label="Enable Ticketing for Guests"
-            onClick={handleToggleTicketing}
-            disabled={toggling}
-            className={clsx(
-              "relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
-              isTicketingEnabled ? "bg-[#0B72E7]" : "bg-[#CBD5E1]",
-              toggling && "opacity-60 cursor-not-allowed"
-            )}
-          >
-            <span
-              className={clsx(
-                "pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
-                isTicketingEnabled ? "translate-x-5" : "translate-x-0"
-              )}
-            />
-          </button>
+          {/* Row 3: Free Tickets Allocation */}
+          <div className="border border-[#D1D5DB] rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all hover:border-[#0B72E7]/40 w-full">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0 md:min-w-[260px] flex-1">
+              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-[#EEF2F6] flex items-center justify-center shrink-0 border border-[#E2E8F0]">
+                <Gift className="w-5 h-5 sm:w-6 sm:h-6 text-[#054380]" strokeWidth={2} />
+              </div>
+              <p className="font-bold text-[#054380] text-sm sm:text-base leading-snug whitespace-nowrap">
+                Free Tickets Allocation
+              </p>
+            </div>
+
+            <div className="flex items-center justify-start md:justify-center shrink-0">
+              <div className="flex items-center justify-between border border-[#CBD5E1] rounded-2xl bg-white h-[42px] px-3 w-[150px] shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => handleUpdateFreeAllocation(Math.max(0, freeTicketAllocation - 5))}
+                  className="w-7 h-7 flex items-center justify-center text-[#054380] hover:bg-[#EEF2F6] rounded-lg transition-colors font-bold text-lg active:scale-95 cursor-pointer select-none"
+                  aria-label="Decrease free tickets allocation"
+                >
+                  <Minus className="w-4 h-4 stroke-[2.5]" />
+                </button>
+                <input
+                  type="number"
+                  value={freeTicketAllocation}
+                  onChange={(e) => setFreeTicketAllocation(e.target.value === "" ? "" : Number(e.target.value))}
+                  onBlur={() => handleUpdateFreeAllocation(freeTicketAllocation)}
+                  className="w-16 text-center font-bold text-[#054380] text-base border-none outline-none focus:ring-0 select-none bg-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleUpdateFreeAllocation(freeTicketAllocation + 5)}
+                  className="w-7 h-7 flex items-center justify-center text-[#054380] hover:bg-[#EEF2F6] rounded-lg transition-colors font-bold text-lg active:scale-95 cursor-pointer select-none"
+                  aria-label="Increase free tickets allocation"
+                >
+                  <Plus className="w-4 h-4 stroke-[2.5]" />
+                </button>
+              </div>
+            </div>
+
+            <div className="md:w-[320px] shrink-0 text-left">
+              <p className="text-xs text-[#64748B] leading-tight">
+                Reserve complimentary tickets for chief guests, organizers, etc...
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Ticket Types Section (Screenshot 1 & 4) */}
+      {/* Ticket Types Section (Screenshot 1) */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 sm:p-8 w-full">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <h2 className="text-[#054380] font-bold text-base sm:text-lg">
             Ticket Types
           </h2>
 
-          {/* Screenshot 4: Add Ticket Type button */}
+          {/* Screenshot 1: Add Ticket Type button */}
           <button
             type="button"
             onClick={handleOpenAdd}
@@ -285,35 +436,29 @@ export default function TicketingPage() {
                     <td className="px-6 py-4 text-sm text-[#334155] font-medium tabular-nums">
                       {Number(ticket.price).toLocaleString("en-US")}
                     </td>
-                    <td className="px-6 py-4 text-sm text-[#475569]">
+                    <td className="px-6 py-4 text-sm text-[#054380] font-normal">
                       {ticket.description || "—"}
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <div className="inline-flex justify-center">
-                        <RowActionsMenu
-                          id={ticket.id}
-                          openId={openActionId}
-                          setOpenId={setOpenActionId}
-                          label={`Actions for ${ticket.name}`}
-                          items={[
-                            {
-                              label: "View ticket type",
-                              icon: Eye,
-                              onClick: () => handleView(ticket),
-                            },
-                            {
-                              label: "Edit ticket type",
-                              icon: Pencil,
-                              onClick: () => handleOpenEdit(ticket),
-                            },
-                            {
-                              label: "Delete ticket type",
-                              icon: Trash2,
-                              destructive: true,
-                              onClick: () => handleDelete(ticket),
-                            },
-                          ]}
-                        />
+                      <div className="flex items-center justify-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEdit(ticket)}
+                          className="p-1.5 text-[#054380] hover:text-[#0B72E7] hover:bg-[#EEF2F6] rounded-lg transition-colors cursor-pointer"
+                          title="Edit ticket type"
+                          aria-label={`Edit ${ticket.name}`}
+                        >
+                          <Pencil className="w-4 h-4 stroke-[2]" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(ticket)}
+                          className="p-1.5 text-[#EF4444] hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                          title="Delete ticket type"
+                          aria-label={`Delete ${ticket.name}`}
+                        >
+                          <Trash2 className="w-4 h-4 stroke-[2]" />
+                        </button>
                       </div>
                     </td>
                   </tr>

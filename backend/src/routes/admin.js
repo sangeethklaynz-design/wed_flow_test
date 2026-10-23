@@ -19,6 +19,7 @@ const {
 const {
   getTicketingSettings,
   toggleTicketing,
+  updateTicketingSettings,
   createTicketType,
   updateTicketType,
   deleteTicketType,
@@ -49,6 +50,7 @@ router.delete("/events/:id/resources/:kind/:filename", deleteEventResource);
 // Ticketing per event
 router.get("/events/:eventId/ticketing", getTicketingSettings);
 router.put("/events/:eventId/ticketing/toggle", toggleTicketing);
+router.put("/events/:eventId/ticketing/settings", updateTicketingSettings);
 router.post("/events/:eventId/ticketing/types", createTicketType);
 router.put("/events/:eventId/ticketing/types/:id", updateTicketType);
 router.delete("/events/:eventId/ticketing/types/:id", deleteTicketType);

@@ -477,6 +477,28 @@ function CorporateInvitationFull({
           setIsPaymentSuccessOpen(false);
           setIsTicketOpen(false);
         }
+      } else if (h === '#rsvp' || h === '#page-6' || h === '#page-3') {
+        setIsConfirmationOpen(false);
+        setIsTicketingPaymentOpen(false);
+        setIsTicketingOpen(false);
+        setIsPaymentSuccessOpen(false);
+        setIsTicketOpen(false);
+        setTimeout(() => {
+          const rsvpTarget =
+            document.querySelector('[data-invite-page="rsvp"]') ||
+            document.getElementById('page-6') ||
+            document.getElementById('page-3');
+          if (rsvpTarget) {
+            if (embedded && containerRef.current) {
+              containerRef.current.scrollTo({
+                top: rsvpTarget.offsetTop,
+                behavior: 'smooth',
+              });
+            } else if (typeof window !== 'undefined') {
+              rsvpTarget.scrollIntoView({ behavior: 'smooth' });
+            }
+          }
+        }, 50);
       } else if (h === '#page-1' || !h) {
         setIsConfirmationOpen(false);
         setIsTicketingPaymentOpen(false);
@@ -582,6 +604,27 @@ function CorporateInvitationFull({
     setIsTicketingOpen(false);
     handleScrollToPage1();
     setHash('#page-1');
+  };
+
+  const handleBackFromTicketingSelection = () => {
+    setIsTicketingOpen(false);
+    setHash('#rsvp');
+    setTimeout(() => {
+      const rsvpTarget =
+        document.querySelector('[data-invite-page="rsvp"]') ||
+        document.getElementById('page-6') ||
+        document.getElementById('page-3');
+      if (rsvpTarget) {
+        if (embedded && containerRef.current) {
+          containerRef.current.scrollTo({
+            top: rsvpTarget.offsetTop,
+            behavior: 'smooth',
+          });
+        } else if (typeof window !== 'undefined') {
+          rsvpTarget.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+    }, 50);
   };
 
   const handleProceedToTicketingPayment = (data) => {
@@ -708,7 +751,42 @@ function CorporateInvitationFull({
   };
 
   const handleOpenTicket = () => {
+    if (!ticketingBookingData) {
+      const bookingRef = 'LN2026-0001';
+      const attendee =
+        rsvpData?.fullName ||
+        guest?.full_name ||
+        guest?.fullName ||
+        guest?.name ||
+        fields.guestName ||
+        'Kavindu Perera';
+      const email =
+        rsvpData?.email ||
+        rsvpData?.emailAddress ||
+        guest?.email ||
+        fields.guestEmail ||
+        'kavindu@gmail.com';
+      setTicketingBookingData({
+        bookingRef,
+        fullName: attendee,
+        email,
+        individualTickets: [
+          {
+            id: `${bookingRef}-1`,
+            name: 'Standard',
+            typeName: 'STANDARD',
+            price: 1000,
+            quantity: 1,
+            seatNo: 'GENERAL ADMISSION',
+            attendeeName: attendee,
+          },
+        ],
+      });
+    }
+    setIsConfirmationOpen(false);
     setIsPaymentSuccessOpen(false);
+    setIsTicketingOpen(false);
+    setIsTicketingPaymentOpen(false);
     setIsTicketOpen(true);
     setHash('#ticket');
     if (typeof window !== 'undefined') {
@@ -726,7 +804,9 @@ function CorporateInvitationFull({
   };
 
   const handleCloseTicket = () => {
-    handleBackToPayment();
+    setIsTicketOpen(false);
+    handleScrollToPage1();
+    setHash('#page-1');
   };
 
   const renderPage = (pageId) => {
@@ -742,12 +822,16 @@ function CorporateInvitationFull({
       templateData?.static?.event?.isTicketingEnabled
     );
 
-    if (pageId === 'rsvp' && hasSubmittedRsvp && !isTicketing) {
+    if (pageId === 'rsvp' && hasSubmittedRsvp) {
       return (
         <RsvpChangeRequestPage
           key="rsvp-change"
           rsvpData={rsvpData || {}}
           guestToken={guestToken || ''}
+          isTicketing={isTicketing}
+          hasPurchasedTickets={Boolean(ticketingBookingData?.individualTickets?.length || ticketingBookingData?.totalAmount)}
+          purchasedBookingData={ticketingBookingData}
+          onViewPurchasedTickets={handleOpenTicket}
         />
       );
     }
@@ -911,7 +995,7 @@ function CorporateInvitationFull({
               defaultEmail={rsvpData?.email || rsvpData?.emailAddress || guest?.email || fields.guestEmail || 'kavindu@gmail.com'}
               onProceedToPayment={handleProceedToTicketingPayment}
               onScrollNext={handleCloseTicketingSelection}
-              onBack={handleCloseTicketingSelection}
+              onBack={handleBackFromTicketingSelection}
               purchasedBookingData={ticketingBookingData}
               onViewPurchasedTickets={handleOpenTicket}
               hasPurchasedTickets={Boolean(ticketingBookingData?.individualTickets?.length || ticketingBookingData?.totalAmount)}
@@ -1082,7 +1166,7 @@ function CorporateInvitationFull({
                 defaultEmail={rsvpData?.email || rsvpData?.emailAddress || guest?.email || fields.guestEmail || 'kavindu@gmail.com'}
                 onProceedToPayment={handleProceedToTicketingPayment}
                 onScrollNext={handleCloseTicketingSelection}
-                onBack={handleCloseTicketingSelection}
+                onBack={handleBackFromTicketingSelection}
                 purchasedBookingData={ticketingBookingData}
                 onViewPurchasedTickets={handleOpenTicket}
                 hasPurchasedTickets={Boolean(ticketingBookingData?.individualTickets?.length || ticketingBookingData?.totalAmount)}
