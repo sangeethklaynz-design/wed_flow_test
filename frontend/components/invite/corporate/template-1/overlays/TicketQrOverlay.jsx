@@ -105,6 +105,7 @@ export const TicketQrOverlay = ({
           price: t.price || 2000,
           quantity: t.quantity || (tickets.length === 1 && bookingData?.totalCount ? bookingData.totalCount : 1),
           seatNo: t.seatNo || 'GENERAL ADMISSION',
+          attendeeName: t.attendeeName || bookingData?.fullName || attendeeName,
         };
       });
     }
@@ -121,6 +122,7 @@ export const TicketQrOverlay = ({
           price: t.price || 1000,
           quantity: 1,
           seatNo: t.seatNo || 'GENERAL ADMISSION',
+          attendeeName: t.attendeeName || bookingData?.fullName || attendeeName,
         };
       });
     }
@@ -201,10 +203,12 @@ export const TicketQrOverlay = ({
 
         doc.setTextColor(8, 4, 128);
         doc.setFontSize(11);
-        doc.text(`TICKET ID: ${t.id}`, 52.5, 36, { align: 'center' });
-        doc.setFontSize(9);
-        doc.text(`${formattedDate} • ${formattedTime}`, 52.5, 43, { align: 'center' });
-        doc.text(`${venueName}, ${venueCity}`, 52.5, 49, { align: 'center' });
+        doc.text(`TICKET ID: ${t.id}`, 52.5, 34, { align: 'center' });
+        doc.setFontSize(8.5);
+        doc.text(`ATTENDEE: ${t.attendeeName || attendeeName}`, 52.5, 39, { align: 'center' });
+        doc.setFontSize(8);
+        doc.text(`${formattedDate} • ${formattedTime}`, 52.5, 45, { align: 'center' });
+        doc.text(`${venueName}, ${venueCity}`, 52.5, 50, { align: 'center' });
         doc.text(`CATEGORY: ${t.typeName}  |  QTY: ${t.quantity}`, 52.5, 56, { align: 'center' });
         doc.text(`PRICE: LKR ${Number(t.price).toLocaleString('en-US')}`, 52.5, 62, { align: 'center' });
         doc.text(`SEAT: ${t.seatNo}`, 52.5, 68, { align: 'center' });
@@ -536,6 +540,12 @@ export const TicketQrOverlay = ({
 
                   {/* Payment Details Card (Under table for each ticket) */}
                   <div className="w-[342px] rounded-[16px] border border-[#A8C7EC] bg-white/75 backdrop-blur-sm p-4 space-y-2 mt-4 shadow-sm">
+                    <div className="flex items-center justify-between text-[11.5px]">
+                      <span className="font-sans font-bold text-[#080480]">Attendee</span>
+                      <span className="font-sans font-semibold text-[#080480]">
+                        {ticket.attendeeName || attendeeName}
+                      </span>
+                    </div>
                     <div className="flex items-center justify-between text-[11.5px]">
                       <span className="font-sans font-bold text-[#080480]">Payment Reference</span>
                       <span className="font-sans font-normal text-[#556987] tracking-wide">

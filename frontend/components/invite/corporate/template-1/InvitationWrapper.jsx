@@ -706,16 +706,59 @@ function CorporateInvitationFull({
     }
   };
 
-  const handleTicketingPaymentSuccess = () => {
+  const handleUpdateTicketingBookingData = (updatedData) => {
+    if (!updatedData) return;
+    setTicketingBookingData((prev) => {
+      const merged = { ...(prev || {}), ...updatedData };
+      const attendeeName =
+        merged.fullName ||
+        `${merged.firstName || ''}`.trim() + (merged.lastName ? ` ${merged.lastName}` : '') ||
+        'Kavindu Perera';
+      if (Array.isArray(merged.individualTickets)) {
+        merged.individualTickets = merged.individualTickets.map((t) => ({
+          ...t,
+          attendeeName,
+          firstName: merged.firstName,
+          lastName: merged.lastName,
+          email: merged.email || merged.emailAddress,
+          mobileNumber: merged.mobileNumber || merged.phone,
+          nic: merged.nic || merged.nicNumber,
+        }));
+      }
+      return merged;
+    });
+  };
+
+  const handleTicketingPaymentSuccess = (updatedData) => {
     setIsTicketingPaymentOpen(false);
     setIsPaymentSuccessOpen(true);
     setHash('#payment-success');
+    let finalBooking = ticketingBookingData;
+    if (updatedData) {
+      finalBooking = { ...(ticketingBookingData || {}), ...updatedData };
+      const attendeeName =
+        finalBooking.fullName ||
+        `${finalBooking.firstName || ''}`.trim() + (finalBooking.lastName ? ` ${finalBooking.lastName}` : '') ||
+        'Kavindu Perera';
+      if (Array.isArray(finalBooking.individualTickets)) {
+        finalBooking.individualTickets = finalBooking.individualTickets.map((t) => ({
+          ...t,
+          attendeeName,
+          firstName: finalBooking.firstName,
+          lastName: finalBooking.lastName,
+          email: finalBooking.email || finalBooking.emailAddress,
+          mobileNumber: finalBooking.mobileNumber || finalBooking.phone,
+          nic: finalBooking.nic || finalBooking.nicNumber,
+        }));
+      }
+      setTicketingBookingData(finalBooking);
+    }
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: 0, behavior: 'instant' });
-      if (ticketingBookingData) {
+      if (finalBooking) {
         try {
-          localStorage.setItem('wedflow_purchased_tickets', JSON.stringify(ticketingBookingData));
-          sessionStorage.setItem('wedflow_purchased_tickets', JSON.stringify(ticketingBookingData));
+          localStorage.setItem('wedflow_purchased_tickets', JSON.stringify(finalBooking));
+          sessionStorage.setItem('wedflow_purchased_tickets', JSON.stringify(finalBooking));
         } catch (e) {
           console.warn('Could not store tickets', e);
         }
@@ -1066,6 +1109,7 @@ function CorporateInvitationFull({
           onBack={handleCloseTicketingPayment}
           onEditAttendee={handleEditAttendeeFromPayment}
           onPaySuccess={handleTicketingPaymentSuccess}
+          onUpdateBookingData={handleUpdateTicketingBookingData}
           bookingData={ticketingBookingData || {}}
           theme="corporate"
           eventMeta={{
@@ -1238,6 +1282,7 @@ function CorporateInvitationFull({
             onBack={handleCloseTicketingPayment}
             onEditAttendee={handleEditAttendeeFromPayment}
             onPaySuccess={handleTicketingPaymentSuccess}
+            onUpdateBookingData={handleUpdateTicketingBookingData}
             bookingData={ticketingBookingData || {}}
             theme="corporate"
             eventMeta={{
