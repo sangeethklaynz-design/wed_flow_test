@@ -167,14 +167,33 @@ export const TicketQrOverlay = ({
         throw new Error('Ticket element not found');
       }
 
-      const htmlToImage = await import('html-to-image');
-      const imgData = await htmlToImage.toPng(ticketEl, {
-        pixelRatio: 2,
-        backgroundColor: '#020A24',
-        cacheBust: true,
-      });
+      // Temporarily hide download button so it does not appear inside the downloaded PDF
+      const btnEl = ticketEl.querySelector('[data-pdf-ignore="true"]');
+      const originalDisplay = btnEl ? btnEl.style.display : null;
+      if (btnEl) btnEl.style.display = 'none';
 
-      const elementHeight = ticketEl.offsetHeight || 844;
+      let imgData;
+      let elementHeight = 844;
+      try {
+        const htmlToImage = await import('html-to-image');
+        elementHeight = ticketEl.offsetHeight || 844;
+        imgData = await htmlToImage.toPng(ticketEl, {
+          pixelRatio: 2,
+          backgroundColor: '#020A24',
+          cacheBust: true,
+          filter: (node) => {
+            if (node && node.nodeType === 1) {
+              if (node.getAttribute('data-pdf-ignore') === 'true') {
+                return false;
+              }
+            }
+            return true;
+          },
+        });
+      } finally {
+        if (btnEl) btnEl.style.display = originalDisplay;
+      }
+
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'px',
@@ -570,10 +589,11 @@ export const TicketQrOverlay = ({
                     </div>
                   </div>
 
-                  {/* Download Ticket Button (Included in screenshot 2) */}
+                  {/* Download Ticket Button (Excluded from exported PDF) */}
                   <button
                     type="button"
                     id={`ticket-download-btn-${ticket.id}`}
+                    data-pdf-ignore="true"
                     onClick={() => handleDownloadTicket(ticket)}
                     disabled={Boolean(downloadingTicketId)}
                     className="w-[342px] h-[46px] bg-[#080480] hover:bg-[#060368] active:scale-[0.99] text-white rounded-[14px] flex items-center justify-center gap-2.5 shadow-[0_4px_16px_rgba(8,4,128,0.28)] transition-all cursor-pointer mt-4 disabled:opacity-50"
