@@ -20,6 +20,10 @@ function requireAuth(req, res, next) {
       weddingId: decoded.weddingId || null,
       eventId: decoded.eventId || null,
       eventType: decoded.eventType || null,
+      organizationId: decoded.organizationId || null,
+      permissionRoleId: decoded.permissionRoleId || null,
+      isOrgOwner: Boolean(decoded.isOrgOwner),
+      permissionsMap: decoded.permissionsMap || {},
     };
     return next();
   } catch (err) {
@@ -42,4 +46,46 @@ function requireRole(...roles) {
   };
 }
 
-module.exports = { requireAuth, requireRole };
+function requirePermission(...keys) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        error: "Unauthorized",
+        message: "Not authenticated",
+      });
+    }
+    if (req.user.role === "ADMIN") return next();
+    if (req.user.isOrgOwner) return next();
+
+    const map = req.user.permissionsMap || {};
+    const ok = keys.some((k) => Boolean(map[k]));
+    if (!ok) {
+      return res.status(403).json({
+        error: "Forbidden",
+        message: `Missing permission: ${keys.join(" or ")}`,
+      });
+    }
+    return next();
+  };
+}
+
+function requireOrgOwner(req, res, next) {
+  if (!req.user) {
+    return res.status(401).json({
+      error: "Unauthorized",
+      message: "Not authenticated",
+    });
+  }
+  if (req.user.role === "ADMIN" || req.user.isOrgOwner) return next();
+  return res.status(403).json({
+    error: "Forbidden",
+    message: "Only the organization owner can perform this action",
+  });
+}
+
+module.exports = {
+  requireAuth,
+  requireRole,
+  requirePermission,
+  requireOrgOwner,
+};

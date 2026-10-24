@@ -27,6 +27,9 @@ import { RsvpConfirmationOverlay } from './overlays/RsvpConfirmationOverlay';
 import { PaymentSuccessOverlay } from './overlays/PaymentSuccessOverlay';
 import { TicketQrOverlay } from './overlays/TicketQrOverlay';
 import { RsvpChangeRequestPage } from './pages/RsvpChangeRequestPage';
+import { TicketingSelectionPage } from '@/components/invite/common/TicketingSelectionPage';
+import { TicketingPaymentOverlay } from '@/components/invite/common/TicketingPaymentOverlay';
+import { TicketSelectionView } from '@/components/invite/common/TicketSelectionView';
 
 function guestAlreadyRsvped(templateData) {
   const guest = templateData?.guest || templateData?.static?.guest || null;
@@ -113,7 +116,7 @@ export function CorporatePagePreview({
   previewBypassValidation = false,
   documentFiles = null,
 }) {
-  const { fields } = resolveFields(templateData, templateConfig);
+  const { pagesCfg, fields } = resolveFields(templateData, templateConfig);
   const location = resolveEventLocation(templateData);
   const media = resolveEventMedia(templateData);
   const pageHeight = computeCorporatePageHeight(pageId, fields);
@@ -170,6 +173,25 @@ export function CorporatePagePreview({
     );
   }
 
+  if (pageId === 'ticketing') {
+    const ticketTypes =
+      templateData?.ticketTypes ||
+      templateData?.static?.ticketTypes ||
+      templateData?.event?.tickets ||
+      templateData?.static?.event?.tickets ||
+      [];
+    return (
+      <div {...frameProps} style={{ ...frameProps.style, backgroundColor: '#FFFFFF' }}>
+        <TicketingSelectionPage
+          ticketTypes={ticketTypes}
+          theme="corporate"
+          onProceedToPayment={() => {}}
+          onScrollNext={() => {}}
+        />
+      </div>
+    );
+  }
+
   if (pageId === 'location') {
     return (
       <div {...frameProps}>
@@ -220,6 +242,7 @@ function CorporateInvitationFull({
   embedded = false,
   interactive = true,
   guestToken = null,
+  publicEventToken = null,
   onRsvpSuccess: onRsvpSuccessProp = null,
   previewBypassValidation = false,
 }) {
@@ -227,6 +250,32 @@ function CorporateInvitationFull({
   const wrapperRef = useRef(null);
   const [scale, setScale] = useState(1);
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
+  const [isTicketingOpen, setIsTicketingOpen] = useState(false);
+  const [isTicketingPaymentOpen, setIsTicketingPaymentOpen] = useState(false);
+  const [ticketingBookingData, setTicketingBookingData] = useState(null);
+
+  useEffect(() => {
+    try {
+      const isRsvped = guestAlreadyRsvped(templateData);
+      if (!isRsvped) {
+        localStorage.removeItem('wedflow_purchased_tickets');
+        sessionStorage.removeItem('wedflow_purchased_tickets');
+        setTicketingBookingData(null);
+        return;
+      }
+      const saved =
+        localStorage.getItem('wedflow_purchased_tickets') ||
+        sessionStorage.getItem('wedflow_purchased_tickets');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && (parsed.selectedTickets || parsed.individualTickets)) {
+          setTicketingBookingData(parsed);
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [templateData]);
   const [isPaymentSuccessOpen, setIsPaymentSuccessOpen] = useState(false);
   const [isTicketOpen, setIsTicketOpen] = useState(false);
   const [isInvitationRoute, setIsInvitationRoute] = useState(false);
@@ -263,6 +312,33 @@ function CorporateInvitationFull({
     }
     return null;
   });
+
+  useEffect(() => {
+    const isRsvped = guestAlreadyRsvped(templateData);
+    setHasSubmittedRsvp(isRsvped);
+    if (!isRsvped) {
+      setRsvpData(null);
+      setTicketingBookingData(null);
+      setIsConfirmationOpen(false);
+      setIsTicketingOpen(false);
+      setIsTicketingPaymentOpen(false);
+      setIsPaymentSuccessOpen(false);
+      setIsTicketOpen(false);
+      try {
+        localStorage.removeItem('wedflow_purchased_tickets');
+        sessionStorage.removeItem('wedflow_purchased_tickets');
+      } catch (e) {}
+      if (typeof window !== 'undefined') {
+        const h = window.location.hash;
+        if (h && (h === '#ticketing' || h === '#ticketing-payment' || h === '#payment-success' || h === '#ticket' || h === '#rsvp-confirmation')) {
+          try {
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+          } catch (e) {}
+        }
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      }
+    }
+  }, [templateData]);
 
   const { pagesCfg, fields } = resolveFields(templateData, templateConfigProp);
   const location = resolveEventLocation(templateData);
@@ -308,37 +384,140 @@ function CorporateInvitationFull({
     return () => window.removeEventListener('resize', updateViewportScale);
   }, [embedded]);
 
+  const isTicketing = Boolean(
+    templateData?.isTicketingEnabled ||
+    templateData?.static?.isTicketingEnabled ||
+    templateData?.templateConfig?.isTicketingEnabled ||
+    templateConfigProp?.isTicketingEnabled ||
+    pagesCfg?.isTicketingEnabled ||
+    templateData?.event?.enableTicketing ||
+    templateData?.static?.event?.enableTicketing ||
+    templateData?.event?.isTicketingEnabled ||
+    templateData?.static?.event?.isTicketingEnabled
+  );
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const h = window.location.hash;
+      if (h === '#ticketing' && isTicketing && hasSubmittedRsvp) {
+        setIsConfirmationOpen(false);
+        setIsPaymentSuccessOpen(false);
+        setIsTicketOpen(false);
+        setIsTicketingPaymentOpen(false);
+        setIsTicketingOpen(true);
+      } else if (
+        h === '#rsvp-confirmation' ||
+        h === '#payment-success' ||
+        h === '#ticketing-payment' ||
+        (!hasSubmittedRsvp && h === '#ticketing')
+      ) {
+        if (!hasSubmittedRsvp) {
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+      }
+    }
+  }, [isTicketing, hasSubmittedRsvp]);
+
   useEffect(() => {
     if (!interactive) return undefined;
 
     const handleHashChange = () => {
-      if (window.location.hash === '#ticket' || window.location.hash === '#ticket-qr') {
+      const h = window.location.hash;
+      if (h === '#ticketing') {
+        if (isTicketing && hasSubmittedRsvp) {
+          setIsConfirmationOpen(false);
+          setIsPaymentSuccessOpen(false);
+          setIsTicketOpen(false);
+          setIsTicketingPaymentOpen(false);
+          setIsTicketingOpen(true);
+        } else if (!hasSubmittedRsvp) {
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+          handleScrollToPage1();
+        }
+      } else if (h === '#ticketing-payment') {
+        if (ticketingBookingData && hasSubmittedRsvp) {
+          setIsConfirmationOpen(false);
+          setIsPaymentSuccessOpen(false);
+          setIsTicketOpen(false);
+          setIsTicketingOpen(false);
+          setIsTicketingPaymentOpen(true);
+        }
+      } else if (h === '#ticket' || h === '#tickets' || h === '#ticket-qr') {
+        if (hasSubmittedRsvp) {
+          setIsConfirmationOpen(false);
+          setIsPaymentSuccessOpen(false);
+          setIsTicketingPaymentOpen(false);
+          setIsTicketingOpen(false);
+          setIsTicketOpen(true);
+          if (typeof window !== 'undefined') {
+            window.scrollTo({ top: 0, behavior: 'instant' });
+          }
+          if (containerRef.current) {
+            containerRef.current.scrollTo({ top: 0, behavior: 'instant' });
+          }
+        }
+      } else if (h === '#payment-success') {
+        if (ticketingBookingData && hasSubmittedRsvp) {
+          setIsConfirmationOpen(false);
+          setIsTicketingPaymentOpen(false);
+          setIsTicketingOpen(false);
+          setIsPaymentSuccessOpen(true);
+          setIsTicketOpen(false);
+        } else if (rsvpData && hasSubmittedRsvp) {
+          setIsConfirmationOpen(false);
+          setIsTicketingPaymentOpen(false);
+          setIsTicketingOpen(false);
+          setIsPaymentSuccessOpen(true);
+          setIsTicketOpen(false);
+        }
+      } else if (h === '#rsvp-confirmation') {
+        if (rsvpData && hasSubmittedRsvp) {
+          setIsConfirmationOpen(true);
+          setIsTicketingPaymentOpen(false);
+          setIsTicketingOpen(false);
+          setIsPaymentSuccessOpen(false);
+          setIsTicketOpen(false);
+        }
+      } else if (h === '#rsvp' || h === '#page-6' || h === '#page-3') {
         setIsConfirmationOpen(false);
-        setIsPaymentSuccessOpen(false);
-        setIsTicketOpen(true);
-      } else if (window.location.hash === '#payment-success') {
-        setIsConfirmationOpen(false);
-        setIsPaymentSuccessOpen(true);
-        setIsTicketOpen(false);
-      } else if (window.location.hash === '#rsvp-confirmation') {
-        setIsConfirmationOpen(true);
-        setIsPaymentSuccessOpen(false);
-        setIsTicketOpen(false);
-      } else if (window.location.hash === '#page-1') {
-        setIsConfirmationOpen(false);
-        setIsPaymentSuccessOpen(false);
-        setIsTicketOpen(false);
-        const page1 = document.getElementById('page-1');
-        if (page1) page1.scrollIntoView({ behavior: 'smooth' });
-      } else if (
-        window.location.hash === '#page-7' ||
-        window.location.hash === '#add-to-calendar'
-      ) {
-        setIsConfirmationOpen(false);
+        setIsTicketingPaymentOpen(false);
+        setIsTicketingOpen(false);
         setIsPaymentSuccessOpen(false);
         setIsTicketOpen(false);
         setTimeout(() => {
-          const page7 = document.getElementById('page-7');
+          const rsvpTarget =
+            document.querySelector('[data-invite-page="rsvp"]') ||
+            document.getElementById('page-6') ||
+            document.getElementById('page-3');
+          if (rsvpTarget) {
+            if (embedded && containerRef.current) {
+              containerRef.current.scrollTo({
+                top: rsvpTarget.offsetTop,
+                behavior: 'smooth',
+              });
+            } else if (typeof window !== 'undefined') {
+              rsvpTarget.scrollIntoView({ behavior: 'smooth' });
+            }
+          }
+        }, 50);
+      } else if (h === '#page-1' || !h) {
+        setIsConfirmationOpen(false);
+        setIsTicketingPaymentOpen(false);
+        setIsTicketingOpen(false);
+        setIsPaymentSuccessOpen(false);
+        setIsTicketOpen(false);
+        handleScrollToPage1();
+      } else if (
+        h === '#page-7' ||
+        h === '#add-to-calendar'
+      ) {
+        setIsConfirmationOpen(false);
+        setIsTicketingPaymentOpen(false);
+        setIsTicketingOpen(false);
+        setIsPaymentSuccessOpen(false);
+        setIsTicketOpen(false);
+        setTimeout(() => {
+          const page7 = document.getElementById('page-7') || document.querySelector('[data-invite-page="addToCalendar"]');
           if (page7 && containerRef.current) {
             containerRef.current.scrollTo({
               top: page7.offsetTop,
@@ -349,10 +528,9 @@ function CorporateInvitationFull({
       }
     };
 
-    handleHashChange();
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, [interactive]);
+  }, [interactive, ticketingBookingData, rsvpData, isTicketing]);
 
   const handleExploreClick = () => {
     const target =
@@ -389,15 +567,32 @@ function CorporateInvitationFull({
 
   const handleRsvpSuccess = (answers) => {
     setRsvpData(answers || null);
+    setTicketingBookingData(null);
     setHasSubmittedRsvp(true);
     if (!interactive) return;
     if (typeof onRsvpSuccessProp === 'function') {
       onRsvpSuccessProp(answers);
       return;
     }
-    setIsPaymentSuccessOpen(false);
-    setIsConfirmationOpen(true);
-    setHash('#rsvp-confirmation');
+
+    if (isTicketing) {
+      setIsConfirmationOpen(false);
+      setIsPaymentSuccessOpen(false);
+      setIsTicketOpen(false);
+      setIsTicketingPaymentOpen(false);
+      setIsTicketingOpen(true);
+      setHash('#ticketing');
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      }
+      if (containerRef.current) {
+        containerRef.current.scrollTo({ top: 0, behavior: 'instant' });
+      }
+    } else {
+      setIsPaymentSuccessOpen(false);
+      setIsConfirmationOpen(true);
+      setHash('#rsvp-confirmation');
+    }
   };
 
   const handleCloseConfirmation = () => {
@@ -406,7 +601,104 @@ function CorporateInvitationFull({
     setHash('#page-1');
   };
 
+  const handleCloseTicketingSelection = () => {
+    setIsTicketingOpen(false);
+    handleScrollToPage1();
+    setHash('#page-1');
+  };
+
+  const handleBackFromTicketingSelection = () => {
+    setIsTicketingOpen(false);
+    setHash('#rsvp');
+    setTimeout(() => {
+      const rsvpTarget =
+        document.querySelector('[data-invite-page="rsvp"]') ||
+        document.getElementById('page-6') ||
+        document.getElementById('page-3');
+      if (rsvpTarget) {
+        if (embedded && containerRef.current) {
+          containerRef.current.scrollTo({
+            top: rsvpTarget.offsetTop,
+            behavior: 'smooth',
+          });
+        } else if (typeof window !== 'undefined') {
+          rsvpTarget.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+    }, 50);
+  };
+
+  const handleProceedToTicketingPayment = (data) => {
+    const bookingRef = 'LN2026-0001';
+    let ticketCounter = 1;
+    const individualTickets = (data.selectedTickets || []).flatMap((t) =>
+      Array.from({ length: Number(t.quantity) || 1 }, () => ({
+        id: `${bookingRef}-${ticketCounter++}`,
+        name: t.name,
+        typeName: `${t.name} Ticket`,
+        price: t.price,
+      }))
+    );
+    const booking = {
+      ...data,
+      firstName: data?.firstName || rsvpData?.firstName || (rsvpData?.fullName ? rsvpData.fullName.split(' ')[0] : 'Kavindu'),
+      lastName: data?.lastName || rsvpData?.lastName || (rsvpData?.fullName && rsvpData.fullName.split(' ').length > 1 ? rsvpData.fullName.split(' ').slice(1).join(' ') : 'Perera'),
+      fullName: data?.fullName || rsvpData?.fullName || `${data?.firstName || 'Kavindu'} ${data?.lastName || 'Perera'}`,
+      email: data?.email || rsvpData?.email || rsvpData?.emailAddress || guest?.email || 'kavindu@gmail.com',
+      mobileNumber: data?.mobileNumber || rsvpData?.mobileNumber || rsvpData?.phone || guest?.mobileNumber || '+94 77 123 4567',
+      nic: data?.nic || rsvpData?.nic || '199012345678',
+      bookingRef,
+      ticketsSummary: (data.selectedTickets || [])
+        .map((t) => `${t.quantity} x ${t.name} (LKR ${Number(t.price).toLocaleString('en-US')})`)
+        .join(', '),
+      individualTickets,
+    };
+    setTicketingBookingData(booking);
+    setIsTicketingOpen(false);
+    setIsConfirmationOpen(false);
+    setIsPaymentSuccessOpen(false);
+    setIsTicketOpen(false);
+    setIsTicketingPaymentOpen(true);
+    setHash('#ticketing-payment');
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+  };
+
+  const handleTicketingPaymentSuccess = () => {
+    setIsTicketingPaymentOpen(false);
+    setIsPaymentSuccessOpen(true);
+    setHash('#payment-success');
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+      if (ticketingBookingData) {
+        try {
+          localStorage.setItem('wedflow_purchased_tickets', JSON.stringify(ticketingBookingData));
+          sessionStorage.setItem('wedflow_purchased_tickets', JSON.stringify(ticketingBookingData));
+        } catch (e) {
+          console.warn('Could not store tickets', e);
+        }
+      }
+    }
+  };
+
+  const handleCloseTicketingPayment = () => {
+    setIsTicketingPaymentOpen(false);
+    setIsPaymentSuccessOpen(false);
+    setIsTicketOpen(false);
+    setIsTicketingOpen(true);
+    setHash('#ticketing');
+  };
+
+  const handleBackFromTicketingPaymentSuccess = () => {
+    setIsPaymentSuccessOpen(false);
+    setIsTicketingPaymentOpen(true);
+    setIsTicketOpen(false);
+    setHash('#ticketing-payment');
+  };
+
   const handleProceedToPayment = () => {
+    setTicketingBookingData(null);
     const paymentLink = String(
       templateData?.static?.event?.paymentLink ||
         templateData?.event?.paymentLink ||
@@ -429,6 +721,10 @@ function CorporateInvitationFull({
     setHash('#rsvp-confirmation');
   };
 
+  const handleBackFromTicketing = () => {
+    handleBackFromTicketingPaymentSuccess();
+  };
+
   const handleClosePaymentSuccess = () => {
     setIsPaymentSuccessOpen(false);
     handleScrollToPage1();
@@ -441,7 +737,7 @@ function CorporateInvitationFull({
     setIsTicketOpen(false);
     setHash('#page-7');
     setTimeout(() => {
-      const page7 = document.getElementById('page-7');
+      const page7 = document.getElementById('page-7') || document.querySelector('[data-invite-page="addToCalendar"]');
       if (page7) {
         if (embedded && containerRef.current) {
           containerRef.current.scrollTo({
@@ -456,9 +752,50 @@ function CorporateInvitationFull({
   };
 
   const handleOpenTicket = () => {
+    if (!ticketingBookingData) {
+      const bookingRef = 'LN2026-0001';
+      const attendee =
+        rsvpData?.fullName ||
+        guest?.full_name ||
+        guest?.fullName ||
+        guest?.name ||
+        fields.guestName ||
+        'Kavindu Perera';
+      const email =
+        rsvpData?.email ||
+        rsvpData?.emailAddress ||
+        guest?.email ||
+        fields.guestEmail ||
+        'kavindu@gmail.com';
+      setTicketingBookingData({
+        bookingRef,
+        fullName: attendee,
+        email,
+        individualTickets: [
+          {
+            id: `${bookingRef}-1`,
+            name: 'Standard',
+            typeName: 'STANDARD',
+            price: 1000,
+            quantity: 1,
+            seatNo: 'GENERAL ADMISSION',
+            attendeeName: attendee,
+          },
+        ],
+      });
+    }
+    setIsConfirmationOpen(false);
     setIsPaymentSuccessOpen(false);
+    setIsTicketingOpen(false);
+    setIsTicketingPaymentOpen(false);
     setIsTicketOpen(true);
     setHash('#ticket');
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+    if (containerRef.current) {
+      containerRef.current.scrollTo({ top: 0, behavior: 'instant' });
+    }
   };
 
   const handleBackToPayment = () => {
@@ -474,12 +811,28 @@ function CorporateInvitationFull({
   };
 
   const renderPage = (pageId) => {
+    const isTicketing = Boolean(
+      templateData?.isTicketingEnabled ||
+      templateData?.static?.isTicketingEnabled ||
+      templateData?.templateConfig?.isTicketingEnabled ||
+      templateConfigProp?.isTicketingEnabled ||
+      pagesCfg?.isTicketingEnabled ||
+      templateData?.event?.enableTicketing ||
+      templateData?.static?.event?.enableTicketing ||
+      templateData?.event?.isTicketingEnabled ||
+      templateData?.static?.event?.isTicketingEnabled
+    );
+
     if (pageId === 'rsvp' && hasSubmittedRsvp) {
       return (
         <RsvpChangeRequestPage
           key="rsvp-change"
           rsvpData={rsvpData || {}}
           guestToken={guestToken || ''}
+          isTicketing={isTicketing}
+          hasPurchasedTickets={Boolean(ticketingBookingData?.individualTickets?.length || ticketingBookingData?.totalAmount)}
+          purchasedBookingData={ticketingBookingData}
+          onViewPurchasedTickets={handleOpenTicket}
         />
       );
     }
@@ -498,13 +851,17 @@ function CorporateInvitationFull({
       );
     }
     if (pageId === 'rsvp') {
+      const isPublicReg = Boolean(publicEventToken);
       return (
         <Page
           key={pageId}
           fields={fields}
           guestToken={guestToken}
-          maxGuests={maxGuests}
-          previewBypassValidation={previewBypassValidation || !guestToken}
+          publicEventToken={publicEventToken}
+          maxGuests={isPublicReg ? Math.max(maxGuests, 10) : maxGuests}
+          previewBypassValidation={
+            previewBypassValidation || (!guestToken && !isPublicReg)
+          }
           onRsvpSuccess={interactive ? handleRsvpSuccess : () => {}}
           onScrollNext={handleExploreClick}
         />
@@ -555,6 +912,20 @@ function CorporateInvitationFull({
         <Page key={pageId} fields={fields} onCloseClick={handleScrollToPage1} />
       );
     }
+    if (pageId === 'ticketing') {
+      const tickets = templateData?.event?.tickets || templateData?.static?.event?.tickets || [];
+      return (
+        <Page
+          key={pageId}
+          fields={fields}
+          ticketTypes={tickets}
+          defaultName={guest?.name || fields.guestName || "Kavindu Perera"}
+          defaultEmail={guest?.email || fields.guestEmail || "kavindu@gmail.com"}
+          onProceedToPayment={handleProceedToTicketingPayment}
+          onScrollNext={handleExploreClick}
+        />
+      );
+    }
     return <Page key={pageId} fields={fields} />;
   };
 
@@ -567,9 +938,10 @@ function CorporateInvitationFull({
           height: 844,
           borderRadius: 26,
           backgroundColor: '#02122B',
+          overflow: (isTicketOpen || isPaymentSuccessOpen || isTicketingPaymentOpen || isConfirmationOpen) ? 'hidden' : 'auto',
           ...corporateThemeVars(fields),
         }}
-        className="relative overflow-y-auto scrollbar-none"
+        className={`relative ${(isTicketOpen || isPaymentSuccessOpen || isTicketingPaymentOpen || isConfirmationOpen) ? 'overflow-hidden' : 'overflow-y-auto'} scrollbar-none`}
         aria-label="Corporate invitation"
       >
         {media.musicUrl ? (
@@ -602,6 +974,40 @@ function CorporateInvitationFull({
           </div>
         )}
 
+        {isTicketingOpen ? (
+          <div
+            id="ticketing-selection-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Ticketing Selection"
+            className="absolute top-0 left-0 w-[390px] h-[844px] overflow-y-auto z-[99] bg-white select-none animate-in fade-in duration-200"
+            style={{
+              width: 390,
+              height: 844,
+              maxHeight: 844,
+            }}
+          >
+            <TicketingSelectionPage
+              ticketTypes={
+                templateData?.ticketTypes ||
+                templateData?.static?.ticketTypes ||
+                templateData?.event?.tickets ||
+                templateData?.static?.event?.tickets ||
+                []
+              }
+              theme="corporate"
+              defaultName={rsvpData?.fullName || guest?.name || fields.guestName || 'Kavindu Perera'}
+              defaultEmail={rsvpData?.email || rsvpData?.emailAddress || guest?.email || fields.guestEmail || 'kavindu@gmail.com'}
+              onProceedToPayment={handleProceedToTicketingPayment}
+              onScrollNext={handleCloseTicketingSelection}
+              onBack={handleBackFromTicketingSelection}
+              purchasedBookingData={ticketingBookingData}
+              onViewPurchasedTickets={handleOpenTicket}
+              hasPurchasedTickets={Boolean(ticketingBookingData?.individualTickets?.length || ticketingBookingData?.totalAmount)}
+            />
+          </div>
+        ) : null}
+
         <RsvpConfirmationOverlay
           isOpen={isConfirmationOpen}
           canAttend={
@@ -613,18 +1019,53 @@ function CorporateInvitationFull({
           onClose={handleCloseConfirmation}
           onProceedToPayment={handleProceedToPayment}
         />
+        <TicketingPaymentOverlay
+          isOpen={isTicketingPaymentOpen}
+          onClose={handleCloseTicketingPayment}
+          onBack={handleCloseTicketingPayment}
+          onPaySuccess={handleTicketingPaymentSuccess}
+          bookingData={ticketingBookingData || {}}
+          theme="corporate"
+          eventMeta={{
+            eventName: fields.eventName || templateData?.static?.event?.name || 'Annual Business Summit 2026',
+            eventDateTime: `${fields.eventDate || 'Thu, 12 Nov 2026'} | ${fields.eventTime || '6:00 PM'}`,
+            eventVenue: location.locationName || 'Cinnamon Lakeside Colombo',
+          }}
+        />
         <PaymentSuccessOverlay
           isOpen={isPaymentSuccessOpen}
-          onClose={handleClosePaymentSuccess}
-          onBackToRsvp={handleBackToRsvp}
+          onClose={ticketingBookingData ? handleBackFromTicketingPaymentSuccess : handleClosePaymentSuccess}
+          onBackToRsvp={ticketingBookingData ? handleBackFromTicketingPaymentSuccess : handleBackToRsvp}
           onAddToCalendar={handleNavigateToCalendar}
           onViewTicket={handleOpenTicket}
+          bookingData={ticketingBookingData}
+          theme="corporate"
         />
         <TicketQrOverlay
           isOpen={isTicketOpen}
-          onClose={handleCloseTicket}
+          onClose={handleBackToPayment}
           onBackToPayment={handleBackToPayment}
           onAddToCalendar={handleNavigateToCalendar}
+          onScrollNext={() => {
+            setIsTicketOpen(false);
+            setTimeout(() => {
+              const el =
+                document.querySelector('[data-invite-page="landing"]') ||
+                document.querySelector('[data-invite-page="eventDetails"]') ||
+                document.querySelector('[data-invite-page="agenda"]');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }, 60);
+          }}
+          attendeeName={ticketingBookingData?.fullName || guest?.name || 'Kavindu Perera'}
+          ticketId={ticketingBookingData?.bookingRef || 'LN2026-0001'}
+          tickets={ticketingBookingData?.individualTickets || []}
+          eventName={fields.eventName || templateData?.static?.event?.name || 'Annual Business Summit – 2026'}
+          eventDescription={fields.eventDescription || templateData?.static?.event?.description || 'An evening celebration, networking, & entertainment.'}
+          eventDate={fields.eventDate || 'Thursday, 12 November 2026'}
+          eventTime={fields.eventTime || '6:00 PM Onwards'}
+          eventVenue={location.locationName || 'Cinnamon Lakeside Colombo'}
+          bookingData={ticketingBookingData}
+          theme="corporate"
         />
       </div>
     );
@@ -656,8 +1097,8 @@ function CorporateInvitationFull({
       />
 
       <InviteMobileScaler
-        mode={isVideoActive ? 'cover' : 'width'}
-        fixedHeight={isVideoActive ? INVITE_FRAME_H : undefined}
+        mode={(isVideoActive || isTicketOpen || isPaymentSuccessOpen || isTicketingPaymentOpen || isConfirmationOpen || isTicketingOpen) ? 'cover' : 'width'}
+        fixedHeight={(isVideoActive || isTicketOpen || isPaymentSuccessOpen || isTicketingPaymentOpen || isConfirmationOpen || isTicketingOpen) ? INVITE_FRAME_H : undefined}
         className="w-full flex justify-center items-center mx-auto"
       >
         <main
@@ -667,10 +1108,13 @@ function CorporateInvitationFull({
           style={{
             width: INVITE_FRAME_W,
             maxWidth: INVITE_FRAME_W,
-            height: isVideoActive ? INVITE_FRAME_H : undefined,
+            height: (isVideoActive || isTicketOpen || isPaymentSuccessOpen || isTicketingPaymentOpen || isConfirmationOpen || isTicketingOpen) ? INVITE_FRAME_H : undefined,
+            maxHeight: (isTicketOpen || isPaymentSuccessOpen || isTicketingPaymentOpen || isConfirmationOpen || isTicketingOpen) ? INVITE_FRAME_H : undefined,
+            overflow: (isTicketOpen || isPaymentSuccessOpen || isTicketingPaymentOpen || isConfirmationOpen || isTicketingOpen) ? 'hidden' : undefined,
             backgroundColor: '#02122B',
             margin: '0 auto',
             display: 'block',
+            ...corporateThemeVars(fields),
           }}
           aria-label="Corporate invitation"
         >
@@ -701,6 +1145,40 @@ function CorporateInvitationFull({
             </div>
           )}
 
+          {isTicketingOpen ? (
+            <div
+              id="ticketing-selection-overlay"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Ticketing Selection"
+              className="absolute top-0 left-0 w-[390px] h-[844px] overflow-y-auto z-[99] bg-white select-none animate-in fade-in duration-200"
+              style={{
+                width: 390,
+                height: 844,
+                maxHeight: 844,
+              }}
+            >
+              <TicketingSelectionPage
+                ticketTypes={
+                  templateData?.ticketTypes ||
+                  templateData?.static?.ticketTypes ||
+                  templateData?.event?.tickets ||
+                  templateData?.static?.event?.tickets ||
+                  []
+                }
+                theme="corporate"
+                defaultName={rsvpData?.fullName || guest?.name || fields.guestName || 'Kavindu Perera'}
+                defaultEmail={rsvpData?.email || rsvpData?.emailAddress || guest?.email || fields.guestEmail || 'kavindu@gmail.com'}
+                onProceedToPayment={handleProceedToTicketingPayment}
+                onScrollNext={handleCloseTicketingSelection}
+                onBack={handleBackFromTicketingSelection}
+                purchasedBookingData={ticketingBookingData}
+                onViewPurchasedTickets={handleOpenTicket}
+                hasPurchasedTickets={Boolean(ticketingBookingData?.individualTickets?.length || ticketingBookingData?.totalAmount)}
+              />
+            </div>
+          ) : null}
+
           <RsvpConfirmationOverlay
             isOpen={isConfirmationOpen}
             canAttend={
@@ -712,18 +1190,53 @@ function CorporateInvitationFull({
             onClose={handleCloseConfirmation}
             onProceedToPayment={handleProceedToPayment}
           />
+          <TicketingPaymentOverlay
+            isOpen={isTicketingPaymentOpen}
+            onClose={handleCloseTicketingPayment}
+            onBack={handleCloseTicketingPayment}
+            onPaySuccess={handleTicketingPaymentSuccess}
+            bookingData={ticketingBookingData || {}}
+            theme="corporate"
+            eventMeta={{
+              eventName: fields.eventName || templateData?.static?.event?.name || 'Annual Business Summit 2026',
+              eventDateTime: `${fields.eventDate || 'Thu, 12 Nov 2026'} | ${fields.eventTime || '6:00 PM'}`,
+              eventVenue: location.locationName || 'Cinnamon Lakeside Colombo',
+            }}
+          />
           <PaymentSuccessOverlay
             isOpen={isPaymentSuccessOpen}
-            onClose={handleClosePaymentSuccess}
-            onBackToRsvp={handleBackToRsvp}
+            onClose={ticketingBookingData ? handleBackFromTicketingPaymentSuccess : handleClosePaymentSuccess}
+            onBackToRsvp={ticketingBookingData ? handleBackFromTicketingPaymentSuccess : handleBackToRsvp}
             onAddToCalendar={handleNavigateToCalendar}
             onViewTicket={handleOpenTicket}
+            bookingData={ticketingBookingData}
+            theme="corporate"
           />
           <TicketQrOverlay
             isOpen={isTicketOpen}
-            onClose={handleCloseTicket}
+            onClose={handleBackToPayment}
             onBackToPayment={handleBackToPayment}
             onAddToCalendar={handleNavigateToCalendar}
+            onScrollNext={() => {
+              setIsTicketOpen(false);
+              setTimeout(() => {
+                const el =
+                  document.querySelector('[data-invite-page="landing"]') ||
+                  document.querySelector('[data-invite-page="eventDetails"]') ||
+                  document.querySelector('[data-invite-page="agenda"]');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }, 60);
+            }}
+            attendeeName={ticketingBookingData?.fullName || guest?.name || 'Kavindu Perera'}
+            ticketId={ticketingBookingData?.bookingRef || 'LN2026-0001'}
+            tickets={ticketingBookingData?.individualTickets || []}
+            eventName={fields.eventName || templateData?.static?.event?.name || 'Annual Business Summit – 2026'}
+            eventDescription={fields.eventDescription || templateData?.static?.event?.description || 'An evening celebration, networking, & entertainment.'}
+            eventDate={fields.eventDate || 'Thursday, 12 November 2026'}
+            eventTime={fields.eventTime || '6:00 PM Onwards'}
+            eventVenue={location.locationName || 'Cinnamon Lakeside Colombo'}
+            bookingData={ticketingBookingData}
+            theme="corporate"
           />
         </main>
       </InviteMobileScaler>
@@ -739,6 +1252,7 @@ export default function CorporateInvitationExperience({
   previewPageId = null,
   onRsvpSuccess = null,
   guestToken = null,
+  publicEventToken = null,
   previewBypassValidation = false,
 }) {
   if (previewPageId) {
@@ -762,6 +1276,7 @@ export default function CorporateInvitationExperience({
       interactive={interactive}
       onRsvpSuccess={onRsvpSuccess}
       guestToken={guestToken}
+      publicEventToken={publicEventToken}
       previewBypassValidation={previewBypassValidation}
     />
   );

@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { Check, Copy } from "lucide-react";
 import {
   formatEventDate,
   formatEventStatus,
@@ -8,8 +10,11 @@ import {
 import ModalCloseButton from "@/components/ui/ModalCloseButton";
 
 export default function ViewEventModal({ open, onClose, event }) {
+  const [copied, setCopied] = useState(false);
+
   if (!open || !event) return null;
 
+  const publicUrl = event.publicInviteUrl || null;
   const rows = [
     { label: "Event name", value: event.name },
     { label: "Type", value: formatEventType(event.type) },
@@ -22,8 +27,27 @@ export default function ViewEventModal({ open, onClose, event }) {
       value: event.googleMapsLink || "—",
       isLink: Boolean(event.googleMapsLink),
     },
+    {
+      label: "Ticketing",
+      value: event.ticketingEnabled || event.isTicketingEnabled ? "Enabled" : "Off",
+    },
+    {
+      label: "Public invite",
+      value: event.publicInviteEnabled ? "Enabled" : "Off",
+    },
     { label: "Status", value: formatEventStatus(event.status) },
   ];
+
+  const handleCopyPublicLink = async () => {
+    if (!publicUrl) return;
+    try {
+      await navigator.clipboard.writeText(publicUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // ignore
+    }
+  };
 
   return (
     <div
@@ -73,6 +97,36 @@ export default function ViewEventModal({ open, onClose, event }) {
               )}
             </div>
           ))}
+
+          {event.publicInviteEnabled && publicUrl ? (
+            <div className="px-4 py-3">
+              <p className="text-[12px] font-medium text-muted uppercase tracking-wide mb-1">
+                Public invite link
+              </p>
+              <div className="flex items-start gap-2">
+                <a
+                  href={publicUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm text-[#054380] font-medium break-all hover:underline flex-1"
+                >
+                  {publicUrl}
+                </a>
+                <button
+                  type="button"
+                  onClick={handleCopyPublicLink}
+                  className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border text-xs font-medium text-navy hover:bg-[#EAF5FF]"
+                >
+                  {copied ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
+                  {copied ? "Copied" : "Copy"}
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <button

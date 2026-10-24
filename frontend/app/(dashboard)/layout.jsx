@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Home, Mail, Users, Calendar, LogOut, Bell } from "lucide-react";
+import { Home, Mail, Users, Calendar, LogOut, Bell, Ticket, CreditCard, Settings } from "lucide-react";
 import clsx from "clsx";
 import Image from "next/image";
 import { logout, getStoredUser, getAccessToken, clearAuthSession, setAuthSession } from "@/lib/auth";
@@ -11,10 +11,13 @@ import { apiRequest } from "@/lib/api";
 
 const navItems = [
   { name: "Home", href: "/dashboard", icon: Home },
-  { name: "Invite", href: "/invite", icon: Mail },
+  { name: "Invitation Preview", href: "/invite", icon: Mail },
   { name: "Guests", href: "/guests", icon: Users },
   { name: "Schedule", href: "/schedule", icon: Calendar },
+  { name: "Finance", href: "/finance", icon: CreditCard },
+  { name: "Ticketing", href: "/ticketing", icon: Ticket },
   { name: "Notifications", href: "/notifications", icon: Bell },
+  { name: "Settings", href: "/settings", icon: Settings },
 ];
 
 function buildInitials(name) {
@@ -83,6 +86,20 @@ export default function DashboardLayout({ children }) {
     })();
   }, [router]);
 
+  // Filter navItems so Finance & Ticketing are only shown for corporate and party events
+  const eventType = String(user?.eventType || "wedding").toLowerCase();
+  const isCorporateOrParty =
+    eventType === "corporate" ||
+    eventType === "party" ||
+    eventType === "corporate-events" ||
+    eventType === "parties";
+
+  useEffect(() => {
+    if (user && !isCorporateOrParty && (pathname === "/finance" || pathname === "/ticketing")) {
+      router.replace("/dashboard");
+    }
+  }, [user, isCorporateOrParty, pathname, router]);
+
   const handleLogout = () => {
     logout();
     router.push("/login");
@@ -90,6 +107,13 @@ export default function DashboardLayout({ children }) {
 
   // Prevent dashboard “glimpse” for unauthenticated users.
   if (!authChecked || !isAuthorized) return null;
+
+  const visibleNavItems = navItems.filter((item) => {
+    if (item.name === "Finance" || item.name === "Ticketing") {
+      return isCorporateOrParty;
+    }
+    return true;
+  });
 
   const displayName = formatSidebarLabel(user);
   const initials = buildInitials(displayName);
@@ -117,7 +141,7 @@ export default function DashboardLayout({ children }) {
         </div>
 
         <nav className="flex-1 px-4 py-8 space-y-2 overflow-y-auto">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link
@@ -126,7 +150,7 @@ export default function DashboardLayout({ children }) {
                 className={clsx(
                   "flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 outline-none focus:outline-none focus-visible:outline-none",
                   isActive
-                    ? "bg-[#EAF5FF] text-[#054380] font-medium"
+                    ? "bg-[#0B72E7] text-white font-medium shadow-sm"
                     : "text-white hover:bg-white/10"
                 )}
               >
@@ -169,20 +193,20 @@ export default function DashboardLayout({ children }) {
       </main>
 
       {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#eef0f3] z-50 px-6 py-3 flex justify-between items-center safe-area-bottom">
-        {navItems.map((item) => {
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#eef0f3] z-50 px-3 py-2.5 flex items-center justify-around overflow-x-auto gap-1 safe-area-bottom shadow-lg">
+        {visibleNavItems.map((item) => {
           const isActive = pathname === item.href;
           return (
             <Link
               key={item.name}
               href={item.href}
               className={clsx(
-                "flex flex-col items-center justify-center space-y-1 w-16",
-                isActive ? "text-[#054380]" : "text-muted"
+                "flex flex-col items-center justify-center space-y-1 shrink-0 px-2 py-1 rounded-lg",
+                isActive ? "text-[#0B72E7] font-semibold" : "text-muted hover:text-[#054380]"
               )}
             >
-              <item.icon className="w-6 h-6" strokeWidth={isActive ? 2.5 : 2} />
-              <span className="text-[10px] font-medium">{item.name}</span>
+              <item.icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 2} />
+              <span className="text-[10px] leading-tight text-center">{item.name === "Invitation Preview" ? "Invite" : item.name}</span>
             </Link>
           );
         })}

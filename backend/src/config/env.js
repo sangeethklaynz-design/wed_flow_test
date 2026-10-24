@@ -25,6 +25,10 @@ const env = {
   SALT_ROUNDS: process.env.SALT_ROUNDS,
   FRONTEND_ORIGIN: process.env.FRONTEND_ORIGIN || process.env.CORS_ORIGIN,
   CORS_ORIGIN: process.env.CORS_ORIGIN || process.env.FRONTEND_ORIGIN,
+
+  APP_PUBLIC_URL: process.env.APP_PUBLIC_URL || process.env.FRONTEND_ORIGIN || "",
+  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || "",
+  STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET || "",
 };
 
 module.exports = { env, requireEnv };

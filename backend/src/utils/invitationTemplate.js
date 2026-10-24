@@ -1,6 +1,10 @@
 const crypto = require("crypto");
 const { sequelize } = require("../models");
 const {
+  loadTicketCatalogForEvent,
+  isEventTicketingEnabled,
+} = require("./ticketing");
+const {
   toDateOnly,
   buildInitials,
   formatTime,
@@ -59,7 +63,9 @@ async function loadWeddingRow(weddingId) {
       e.resource_pack_id AS resource_pack_id,
       e.location AS event_location,
       e.google_maps_link AS event_google_maps_link,
-      e.payment_link AS event_payment_link
+      e.payment_link AS event_payment_link,
+      e.ticketing_enabled AS event_ticketing_enabled,
+      e.is_ticketing_enabled AS event_is_ticketing_enabled
     FROM weddings w
     LEFT JOIN events e ON e.id = w.event_id
     WHERE w.id = ?
@@ -438,6 +444,39 @@ async function loadStaticInvitationBundle(weddingId) {
     ""
   );
 
+  const eventId = wedding.linked_event_id || wedding.event_id || null;
+  const ticketingEnabled = isEventTicketingEnabled({
+    is_ticketing_enabled: wedding.event_is_ticketing_enabled,
+    ticketing_enabled: wedding.event_ticketing_enabled,
+  });
+  let ticketCatalog = [];
+  if (eventId && ticketingEnabled) {
+    try {
+      ticketCatalog = await loadTicketCatalogForEvent(eventId, {
+        activeOnly: true,
+      });
+    } catch {
+      ticketCatalog = [];
+    }
+  }
+  const ticketTypes = ticketCatalog.map((t) => ({
+    id: t.id,
+    name: t.name,
+    price: Number(t.price),
+    description: t.description || "",
+    quantity: t.quantity != null ? Number(t.quantity) : null,
+    displayOrder: t.sortOrder,
+    currency: t.currency || "LKR",
+  }));
+  const ticketTiers = ticketCatalog.map((t) => ({
+    id: t.id,
+    name: t.name,
+    price: Number(t.price),
+    currency: t.currency || "LKR",
+    sortOrder: t.sortOrder,
+    isActive: t.isActive !== false,
+  }));
+
   return {
     wedding: {
       id: wedding.id,
@@ -449,7 +488,7 @@ async function loadStaticInvitationBundle(weddingId) {
       formattedDate: formatTemplateDate(wedding.wedding_date),
     },
     event: {
-      id: wedding.linked_event_id || wedding.event_id || null,
+      id: eventId,
       type: wedding.event_type || "wedding",
       templateKey: wedding.template_key || "template-1",
       name: wedding.event_name || parsed.coupleNames || null,
@@ -457,7 +496,13 @@ async function loadStaticInvitationBundle(weddingId) {
       location: wedding.event_location || null,
       googleMapsLink: wedding.event_google_maps_link || null,
       paymentLink: wedding.event_payment_link || null,
+      ticketingEnabled,
+      isTicketingEnabled: ticketingEnabled,
+      ticketTiers,
+      ticketTypes,
     },
+    isTicketingEnabled: ticketingEnabled,
+    ticketTypes,
     templateConfig,
     chromeBaseUrl: chromeBaseUrl || null,
     documents,
@@ -518,12 +563,18 @@ async function loadGuestByToken(token) {
     SELECT
       g.id AS guest_id,
       g.wedding_id,
+      g.event_id,
+      g.organization_id,
       g.full_name,
       g.whatsapp_number,
+      g.email,
+      g.id_number,
       g.invited_count,
       g.invitation_note,
       g.table_number,
       g.unique_token,
+      g.source,
+      g.payment_due_at,
       g.rsvp_status,
       r.id AS rsvp_id,
       r.attending_status,
@@ -551,11 +602,16 @@ function mapGuestTemplateBlock(row) {
     id: row.guest_id,
     fullName: row.full_name,
     phone: row.whatsapp_number,
+    email: row.email || "",
+    idNumber: row.id_number || "",
+    nic: row.id_number || "",
     /** Per-guest salutation e.g. "you and your wife", "you and your family" */
     invitationNote: row.invitation_note || "",
     maxGuests: Number(row.invited_count) || 1,
     tableNumber: row.table_number,
     uniqueToken: row.unique_token,
+    source: row.source || "manual",
+    paymentDueAt: row.payment_due_at || null,
     rsvpStatus: String(row.rsvp_status || "PENDING").toLowerCase(),
     rsvp: {
       hasSubmitted: Boolean(row.submitted_at),
@@ -568,6 +624,12 @@ function mapGuestTemplateBlock(row) {
 }
 
 function buildTemplateResponse(staticBundle, guestRow = null) {
+  const isTicketingEnabled = Boolean(
+    staticBundle.isTicketingEnabled ?? staticBundle.event?.isTicketingEnabled
+  );
+  const ticketTypes =
+    staticBundle.ticketTypes || staticBundle.event?.ticketTypes || [];
+
   return {
     static: {
       event: staticBundle.event || {
@@ -588,11 +650,15 @@ function buildTemplateResponse(staticBundle, guestRow = null) {
       documents: staticBundle.documents || [],
       templateConfig: staticBundle.templateConfig || null,
       chromeBaseUrl: staticBundle.chromeBaseUrl || null,
+      isTicketingEnabled,
+      ticketTypes,
     },
     eventType: staticBundle.event?.type || "wedding",
     templateKey: staticBundle.event?.templateKey || "template-1",
     templateConfig: staticBundle.templateConfig || null,
     chromeBaseUrl: staticBundle.chromeBaseUrl || null,
+    isTicketingEnabled,
+    ticketTypes,
     guest: guestRow ? mapGuestTemplateBlock(guestRow) : null,
   };
 }

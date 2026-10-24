@@ -58,6 +58,43 @@ export default function GuestViewModal({ open, onClose, guest }) {
             <p className="text-navy font-medium text-base">{guest.name}</p>
           </div>
 
+          {(guest.organizationName || guest.eventName) && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+              <div className="bg-white rounded-2xl border border-border p-4 sm:p-5">
+                <p className="text-sm font-medium text-muted block mb-1">
+                  Merchant
+                </p>
+                <p className="text-navy font-medium text-base">
+                  {guest.organizationName || "—"}
+                </p>
+              </div>
+              <div className="bg-white rounded-2xl border border-border p-4 sm:p-5">
+                <p className="text-sm font-medium text-muted block mb-1">
+                  Event
+                </p>
+                <p className="text-navy font-medium text-base">
+                  {guest.eventName || "—"}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {guest.ticketStatus ? (
+            <div className="bg-white rounded-2xl border border-border p-4 sm:p-5">
+              <p className="text-sm font-medium text-muted block mb-1">
+                Ticket Status
+              </p>
+              <p className="text-navy font-medium text-base capitalize">
+                {guest.ticketStatus === "none"
+                  ? "No ticket"
+                  : guest.ticketStatus}
+                {guest.ticketCount
+                  ? ` (${guest.unusedTicketCount || 0} unused / ${guest.usedTicketCount || 0} used)`
+                  : ""}
+              </p>
+            </div>
+          ) : null}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
             <div className="bg-white rounded-2xl border border-border p-4 sm:p-5">
               <p className="text-sm font-medium text-muted block mb-1">

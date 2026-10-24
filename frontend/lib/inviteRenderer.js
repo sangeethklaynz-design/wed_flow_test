@@ -35,6 +35,8 @@ export function InviteByType({
   templateKey,
   templateData,
   guestToken = null,
+  publicEventToken = null,
+  onRsvpSuccess = null,
   interactive = false,
   embedded = false,
   templateConfig = null,
@@ -54,6 +56,8 @@ export function InviteByType({
         embedded={embedded}
         interactive={interactive}
         guestToken={guestToken}
+        publicEventToken={publicEventToken}
+        onRsvpSuccess={onRsvpSuccess}
       />
     );
   }

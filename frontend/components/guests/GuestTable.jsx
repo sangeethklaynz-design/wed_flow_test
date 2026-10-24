@@ -30,6 +30,7 @@ export default function GuestTable({
   onCancelRsvp,
   onResendInvite,
   onTogglePin,
+  footer = null,
 }) {
   const [openMenuId, setOpenMenuId] = useState(null);
 
@@ -95,6 +96,24 @@ export default function GuestTable({
                   <span className="font-semibold text-navy truncate block">
                     {guest.name}
                   </span>
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                    {guest.source === "public" ? (
+                      <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide bg-[#EAF5FF] text-[#054380]">
+                        Public
+                      </span>
+                    ) : null}
+                    {guest.paymentDueAt ? (
+                      <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium text-[#64748B]">
+                        Pay by{" "}
+                        {new Date(guest.paymentDueAt).toLocaleString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    ) : null}
+                  </div>
                 </td>
 
                 <td className="px-6 py-4 text-sm text-muted whitespace-nowrap">
@@ -187,6 +206,7 @@ export default function GuestTable({
           </tbody>
         </table>
       </div>
+      {footer ? <div className="border-t border-border">{footer}</div> : null}
     </div>
   );
 }

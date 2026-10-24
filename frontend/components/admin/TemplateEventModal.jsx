@@ -18,6 +18,7 @@ import InvitationSchedule from "@/components/invite/InvitationSchedule";
 import InvitationThankYou from "@/components/invite/InvitationThankYou";
 import { RsvpConfirmationOverlay } from "@/components/invite/corporate/template-1/overlays/RsvpConfirmationOverlay";
 import { PaymentSuccessOverlay } from "@/components/invite/corporate/template-1/overlays/PaymentSuccessOverlay";
+import { TicketQrOverlay } from "@/components/invite/corporate/template-1/overlays/TicketQrOverlay";
 import PartyRsvpConfirmationPage from "@/components/invite/party/template-1/pages/RsvpConfirmationPage";
 import PartyPaymentSuccessPage from "@/components/invite/party/template-1/pages/PaymentSuccessPage";
 import InvitationVideoIntro, {
@@ -758,7 +759,27 @@ export default function TemplateEventModal({ open, onClose, event, onSaved }) {
                             onClose={() => setPreviewFlow("page")}
                             onBackToRsvp={() => setPreviewFlow("confirm")}
                             onAddToCalendar={() => setPreviewFlow("page")}
-                            onViewTicket={() => setPreviewFlow("page")}
+                            onViewTicket={() => setPreviewFlow("ticket")}
+                          />
+                        </div>
+                      </PreviewFlowChrome>
+                    ) : previewFlow === "ticket" &&
+                      eventTypeLower === "corporate" ? (
+                      <PreviewFlowChrome
+                        title="Event ticket"
+                        onBack={() => setPreviewFlow("payment")}
+                        onContinue={() => setPreviewFlow("page")}
+                        continueLabel="Back to invite"
+                      >
+                        <div
+                          className="relative overflow-hidden"
+                          style={{ width: INVITE_WIDTH, height: 844 }}
+                        >
+                          <TicketQrOverlay
+                            isOpen
+                            onClose={() => setPreviewFlow("page")}
+                            onBackToPayment={() => setPreviewFlow("payment")}
+                            onAddToCalendar={() => setPreviewFlow("page")}
                           />
                         </div>
                       </PreviewFlowChrome>
@@ -779,7 +800,6 @@ export default function TemplateEventModal({ open, onClose, event, onSaved }) {
                             canAttend
                             onBackToInvite={() => setPreviewFlow("page")}
                             onProceedToPayment={handlePreviewProceedToPayment}
-                            onSaveSchedule={() => {}}
                           />
                         </div>
                       </PreviewFlowChrome>

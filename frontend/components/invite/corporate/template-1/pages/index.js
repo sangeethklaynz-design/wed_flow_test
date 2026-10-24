@@ -10,6 +10,7 @@ import { EventAgendaPage } from "./EventAgendaPage";
 import { EventLocationPage } from "./EventLocationPage";
 import { EventResourcesPage } from "./EventResourcesPage";
 import { AddToCalendarPage } from "./AddToCalendarPage";
+import { TicketingPage } from "./TicketingPage";
 
 export const CORPORATE_PAGE_WIDTH = 390;
 export const CORPORATE_PAGE_HEIGHT = 844;
@@ -33,6 +34,7 @@ export const CORPORATE_PAGE_COMPONENTS = {
   location: EventLocationPage,
   resources: EventResourcesPage,
   addToCalendar: AddToCalendarPage,
+  ticketing: TicketingPage,
 };
 
 export const CORPORATE_PAGE_LABELS = {
@@ -43,6 +45,7 @@ export const CORPORATE_PAGE_LABELS = {
   location: "Location",
   resources: "Resources",
   addToCalendar: "Add to calendar",
+  ticketing: "Ticketing",
 };
 
 export {
@@ -53,6 +56,7 @@ export {
   EventLocationPage,
   EventResourcesPage,
   AddToCalendarPage,
+  TicketingPage,
 };
 
 export default CORPORATE_PAGE_COMPONENTS;

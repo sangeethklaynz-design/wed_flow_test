@@ -8,7 +8,7 @@ export const RsvpConfirmationOverlay = ({
   onProceedToPayment,
   canAttend = true,
 }) => {
-  const [totalSeconds, setTotalSeconds] = useState(23 * 3600 + 59 * 60 + 45);
+  const [totalSeconds, setTotalSeconds] = useState(1 * 3600);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -46,6 +46,10 @@ export const RsvpConfirmationOverlay = ({
       aria-modal="true"
       aria-label="RSVP Confirmation"
       className="absolute top-0 left-0 w-[390px] h-[844px] rounded-[26px] overflow-hidden z-[100] shadow-card bg-confirm-grad select-none animate-in fade-in zoom-in-95 duration-300"
+      style={{
+        '--corp-text-primary': '#080480',
+        '--corp-text-highlight': '#0084FF',
+      }}
     >
       <div className="relative w-[390px] h-[844px] mx-auto select-none">
         {/* Top Background Waves (W: 390, H: 130, X: 0, Y: 0) */}
@@ -94,7 +98,7 @@ export const RsvpConfirmationOverlay = ({
 
         {canAttend ? (
           <>
-            {/* Payment Notice Card (Within 24 Hours) */}
+            {/* Payment Notice Card (Within 1 Hour) */}
             <div className="absolute top-[323px] left-[14px] w-[362px] h-[211px] bg-[#DFEDFC]/72 rounded-[15px] box-border z-[2]">
               {/* Circle behind clock icon (W: 68, H: 67, X: 40, Y: 338 -> left: 26, top: 15) */}
               <div className="absolute left-[26px] top-[15px] w-[68px] h-[67px] rounded-full bg-[#CCDAF9] flex items-center justify-center" aria-hidden="true">
@@ -105,14 +109,13 @@ export const RsvpConfirmationOverlay = ({
                 </svg>
               </div>
 
-              {/* Text 'Complete Your Payment Within 24 Hours' (W: 228, H: 51, left: 104, top: 23) */}
+              {/* Text 'Complete Your Payment Within 1 Hour' */}
               <h2 className="absolute left-[104px] top-[23px] w-[228px] h-[51px] font-jakarta font-bold text-[18px] leading-[24px] text-[var(--corp-text-primary)] text-left m-0">
-                Complete Your Payment<br />Within 24 Hours
+                Complete Your Payment<br />Within 1 Hour
               </h2>
 
-              {/* Text 'To confirm your attendance...' (W: 341, H: 48, left: 10, top: 84) */}
               <p className="absolute left-[10px] top-[84px] w-[341px] h-[48px] font-inter font-normal text-[13px] leading-[16px] text-[var(--corp-text-primary)] text-center m-0">
-                To confirm your attendance, please complete the payment within 24 hours from your RSVP submission time.
+                To confirm your attendance, please complete the payment within 1 hour from your RSVP submission time.
               </p>
 
               {/* Countdown Timer (Hours : Minutes : Seconds) */}
@@ -139,7 +142,8 @@ export const RsvpConfirmationOverlay = ({
               type="button"
               id="proceed-payment-btn"
               onClick={handleProceedPayment}
-              className="absolute top-[557px] left-[48px] w-[280px] h-[40px] px-4 bg-[var(--corp-text-primary)] text-white rounded-lg font-jakarta font-bold text-[14px] flex items-center justify-center gap-2 cursor-pointer shadow-[0_4px_14px_rgba(8,4,128,0.25)] z-[3] transition-all duration-150 hover:opacity-90 hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(8,4,128,0.32)] active:translate-y-[1px]"
+              className="absolute top-[557px] left-[48px] w-[280px] h-[40px] px-4 bg-[#080480] text-white rounded-lg font-jakarta font-bold text-[14px] flex items-center justify-center gap-2 cursor-pointer shadow-[0_4px_14px_rgba(8,4,128,0.25)] z-[3] transition-all duration-150 hover:opacity-90 hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(8,4,128,0.32)] active:translate-y-[1px]"
+              style={{ backgroundColor: '#080480', color: '#ffffff' }}
             >
               <span>Proceed to Payment</span>
               <svg className="w-[18px] h-[18px] flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -153,7 +157,8 @@ export const RsvpConfirmationOverlay = ({
               type="button"
               id="back-to-invitation-btn"
               onClick={onClose}
-              className="absolute top-[620px] left-[48px] w-[280px] h-[40px] px-4 bg-white text-[var(--corp-text-primary)] border-[1.5px] border-[var(--corp-text-primary)] rounded-lg font-jakarta font-bold text-[14px] flex items-center justify-center cursor-pointer z-[3] transition-all duration-150 hover:bg-[#F1F6FE] hover:-translate-y-[1px] active:translate-y-[1px]"
+              className="absolute top-[620px] left-[48px] w-[280px] h-[40px] px-4 bg-white text-[#080480] border-[1.5px] border-[#080480] rounded-lg font-jakarta font-bold text-[14px] flex items-center justify-center cursor-pointer z-[3] transition-all duration-150 hover:bg-[#F1F6FE] hover:-translate-y-[1px] active:translate-y-[1px]"
+              style={{ backgroundColor: '#ffffff', color: '#080480', borderColor: '#080480' }}
             >
               Back to Invitation
             </button>
@@ -161,14 +166,15 @@ export const RsvpConfirmationOverlay = ({
         ) : (
           /* Declined response view */
           <div className="absolute top-[340px] left-[48px] w-[280px] flex flex-col items-center gap-4 z-[3]">
-            <p className="font-inter font-normal text-[14px] leading-[20px] text-[var(--corp-text-primary)] text-center m-0">
+            <p className="font-inter font-normal text-[14px] leading-[20px] text-[var(--corp-text-primary,#080480)] text-center m-0">
               We hope to celebrate with you at future events. You can return to the invitation below.
             </p>
             <button
               type="button"
               id="back-to-invitation-btn"
               onClick={onClose}
-              className="w-[280px] h-[42px] px-4 bg-[var(--corp-text-primary)] text-white rounded-lg font-jakarta font-bold text-[14px] flex items-center justify-center cursor-pointer shadow-[0_4px_14px_rgba(8,4,128,0.25)] transition-all duration-150 hover:opacity-90 hover:-translate-y-[1px] active:translate-y-[1px]"
+              className="w-[280px] h-[42px] px-4 bg-[#080480] text-white rounded-lg font-jakarta font-bold text-[14px] flex items-center justify-center cursor-pointer shadow-[0_4px_14px_rgba(8,4,128,0.25)] transition-all duration-150 hover:opacity-90 hover:-translate-y-[1px] active:translate-y-[1px]"
+              style={{ backgroundColor: '#080480', color: '#ffffff' }}
             >
               Back to Invitation
             </button>

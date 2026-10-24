@@ -51,24 +51,33 @@ export const RSVP_BOTTOM_PAD = 28;
 export const RSVP_EXPLORE_H = 76;
 
 const DEFAULT_RSVP_QUESTIONS = [
-  { label: "Full name", inputType: "text", options: "" },
-  { label: "Email", inputType: "text", options: "" },
-  { label: "Phone Number", inputType: "text", options: "" },
+  { label: "First Name", inputType: "text", options: "", placeholder: "Kavindu" },
+  { label: "Last Name", inputType: "text", options: "", placeholder: "Perera" },
+  { label: "Email Address", inputType: "text", options: "", placeholder: "kavindu@gmail.com" },
+  { label: "Mobile Number", inputType: "text", options: "", placeholder: "+94  77  123  4567" },
+  {
+    label: "NIC (National Identity Card)",
+    inputType: "text",
+    options: "",
+    placeholder: "199012345678",
+    helperText: "You can update your NIC later when purchasing tickets if you need.",
+  },
   {
     label: "Will you attend?",
     inputType: "radio",
-    options: "Yes, I'll attend, Sorry, I can't attend",
+    options: ["Yes, I'll attend", "Sorry, I can't attend"],
   },
-  { label: "Number of Guests", inputType: "text", options: "" },
+  { label: "Number of Guests", inputType: "text", options: "", placeholder: "1" },
   {
     label: "Meal Preference",
     inputType: "dropdown",
-    options: "Vegetarian, Non- Vegetarian",
+    options: ["Veg or Non-Veg", "Vegetarian", "Non-Vegetarian"],
   },
   {
     label: "Any Special Requirements (Optional)",
     inputType: "textarea",
     options: "",
+    placeholder: "e.g. Food preference",
   },
 ];
 
@@ -77,6 +86,9 @@ export function parseOptionList(raw) {
     return raw.map((o) => String(o ?? "").trim()).filter(Boolean);
   }
   if (raw == null || raw === "") return [];
+  if (String(raw).includes("|")) {
+    return String(raw).split("|").map((o) => o.trim()).filter(Boolean);
+  }
   return String(raw)
     .split(",")
     .map((o) => o.trim())

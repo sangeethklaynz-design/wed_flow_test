@@ -209,6 +209,42 @@ async function ensureRsvpChangeRequestsTable() {
       ADD COLUMN is_pinned TINYINT(1) NOT NULL DEFAULT 0;
     `);
   }
+
+  if (!(await columnExists("guests", "source"))) {
+    await sequelize.query(`
+      ALTER TABLE guests
+      ADD COLUMN source ENUM('manual','public') NOT NULL DEFAULT 'manual' AFTER unique_token;
+    `);
+  }
+
+  if (!(await columnExists("guests", "payment_due_at"))) {
+    await sequelize.query(`
+      ALTER TABLE guests
+      ADD COLUMN payment_due_at DATETIME NULL DEFAULT NULL AFTER invite_shared_at;
+    `);
+  }
+
+  if (!(await columnExists("guests", "organization_id"))) {
+    await sequelize.query(`
+      ALTER TABLE guests
+      ADD COLUMN organization_id VARCHAR(36) NULL AFTER event_id,
+      ADD INDEX idx_guests_organization (organization_id);
+    `);
+  }
+
+  if (!(await columnExists("guests", "email"))) {
+    await sequelize.query(`
+      ALTER TABLE guests
+      ADD COLUMN email VARCHAR(255) NULL AFTER whatsapp_number;
+    `);
+  }
+
+  if (!(await columnExists("guests", "id_number"))) {
+    await sequelize.query(`
+      ALTER TABLE guests
+      ADD COLUMN id_number VARCHAR(64) NULL AFTER email;
+    `);
+  }
 }
 
 async function ensureNotificationsTable() {
@@ -349,6 +385,412 @@ async function ensureEventsTable() {
       ADD COLUMN payment_link TEXT NULL AFTER google_maps_link;
     `);
   }
+
+  if (!(await columnExists("events", "ticketing_enabled"))) {
+    await sequelize.query(`
+      ALTER TABLE events
+      ADD COLUMN ticketing_enabled TINYINT(1) NOT NULL DEFAULT 0 AFTER payment_link;
+    `);
+  }
+
+  if (!(await columnExists("events", "is_ticketing_enabled"))) {
+    await sequelize.query(`
+      ALTER TABLE events
+      ADD COLUMN is_ticketing_enabled TINYINT(1) NOT NULL DEFAULT 0 AFTER ticketing_enabled;
+    `);
+    // Bridge: copy existing ticketing_enabled into the UI/controller column
+    await sequelize.query(`
+      UPDATE events
+      SET is_ticketing_enabled = ticketing_enabled
+      WHERE is_ticketing_enabled = 0 AND ticketing_enabled = 1;
+    `);
+  }
+
+  if (!(await columnExists("events", "total_ticket_limit"))) {
+    await sequelize.query(`
+      ALTER TABLE events
+      ADD COLUMN total_ticket_limit INT NOT NULL DEFAULT 1000 AFTER is_ticketing_enabled;
+    `);
+  }
+
+  if (!(await columnExists("events", "free_ticket_allocation"))) {
+    await sequelize.query(`
+      ALTER TABLE events
+      ADD COLUMN free_ticket_allocation INT NOT NULL DEFAULT 50 AFTER total_ticket_limit;
+    `);
+  }
+
+  if (!(await columnExists("events", "public_invite_enabled"))) {
+    await sequelize.query(`
+      ALTER TABLE events
+      ADD COLUMN public_invite_enabled TINYINT(1) NOT NULL DEFAULT 0 AFTER free_ticket_allocation;
+    `);
+  }
+
+  if (!(await columnExists("events", "public_invite_token"))) {
+    await sequelize.query(`
+      ALTER TABLE events
+      ADD COLUMN public_invite_token VARCHAR(64) NULL AFTER public_invite_enabled,
+      ADD UNIQUE INDEX uq_events_public_invite_token (public_invite_token);
+    `);
+  }
+}
+
+async function ensureTicketingTables() {
+  if (!(await tableExists("ticket_types"))) {
+    await sequelize.query(`
+      CREATE TABLE ticket_types (
+        id VARCHAR(36) NOT NULL PRIMARY KEY,
+        event_id VARCHAR(36) NOT NULL,
+        name VARCHAR(100) NOT NULL,
+        price DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+        description TEXT NULL,
+        quantity INT NULL,
+        display_order INT NOT NULL DEFAULT 0,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_ticket_types_event (event_id)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    `);
+  }
+
+  if (!(await tableExists("ticket_tiers"))) {
+    await sequelize.query(`
+      CREATE TABLE ticket_tiers (
+        id VARCHAR(36) NOT NULL PRIMARY KEY,
+        event_id VARCHAR(36) NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        price DECIMAL(12,2) NOT NULL,
+        currency VARCHAR(3) NOT NULL DEFAULT 'LKR',
+        sort_order INT NOT NULL DEFAULT 0,
+        is_active TINYINT(1) NOT NULL DEFAULT 1,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_ticket_tiers_event (event_id),
+        INDEX idx_ticket_tiers_event_active (event_id, is_active)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    `);
+  }
+
+  if (!(await tableExists("ticket_orders"))) {
+    await sequelize.query(`
+      CREATE TABLE ticket_orders (
+        id VARCHAR(36) NOT NULL PRIMARY KEY,
+        event_id VARCHAR(36) NOT NULL,
+        guest_id VARCHAR(36) NULL,
+        buyer_name VARCHAR(255) NULL,
+        buyer_contact VARCHAR(255) NULL,
+        payment_provider VARCHAR(50) NOT NULL DEFAULT 'google_pay',
+        payment_ref VARCHAR(255) NULL,
+        payment_status ENUM('pending','paid','failed') NOT NULL DEFAULT 'pending',
+        amount_total DECIMAL(12,2) NOT NULL DEFAULT 0,
+        currency VARCHAR(3) NOT NULL DEFAULT 'LKR',
+        checkout_items JSON NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_ticket_orders_event (event_id),
+        INDEX idx_ticket_orders_guest (guest_id),
+        INDEX idx_ticket_orders_payment_ref (event_id, payment_ref)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    `);
+  }
+
+  if (
+    (await tableExists("ticket_orders")) &&
+    !(await columnExists("ticket_orders", "checkout_items"))
+  ) {
+    await sequelize.query(`
+      ALTER TABLE ticket_orders
+      ADD COLUMN checkout_items JSON NULL AFTER currency;
+    `);
+  }
+
+  if (
+    (await tableExists("ticket_orders")) &&
+    !(await columnExists("ticket_orders", "stripe_checkout_session_id"))
+  ) {
+    await sequelize.query(`
+      ALTER TABLE ticket_orders
+      ADD COLUMN stripe_checkout_session_id VARCHAR(255) NULL AFTER checkout_items;
+    `);
+    await sequelize.query(`
+      CREATE UNIQUE INDEX uq_ticket_orders_stripe_session
+      ON ticket_orders (stripe_checkout_session_id);
+    `);
+  }
+
+  if (!(await tableExists("tickets"))) {
+    await sequelize.query(`
+      CREATE TABLE tickets (
+        id VARCHAR(36) NOT NULL PRIMARY KEY,
+        event_id VARCHAR(36) NOT NULL,
+        order_id VARCHAR(36) NOT NULL,
+        tier_id VARCHAR(36) NOT NULL,
+        guest_id VARCHAR(36) NULL,
+        -- QR CODE
+        ticket_code VARCHAR(64) NOT NULL,
+        tier_name VARCHAR(255) NOT NULL,
+        price DECIMAL(12,2) NOT NULL,
+        currency VARCHAR(3) NOT NULL DEFAULT 'LKR',
+        status ENUM('valid','invalid') NOT NULL DEFAULT 'valid',
+        issued_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        invalidated_at TIMESTAMP NULL,
+        invalidated_by VARCHAR(36) NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_tickets_code (ticket_code),
+        INDEX idx_tickets_event (event_id),
+        INDEX idx_tickets_order (order_id),
+        INDEX idx_tickets_event_status (event_id, status)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    `);
+  }
+}
+
+async function ensureStripeConnectColumns() {
+  if (!(await tableExists("users"))) return;
+
+  if (!(await columnExists("users", "stripe_account_id"))) {
+    await sequelize.query(`
+      ALTER TABLE users
+      ADD COLUMN stripe_account_id VARCHAR(255) NULL AFTER role,
+      ADD INDEX idx_users_stripe_account (stripe_account_id);
+    `);
+  }
+
+  if (!(await columnExists("users", "stripe_charges_enabled"))) {
+    await sequelize.query(`
+      ALTER TABLE users
+      ADD COLUMN stripe_charges_enabled TINYINT(1) NOT NULL DEFAULT 0 AFTER stripe_account_id;
+    `);
+  }
+
+  if (!(await columnExists("users", "stripe_details_submitted"))) {
+    await sequelize.query(`
+      ALTER TABLE users
+      ADD COLUMN stripe_details_submitted TINYINT(1) NOT NULL DEFAULT 0 AFTER stripe_charges_enabled;
+    `);
+  }
+}
+
+async function ensureUsersRoleEnum() {
+  if (!(await tableExists("users")) || !(await columnExists("users", "role"))) {
+    return;
+  }
+
+  const [rows] = await sequelize.query(
+    `
+    SELECT COLUMN_TYPE
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = ?
+      AND TABLE_NAME = 'users'
+      AND COLUMN_NAME = 'role'
+    LIMIT 1;
+    `,
+    { replacements: [env.DB_NAME] }
+  );
+
+  const columnType = String(rows[0]?.COLUMN_TYPE || "").toLowerCase();
+  if (!columnType.startsWith("enum(")) return;
+
+  const needed = ["admin", "couple", "client", "staff"];
+  const missing = needed.filter((value) => !columnType.includes(`'${value}'`));
+  if (!missing.length) return;
+
+  await sequelize.query(`
+    ALTER TABLE users
+    MODIFY COLUMN role ENUM('ADMIN','COUPLE','CLIENT','STAFF') NOT NULL DEFAULT 'COUPLE';
+  `);
+}
+
+async function ensureOrgRbacSchema() {
+  await ensureUsersRoleEnum();
+
+  if (!(await tableExists("organizations"))) {
+    await sequelize.query(`
+      CREATE TABLE organizations (
+        id VARCHAR(36) NOT NULL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        type ENUM('vendor','standalone') NOT NULL DEFAULT 'standalone',
+        owner_user_id VARCHAR(36) NULL,
+        max_staff_accounts INT NOT NULL DEFAULT 5,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_organizations_type (type),
+        INDEX idx_organizations_owner (owner_user_id)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    `);
+  }
+
+  if (!(await tableExists("role_permissions"))) {
+    await sequelize.query(`
+      CREATE TABLE role_permissions (
+        id VARCHAR(36) NOT NULL PRIMARY KEY,
+        organization_id VARCHAR(36) NOT NULL,
+        \`key\` VARCHAR(64) NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        locked TINYINT(1) NOT NULL DEFAULT 0,
+        permissions JSON NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_role_permissions_org_key (organization_id, \`key\`),
+        INDEX idx_role_permissions_org (organization_id)
+      ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    `);
+  }
+
+  if (await tableExists("users")) {
+    if (!(await columnExists("users", "organization_id"))) {
+      await sequelize.query(`
+        ALTER TABLE users
+        ADD COLUMN organization_id VARCHAR(36) NULL AFTER role,
+        ADD INDEX idx_users_organization (organization_id);
+      `);
+    }
+    if (!(await columnExists("users", "permission_role_id"))) {
+      await sequelize.query(`
+        ALTER TABLE users
+        ADD COLUMN permission_role_id VARCHAR(36) NULL AFTER organization_id;
+      `);
+    }
+    if (!(await columnExists("users", "is_org_owner"))) {
+      await sequelize.query(`
+        ALTER TABLE users
+        ADD COLUMN is_org_owner TINYINT(1) NOT NULL DEFAULT 0 AFTER permission_role_id;
+      `);
+    }
+    if (!(await columnExists("users", "login_username"))) {
+      await sequelize.query(`
+        ALTER TABLE users
+        ADD COLUMN login_username VARCHAR(255) NULL AFTER email,
+        ADD UNIQUE INDEX uq_users_login_username (login_username);
+      `);
+    }
+    if (!(await columnExists("users", "is_active"))) {
+      await sequelize.query(`
+        ALTER TABLE users
+        ADD COLUMN is_active TINYINT(1) NOT NULL DEFAULT 1 AFTER is_org_owner;
+      `);
+    }
+  }
+
+  if (
+    (await tableExists("events")) &&
+    !(await columnExists("events", "organization_id"))
+  ) {
+    await sequelize.query(`
+      ALTER TABLE events
+      ADD COLUMN organization_id VARCHAR(36) NULL AFTER user_id,
+      ADD INDEX idx_events_organization (organization_id);
+    `);
+  }
+
+  await backfillOrganizationsFromEvents();
+}
+
+async function backfillOrganizationsFromEvents() {
+  if (!(await tableExists("events")) || !(await tableExists("organizations"))) {
+    return;
+  }
+  if (!(await columnExists("events", "organization_id"))) return;
+
+  const { seedRolesForOrganization, getRoleByKey } = require("../services/orgRoles");
+  const crypto = require("crypto");
+
+  const [events] = await sequelize.query(`
+    SELECT id, user_id, name, type
+    FROM events
+    WHERE organization_id IS NULL AND user_id IS NOT NULL
+    ORDER BY created_at ASC;
+  `);
+
+  const userOrg = new Map();
+
+  for (const event of events) {
+    let orgId = userOrg.get(event.user_id);
+    if (!orgId) {
+      const [existing] = await sequelize.query(
+        `
+        SELECT id FROM organizations WHERE owner_user_id = ? LIMIT 1;
+        `,
+        { replacements: [event.user_id] }
+      );
+      if (existing[0]) {
+        orgId = existing[0].id;
+      } else {
+        orgId = crypto.randomUUID();
+        const orgType =
+          String(event.type || "").toLowerCase() === "wedding"
+            ? "standalone"
+            : "vendor";
+        await sequelize.query(
+          `
+          INSERT INTO organizations (id, name, type, owner_user_id, max_staff_accounts)
+          VALUES (?, ?, ?, ?, 5);
+          `,
+          {
+            replacements: [
+              orgId,
+              event.name || "Organization",
+              orgType,
+              event.user_id,
+            ],
+          }
+        );
+        await seedRolesForOrganization(orgId);
+        const adminRole = await getRoleByKey(orgId, "admin");
+        await sequelize.query(
+          `
+          UPDATE users
+          SET organization_id = ?,
+              is_org_owner = 1,
+              permission_role_id = ?,
+              role = 'CLIENT'
+          WHERE id = ?;
+          `,
+          {
+            replacements: [orgId, adminRole?.id || null, event.user_id],
+          }
+        );
+      }
+      userOrg.set(event.user_id, orgId);
+    }
+
+    await sequelize.query(
+      `UPDATE events SET organization_id = ? WHERE id = ?;`,
+      { replacements: [orgId, event.id] }
+    );
+  }
+
+  // Migrate remaining COUPLE owners that somehow have org but old role
+  await sequelize.query(`
+    UPDATE users
+    SET role = 'CLIENT'
+    WHERE role = 'COUPLE' AND organization_id IS NOT NULL;
+  `);
+}
+
+async function backfillGuestOrgAndEvent() {
+  if (!(await tableExists("guests"))) return;
+
+  // Link guests.event_id from wedding when missing
+  if (await columnExists("guests", "event_id")) {
+    await sequelize.query(`
+      UPDATE guests g
+      INNER JOIN weddings w ON w.id = g.wedding_id
+      SET g.event_id = w.event_id
+      WHERE g.event_id IS NULL AND w.event_id IS NOT NULL;
+    `);
+  }
+
+  if (await columnExists("guests", "organization_id")) {
+    await sequelize.query(`
+      UPDATE guests g
+      INNER JOIN events e ON e.id = g.event_id
+      SET g.organization_id = e.organization_id
+      WHERE g.organization_id IS NULL AND e.organization_id IS NOT NULL;
+    `);
+  }
 }
 
 async function ensureCoreSchema() {
@@ -359,6 +801,10 @@ async function ensureCoreSchema() {
   await ensureRsvpChangeRequestsTable();
   await ensureNotificationsTable();
   await ensureEventsTable();
+  await ensureTicketingTables();
+  await ensureStripeConnectColumns();
+  await ensureOrgRbacSchema();
+  await backfillGuestOrgAndEvent();
 }
 
 module.exports = { ensureCoreSchema };

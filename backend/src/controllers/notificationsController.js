@@ -1,6 +1,6 @@
 const crypto = require("crypto");
 const { sequelize } = require("../models");
-const { getWeddingForUser } = require("../utils/wedding");
+const { getWeddingForUser, getWeddingForRequest } = require("../utils/wedding");
 
 async function createNotification(weddingId, type, title, message, guestId = null) {
   const id = crypto.randomUUID();
@@ -28,7 +28,7 @@ async function createNotification(weddingId, type, title, message, guestId = nul
 
 async function listNotifications(req, res) {
   try {
-    const wedding = await getWeddingForUser(req.user.id, req.user.weddingId);
+    const wedding = await getWeddingForRequest(req.user);
     if (!wedding) {
       return res.status(404).json({ error: "Not Found", message: "No wedding found" });
     }
@@ -92,7 +92,7 @@ async function listNotifications(req, res) {
 
 async function markAllRead(req, res) {
   try {
-    const wedding = await getWeddingForUser(req.user.id, req.user.weddingId);
+    const wedding = await getWeddingForRequest(req.user);
     if (!wedding) {
       return res.status(404).json({ error: "Not Found", message: "No wedding found" });
     }
@@ -112,7 +112,7 @@ async function markAllRead(req, res) {
 async function markOneRead(req, res) {
   try {
     const { id } = req.params;
-    const wedding = await getWeddingForUser(req.user.id, req.user.weddingId);
+    const wedding = await getWeddingForRequest(req.user);
     if (!wedding) {
       return res.status(404).json({ error: "Not Found", message: "No wedding found" });
     }
@@ -133,7 +133,7 @@ async function updateNotification(req, res) {
   try {
     const { id } = req.params;
     const { title, message } = req.body;
-    const wedding = await getWeddingForUser(req.user.id, req.user.weddingId);
+    const wedding = await getWeddingForRequest(req.user);
     if (!wedding) {
       return res.status(404).json({ error: "Not Found", message: "No wedding found" });
     }
@@ -153,7 +153,7 @@ async function updateNotification(req, res) {
 async function deleteNotification(req, res) {
   try {
     const { id } = req.params;
-    const wedding = await getWeddingForUser(req.user.id, req.user.weddingId);
+    const wedding = await getWeddingForRequest(req.user);
     if (!wedding) {
       return res.status(404).json({ error: "Not Found", message: "No wedding found" });
     }

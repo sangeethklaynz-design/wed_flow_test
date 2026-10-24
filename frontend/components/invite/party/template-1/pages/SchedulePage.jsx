@@ -26,52 +26,70 @@ function escapePdfText(text) {
     .replace(/\)/g, "\\)");
 }
 
-function generatePartySchedulePdf(fields, items) {
-  const mainTitle = (fields.eventMainTitle || "GALA NIGHT").replace(/[\r\n]+/g, " ");
-  const scriptTitle = fields.eventScriptTitle || "Annual";
+export function generatePartySchedulePdf(fields, items) {
   const scheduleTitle = fields.scheduleTitle || "Event Schedule";
-  const dateVenue = [fields.eventDateLabel, fields.eventVenueLabel].filter(Boolean).join(" | ");
 
-  const textOps = [];
-  textOps.push("BT");
-  textOps.push("/F2 18 Tf");
-  textOps.push("50 780 Td");
-  textOps.push(`(${escapePdfText(scriptTitle + " " + mainTitle)}) Tj`);
-  textOps.push("ET");
+  const ops = [];
+  // Background gradient: top #588dcf, mid #e5f2fd, bot #4377bd
+  ops.push('0.35 0.55 0.81 rg'); // Top soft party blue
+  ops.push('0 560 390 284 re f');
+  ops.push('0.90 0.95 0.99 rg'); // Mid pale blue
+  ops.push('0 200 390 360 re f');
+  ops.push('0.26 0.47 0.74 rg'); // Bot deep blue #4377bd
+  ops.push('0 0 390 200 re f');
 
-  if (dateVenue) {
-    textOps.push("BT");
-    textOps.push("/F1 10 Tf");
-    textOps.push("50 758 Td");
-    textOps.push(`(${escapePdfText(dateVenue)}) Tj`);
-    textOps.push("ET");
+  // Title: Event Schedule in dark navy #0c1e48 (moved down below foliage)
+  ops.push('0.05 0.12 0.28 rg');
+  ops.push('BT');
+  ops.push('/F2 22 Tf');
+  ops.push('115 726 Td');
+  ops.push(`(${escapePdfText(scheduleTitle)}) Tj`);
+  ops.push('ET');
+
+  // Underline decoration line (gold #d8b87a)
+  ops.push('0.85 0.72 0.48 RG');
+  ops.push('2 w');
+  ops.push('130 706 m 260 706 l S');
+
+  // Timeline vertical line: gold #d8b87a
+  const lineX = 72;
+  const startY = 642;
+  const step = 58;
+  const itemList = Array.isArray(items) && items.length ? items.slice(0, 6) : [];
+  const count = itemList.length;
+
+  if (count > 0) {
+    ops.push('0.85 0.72 0.48 RG');
+    ops.push('2 w');
+    ops.push(`${lineX} ${startY} m ${lineX} ${startY - (count - 1) * step} l S`);
   }
 
-  textOps.push("BT");
-  textOps.push("/F2 13 Tf");
-  textOps.push("50 720 Td");
-  textOps.push(`(${escapePdfText(scheduleTitle.toUpperCase())}) Tj`);
-  textOps.push("ET");
+  itemList.forEach((item, idx) => {
+    const y = startY - idx * step;
+    // Golden circle node #ecdaab with gold border
+    ops.push('0.92 0.85 0.67 rg');
+    ops.push('0.85 0.72 0.48 RG');
+    ops.push('1.5 w');
+    ops.push(`${lineX - 10} ${y - 10} 20 20 re b`);
 
-  let y = 685;
-  items.forEach((item) => {
-    if (!item.time && !item.title && !item.desc) return;
-    textOps.push("BT");
-    textOps.push("/F2 10 Tf");
-    textOps.push(`50 ${y} Td`);
-    textOps.push(`(${escapePdfText(item.time || "")}) Tj`);
-    textOps.push("ET");
+    // Time (bold navy #0c1e48)
+    ops.push('0.05 0.12 0.28 rg');
+    ops.push('BT');
+    ops.push('/F2 13 Tf');
+    ops.push(`${lineX + 22} ${y} Td`);
+    ops.push(`(${escapePdfText(item.time || '')}) Tj`);
+    ops.push('ET');
 
-    textOps.push("BT");
-    textOps.push("/F1 10 Tf");
-    textOps.push(`140 ${y} Td`);
-    textOps.push(`(${escapePdfText(item.title || item.desc || "")}) Tj`);
-    textOps.push("ET");
-
-    y -= 26;
+    // Title / Description (blue #1e3a7a)
+    ops.push('0.12 0.23 0.48 rg');
+    ops.push('BT');
+    ops.push('/F2 11.5 Tf');
+    ops.push(`${lineX + 22} ${y - 16} Td`);
+    ops.push(`(${escapePdfText(item.title || item.desc || '')}) Tj`);
+    ops.push('ET');
   });
 
-  const streamContent = textOps.join("\n");
+  const streamContent = ops.join('\n');
   const streamLength = streamContent.length;
 
   const pdf = `%PDF-1.4
@@ -82,7 +100,7 @@ endobj
 << /Type /Pages /Kids [3 0 R] /Count 1 >>
 endobj
 3 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 390 844] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>
 endobj
 4 0 obj
 << /Length ${streamLength} >>
@@ -111,7 +129,7 @@ startxref
 444
 %%EOF`;
 
-  return new Blob([pdf], { type: "application/pdf" });
+  return new Blob([pdf], { type: 'application/pdf' });
 }
 
 export default function SchedulePage({
@@ -145,14 +163,28 @@ export default function SchedulePage({
     setInternalDownloading(true);
     try {
       let blob = null;
+      const apiUrl =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+
       if (guestToken) {
-        const apiUrl =
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
         const res = await fetch(
           `${apiUrl}/api/public/invite/${encodeURIComponent(guestToken)}/schedule/download`
         );
         if (res.ok) {
           blob = await res.blob();
+        }
+      } else {
+        const token =
+          typeof window !== "undefined"
+            ? localStorage.getItem("token")
+            : null;
+        if (token) {
+          const res = await fetch(`${apiUrl}/api/couple/schedule/download`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.ok) {
+            blob = await res.blob();
+          }
         }
       }
 
@@ -160,14 +192,16 @@ export default function SchedulePage({
         blob = generatePartySchedulePdf(fields, items);
       }
 
-      const objectUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = objectUrl;
-      a.download = "party-schedule.pdf";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(objectUrl), 2000);
+      if (blob) {
+        const objectUrl = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = objectUrl;
+        a.download = "party-schedule.pdf";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 2000);
+      }
     } catch (err) {
       console.error("Failed to download schedule:", err);
     } finally {

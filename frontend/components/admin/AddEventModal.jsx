@@ -59,13 +59,16 @@ export default function AddEventModal({
       googleMapsLink: "",
       paymentLink: "",
       clientEmail: "",
+      ticketingEnabled: false,
+      publicInviteEnabled: false,
     },
   });
 
   const selectedType = watch("type");
-  const showPaymentLink =
-    mode === "add" &&
-    (selectedType === "corporate" || selectedType === "party");
+  const isPartyOrCorporate =
+    selectedType === "corporate" || selectedType === "party";
+  const showPaymentLink = mode === "add" && isPartyOrCorporate;
+  const showTicketingAndPublic = isPartyOrCorporate;
 
   useEffect(() => {
     if (!open) return;
@@ -76,8 +79,10 @@ export default function AddEventModal({
       eventDate: initialEvent?.eventDate ?? "",
       location: initialEvent?.location ?? "",
       googleMapsLink: initialEvent?.googleMapsLink ?? "",
-      paymentLink: "",
+      paymentLink: initialEvent?.paymentLink ?? "",
       clientEmail: "",
+      ticketingEnabled: Boolean(initialEvent?.ticketingEnabled),
+      publicInviteEnabled: Boolean(initialEvent?.publicInviteEnabled),
     });
     setFormError("");
     const prev = document.body.style.overflow;
@@ -140,6 +145,8 @@ export default function AddEventModal({
       return;
     }
 
+    const isCorpOrParty =
+      data.type === "corporate" || data.type === "party";
     const payload = {
       id: initialEvent?.id,
       name: data.name.trim(),
@@ -148,12 +155,19 @@ export default function AddEventModal({
       eventDate: data.eventDate,
       location: data.location.trim(),
       googleMapsLink: data.googleMapsLink.trim(),
+      ticketingEnabled: isCorpOrParty ? Boolean(data.ticketingEnabled) : false,
+      publicInviteEnabled: isCorpOrParty
+        ? Boolean(data.publicInviteEnabled)
+        : false,
+      registrationMode: data.type === "wedding" ? "standalone" : "new_vendor",
     };
     if (mode === "add") {
       payload.clientEmail = String(data.clientEmail || "").trim().toLowerCase();
-      if (data.type === "corporate" || data.type === "party") {
+      if (isCorpOrParty) {
         payload.paymentLink = String(data.paymentLink || "").trim();
       }
+    } else if (isCorpOrParty) {
+      payload.paymentLink = String(data.paymentLink || "").trim();
     }
 
     try {
@@ -339,6 +353,41 @@ export default function AddEventModal({
               <p className="text-[11px] text-muted">
                 Guests use this link from Proceed to Payment after RSVP.
               </p>
+            </div>
+          ) : null}
+
+          {showTicketingAndPublic ? (
+            <div className="space-y-3 rounded-xl border border-border bg-white p-4">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  {...register("ticketingEnabled")}
+                  className="mt-1 rounded border-[#CBD5E1] text-[#054380] focus:ring-[#054380]"
+                />
+                <span>
+                  <span className="block text-sm font-medium text-navy">
+                    Enable ticketing
+                  </span>
+                  <span className="block text-[11px] text-muted mt-0.5">
+                    Guests can purchase tickets after RSVP. Not available for weddings.
+                  </span>
+                </span>
+              </label>
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  {...register("publicInviteEnabled")}
+                  className="mt-1 rounded border-[#CBD5E1] text-[#054380] focus:ring-[#054380]"
+                />
+                <span>
+                  <span className="block text-sm font-medium text-navy">
+                    Enable public invite link
+                  </span>
+                  <span className="block text-[11px] text-muted mt-0.5">
+                    One open registration link for this event (non-personalized).
+                  </span>
+                </span>
+              </label>
             </div>
           ) : null}
 

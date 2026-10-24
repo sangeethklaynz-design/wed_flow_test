@@ -1,4 +1,4 @@
-const { getWeddingForUser, toDateOnly, buildInitials, formatDisplayCoupleNames } = require("../utils/wedding");
+const { getWeddingForUser, getWeddingForRequest, toDateOnly, buildInitials, formatDisplayCoupleNames } = require("../utils/wedding");
 const { fetchGuestsForWedding, mapGuestRow } = require("./guestsController");
 
 function statsFromGuests(guests) {
@@ -30,7 +30,7 @@ function statsFromGuests(guests) {
 
 async function getDashboard(req, res) {
   try {
-    const wedding = await getWeddingForUser(req.user.id, req.user.weddingId);
+    const wedding = await getWeddingForRequest(req.user);
 
     if (!wedding) {
       return res.status(404).json({

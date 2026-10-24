@@ -11,7 +11,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Search, Send, Share2, Check, Copy } from "lucide-react";
 import clsx from "clsx";
 import { NotificationBell } from "@/components/ui/NotificationPanel";
 import GuestCard from "@/components/guests/GuestCard";
@@ -23,6 +23,102 @@ import ShareInviteModal from "@/components/guests/ShareInviteModal";
 import { apiRequest } from "@/lib/api";
 import { clearAuthSession, getAccessToken } from "@/lib/auth";
 import { shareGuestInviteNative } from "@/lib/shareInvite";
+
+const GUESTS_PER_PAGE = 15;
+
+function getPageNumbers(currentPage, totalPages) {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+  if (currentPage <= 4) {
+    return [1, 2, 3, 4, 5, "...", totalPages];
+  }
+  if (currentPage >= totalPages - 3) {
+    return [
+      1,
+      "...",
+      totalPages - 4,
+      totalPages - 3,
+      totalPages - 2,
+      totalPages - 1,
+      totalPages,
+    ];
+  }
+  return [
+    1,
+    "...",
+    currentPage - 1,
+    currentPage,
+    currentPage + 1,
+    "...",
+    totalPages,
+  ];
+}
+
+function PaginationBar({
+  safePage,
+  totalPages,
+  totalItems,
+  itemsPerPage,
+  onPageChange,
+}) {
+  if (totalItems === 0) return null;
+  const startItem = (safePage - 1) * itemsPerPage + 1;
+  const endItem = Math.min(safePage * itemsPerPage, totalItems);
+
+  return (
+    <div className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <p className="text-[13px] text-muted font-medium">
+        Showing {startItem} to {endItem} of {totalItems} guests
+      </p>
+      <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-center">
+        <button
+          type="button"
+          onClick={() => onPageChange(Math.max(1, safePage - 1))}
+          disabled={safePage === 1}
+          className="w-8 h-8 rounded border border-[#eef0f3] flex items-center justify-center text-muted hover:bg-gray-50 disabled:opacity-40 transition-colors"
+          aria-label="Previous page"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+
+        {getPageNumbers(safePage, totalPages).map((p, idx) =>
+          p === "..." ? (
+            <span
+              key={`ellipsis-${idx}`}
+              className="w-8 h-8 flex items-center justify-center text-muted text-xs select-none"
+            >
+              …
+            </span>
+          ) : (
+            <button
+              key={p}
+              type="button"
+              onClick={() => onPageChange(p)}
+              className={`w-8 h-8 rounded text-[13px] font-bold flex items-center justify-center transition-colors ${
+                safePage === p
+                  ? "bg-[#054380] text-white"
+                  : "border border-[#eef0f3] text-muted hover:bg-gray-50"
+              }`}
+            >
+              {p}
+            </button>
+          )
+        )}
+
+        <button
+          type="button"
+          onClick={() => onPageChange(Math.min(totalPages, safePage + 1))}
+          disabled={safePage === totalPages}
+          className="w-8 h-8 rounded border border-[#eef0f3] flex items-center justify-center text-muted hover:bg-gray-50 disabled:opacity-40 transition-colors"
+          aria-label="Next page"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 const FILTERS = [
   { id: "all", label: "All" },
@@ -45,12 +141,15 @@ export default function GuestsPage() {
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
   const [addOpen, setAddOpen] = useState(false);
   const [viewGuest, setViewGuest] = useState(null);
   const [editGuest, setEditGuest] = useState(null);
   const [deleteGuest, setDeleteGuest] = useState(null);
   const [shareGuest, setShareGuest] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [publicInvite, setPublicInvite] = useState(null);
+  const [copiedPublic, setCopiedPublic] = useState(false);
   const fetchInProgressRef = useRef(false);
 
   const loadGuests = useCallback(async () => {
@@ -66,6 +165,7 @@ export default function GuestsPage() {
     try {
       const data = await apiRequest("/api/couple/guests", { token });
       setGuests(sortGuestsByPinAndName(data.guests || []));
+      setPublicInvite(data.publicInvite || null);
       setError("");
     } catch (err) {
       if (err.status === 401) {
@@ -79,6 +179,17 @@ export default function GuestsPage() {
       fetchInProgressRef.current = false;
     }
   }, [router]);
+
+  const handleCopyPublicLink = async () => {
+    if (!publicInvite?.url) return;
+    try {
+      await navigator.clipboard.writeText(publicInvite.url);
+      setCopiedPublic(true);
+      setTimeout(() => setCopiedPublic(false), 2000);
+    } catch {
+      // ignore
+    }
+  };
 
   useEffect(() => {
     loadGuests();
@@ -126,6 +237,27 @@ export default function GuestsPage() {
     return sortGuestsByPinAndName(filtered);
   }, [guests, query, filter]);
 
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredGuests.length / GUESTS_PER_PAGE)
+  );
+  const safePage = Math.min(currentPage, totalPages);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [query, filter]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const paginatedGuests = useMemo(() => {
+    const startIndex = (safePage - 1) * GUESTS_PER_PAGE;
+    return filteredGuests.slice(startIndex, startIndex + GUESTS_PER_PAGE);
+  }, [filteredGuests, safePage]);
+
   const handleAdd = async (payload) => {
     const token = getAccessToken();
     if (!token) return;
@@ -144,6 +276,7 @@ export default function GuestsPage() {
       });
       setGuests((prev) => sortGuestsByPinAndName([data.guest, ...prev]));
       setFilter("all");
+      setCurrentPage(1);
       setError("");
     } catch (err) {
       setError(err.message || "Failed to add guest");
@@ -294,9 +427,25 @@ export default function GuestsPage() {
         <h1 className="font-serif font-bold text-3xl text-navy">Guests</h1>
       </div>
 
-      <div className="hidden md:flex justify-between items-center mb-8 bg-white p-5 rounded-2xl border border-border">
+      <div className="hidden md:flex justify-between items-center mb-8 bg-white p-5 rounded-2xl border border-border gap-4">
         <h1 className="font-serif font-bold text-2xl text-navy">Guests</h1>
-        <NotificationBell />
+        <div className="flex items-center gap-3">
+          {publicInvite?.url ? (
+            <button
+              type="button"
+              onClick={handleCopyPublicLink}
+              className="inline-flex items-center gap-2 h-10 px-3.5 rounded-xl border border-border text-sm font-medium text-navy hover:bg-[#EAF5FF]"
+            >
+              {copiedPublic ? (
+                <Check className="w-4 h-4 text-emerald-600" />
+              ) : (
+                <Copy className="w-4 h-4" />
+              )}
+              {copiedPublic ? "Link copied" : "Copy public invite link"}
+            </button>
+          ) : null}
+          <NotificationBell />
+        </div>
       </div>
 
       {error ? (
@@ -375,7 +524,7 @@ export default function GuestsPage() {
             <p className="text-muted text-sm">No guests match your search.</p>
           </div>
         ) : (
-          filteredGuests.map((guest) => (
+          paginatedGuests.map((guest) => (
             <GuestCard
               key={guest.id}
               guest={guest}
@@ -394,12 +543,24 @@ export default function GuestsPage() {
             />
           ))
         )}
+
+        {!loading && filteredGuests.length > 0 ? (
+          <div className="mt-4 bg-white rounded-2xl card-shadow border border-border">
+            <PaginationBar
+              safePage={safePage}
+              totalPages={totalPages}
+              totalItems={filteredGuests.length}
+              itemsPerPage={GUESTS_PER_PAGE}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        ) : null}
       </div>
 
       <div className="hidden md:block">
         {!loading ? (
           <GuestTable
-            guests={filteredGuests}
+            guests={paginatedGuests}
             onViewGuest={(g) => setViewGuest(g)}
             onEditGuest={(g) => setEditGuest(g)}
             onDeleteGuest={(g) => setDeleteGuest(g)}
@@ -407,6 +568,17 @@ export default function GuestsPage() {
             onCancelRsvp={handleCancelRsvp}
             onResendInvite={handleResendInvite}
             onTogglePin={handleTogglePin}
+            footer={
+              filteredGuests.length > 0 ? (
+                <PaginationBar
+                  safePage={safePage}
+                  totalPages={totalPages}
+                  totalItems={filteredGuests.length}
+                  itemsPerPage={GUESTS_PER_PAGE}
+                  onPageChange={setCurrentPage}
+                />
+              ) : null
+            }
           />
         ) : null}
       </div>

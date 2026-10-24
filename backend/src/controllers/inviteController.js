@@ -1,11 +1,11 @@
-const { getWeddingForUser } = require("../utils/wedding");
+const { getWeddingForUser, getWeddingForRequest } = require("../utils/wedding");
 const {
   loadStaticInvitationBundle,
 } = require("../utils/invitationTemplate");
 
 async function getInvite(req, res) {
   try {
-    const wedding = await getWeddingForUser(req.user.id, req.user.weddingId);
+    const wedding = await getWeddingForRequest(req.user);
 
     if (!wedding) {
       return res.status(404).json({

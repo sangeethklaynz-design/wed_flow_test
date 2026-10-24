@@ -6,11 +6,33 @@ export const RsvpChangeRequestPage = ({
   rsvpData = {},
   guestToken = '',
   onRequestSubmitted,
+  isTicketing = false,
+  hasPurchasedTickets = false,
+  purchasedBookingData = null,
+  onViewPurchasedTickets = null,
 }) => {
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+
+  const showTicketOption = Boolean(
+    isTicketing ||
+    hasPurchasedTickets ||
+    purchasedBookingData ||
+    (typeof window !== 'undefined' && (
+      localStorage.getItem('wedflow_purchased_tickets') ||
+      sessionStorage.getItem('wedflow_purchased_tickets')
+    ))
+  );
+
+  const handleViewTickets = () => {
+    if (typeof onViewPurchasedTickets === 'function') {
+      onViewPurchasedTickets();
+    } else if (typeof window !== 'undefined') {
+      window.location.hash = '#ticket';
+    }
+  };
 
   const isAttending =
     (rsvpData.attendance || 'yes').toLowerCase() === 'yes' ||
@@ -83,6 +105,34 @@ export const RsvpChangeRequestPage = ({
       />
 
       <div className="relative z-[2] w-[390px] min-h-[844px] mx-auto px-[35px] pt-[72px] pb-[32px] flex flex-col items-center justify-start select-none">
+        {/* Top Option: View Already Purchased Tickets */}
+        {showTicketOption && (
+          <div className="w-full flex justify-center mb-3.5 z-20">
+            <button
+              type="button"
+              id="view-purchased-tickets-top-btn"
+              onClick={handleViewTickets}
+              className="w-full max-w-[320px] h-[44px] px-4 rounded-[14px] bg-[#080480] hover:bg-[#060368] text-white flex items-center justify-between shadow-[0_4px_14px_rgba(8,4,128,0.22)] active:scale-[0.98] transition-all cursor-pointer group"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-[26px] h-[26px] rounded-full bg-white/20 flex items-center justify-center">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="6" width="20" height="12" rx="2" />
+                    <line x1="6" y1="12" x2="6" y2="12.01" />
+                    <line x1="10" y1="12" x2="14" y2="12" />
+                  </svg>
+                </div>
+                <span className="font-sans font-bold text-[12.5px] tracking-tight">
+                  View Already Purchased Tickets
+                </span>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="group-hover:translate-x-0.5 transition-transform">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+          </div>
+        )}
+
         <h2 className="font-petrona font-bold text-[31px] text-[var(--corp-text-primary)] text-center leading-[1.12] tracking-[-0.01em] m-0">
           Need to Make
           <br />

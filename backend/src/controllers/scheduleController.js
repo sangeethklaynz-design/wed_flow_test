@@ -1,6 +1,6 @@
 const crypto = require("crypto");
 const { sequelize } = require("../models");
-const { getWeddingForUser, toDateOnly } = require("../utils/wedding");
+const { getWeddingForUser, getWeddingForRequest, toDateOnly } = require("../utils/wedding");
 const { createNotification } = require("./notificationsController");
 const { syncDbScheduleToTemplate, ensureScheduleSynced } = require("../utils/scheduleSync");
 
@@ -77,7 +77,7 @@ function mapEventRow(row, weddingDate) {
 }
 
 async function assertWedding(req) {
-  const wedding = await getWeddingForUser(req.user.id, req.user.weddingId);
+  const wedding = await getWeddingForRequest(req.user);
   if (!wedding) {
     return { error: { status: 404, message: "No wedding found for this account" } };
   }

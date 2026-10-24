@@ -19,6 +19,7 @@ export default function EventsTable({
   onCredentialsEvent,
   emptyMessage = "No events match your search.",
   showActions = true,
+  footer = null,
 }) {
   const [openId, setOpenId] = useState(null);
 
@@ -155,6 +156,7 @@ export default function EventsTable({
           </tbody>
         </table>
       </div>
+      {footer ? <div className="border-t border-border">{footer}</div> : null}
     </div>
   );
 }

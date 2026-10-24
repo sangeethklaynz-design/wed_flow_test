@@ -5,9 +5,7 @@ import styles from "./RsvpConfirmationPage.module.css";
 export default function RsvpConfirmationPage({
   onBackToInvite,
   onProceedToPayment,
-  onSaveSchedule,
   canAttend = true,
-  isDownloadingPdf = false,
   contentScale = 1,
 }) {
   return (
@@ -126,36 +124,6 @@ export default function RsvpConfirmationPage({
           >
             <span>Back to Invitation</span>
           </button>
-
-          {/* Button 3: Save the Schedule */}
-          {typeof onSaveSchedule === "function" ? (
-            <button
-              type="button"
-              className={styles.btnSecondary}
-              onClick={onSaveSchedule}
-              aria-label="Save the Schedule"
-              disabled={isDownloadingPdf}
-            >
-              {isDownloadingPdf ? (
-                <span className={styles.btnLoading}>
-                  <svg className={styles.spinner} viewBox="0 0 24 24" fill="none">
-                    <circle
-                      cx="12"
-                      cy="12"
-                      r="9"
-                      stroke="#081368"
-                      strokeWidth="2.5"
-                      strokeDasharray="28"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  Downloading PDF...
-                </span>
-              ) : (
-                <span>Save the Schedule</span>
-              )}
-            </button>
-          ) : null}
         </div>
       </div>
     </div>

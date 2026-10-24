@@ -1,6 +1,6 @@
 const crypto = require("crypto");
 const { sequelize } = require("../models");
-const { getWeddingForUser } = require("../utils/wedding");
+const { getWeddingForUser, getWeddingForRequest } = require("../utils/wedding");
 const { createNotification } = require("./notificationsController");
 
 function mapGuestRow(row) {
@@ -15,6 +15,8 @@ function mapGuestRow(row) {
     id: row.id,
     name: row.full_name,
     phone: row.whatsapp_number,
+    email: row.email || "",
+    idNumber: row.id_number || "",
     status,
     guestCount: invitedCount,
     invitedCount,
@@ -23,6 +25,14 @@ function mapGuestRow(row) {
     note: row.invitation_note || "",
     guestNotes: row.wishes || "",
     uniqueToken: row.unique_token,
+    source: row.source || "manual",
+    paymentDueAt: row.payment_due_at || null,
+    eventId: row.event_id || null,
+    organizationId: row.organization_id || null,
+    eventName: row.event_name || null,
+    eventType: row.event_type || null,
+    isTicketingEnabled: Boolean(Number(row.is_ticketing_enabled)),
+    organizationName: row.organization_name || null,
     hasChangeRequest: Boolean(Number(row.has_change_request)),
     changeRequestReason: row.change_request_reason || "",
     inviteSharedAt: row.invite_shared_at || null,
@@ -47,10 +57,16 @@ async function fetchGuestsForWedding(weddingId, guestId = null) {
       g.id,
       g.full_name,
       g.whatsapp_number,
+      g.email,
+      g.id_number,
       g.invited_count,
       g.invitation_note,
       g.table_number,
       g.unique_token,
+      g.source,
+      g.payment_due_at,
+      g.event_id,
+      g.organization_id,
       g.rsvp_status,
       g.has_change_request,
       g.invite_shared_at,
@@ -81,11 +97,39 @@ async function fetchGuestsForWedding(weddingId, guestId = null) {
 }
 
 async function assertWedding(req) {
-  const wedding = await getWeddingForUser(req.user.id, req.user.weddingId);
+  const wedding = await getWeddingForRequest(req.user);
   if (!wedding) {
     return { error: { status: 404, message: "No wedding found for this account" } };
   }
   return { wedding };
+}
+
+async function loadPublicInviteMeta(eventId) {
+  if (!eventId) return null;
+  const [rows] = await sequelize.query(
+    `
+    SELECT public_invite_enabled, public_invite_token, type
+    FROM events
+    WHERE id = ?
+    LIMIT 1;
+    `,
+    { replacements: [eventId] }
+  );
+  const event = rows[0];
+  if (!event || !Boolean(Number(event.public_invite_enabled))) return null;
+  const type = String(event.type || "").toLowerCase();
+  if (type !== "corporate" && type !== "party") return null;
+  const { env } = require("../config/env");
+  const base = String(env.APP_PUBLIC_URL || env.FRONTEND_ORIGIN || "")
+    .split(",")[0]
+    .trim()
+    .replace(/\/$/, "");
+  const token = event.public_invite_token || null;
+  return {
+    enabled: true,
+    token,
+    url: token && base ? `${base}/p/${token}` : null,
+  };
 }
 
 async function listGuests(req, res) {
@@ -99,8 +143,10 @@ async function listGuests(req, res) {
     }
 
     const rows = await fetchGuestsForWedding(wedding.id);
+    const publicInvite = await loadPublicInviteMeta(wedding.event_id);
     return res.status(200).json({
       guests: rows.map(mapGuestRow),
+      publicInvite,
     });
   } catch (err) {
     console.error("listGuests error:", err);
@@ -194,19 +240,29 @@ async function createGuest(req, res) {
     const rsvpId = crypto.randomUUID();
     const uniqueToken = `token_${crypto.randomUUID().replace(/-/g, "")}`;
 
+    let organizationId = null;
+    if (wedding.event_id) {
+      const [evRows] = await sequelize.query(
+        `SELECT organization_id FROM events WHERE id = ? LIMIT 1;`,
+        { replacements: [wedding.event_id], transaction }
+      );
+      organizationId = evRows[0]?.organization_id || null;
+    }
+
     await sequelize.query(
       `
       INSERT INTO guests (
-        id, wedding_id, event_id, full_name, whatsapp_number, invited_count,
-        invitation_note, table_number, unique_token, rsvp_status
+        id, wedding_id, event_id, organization_id, full_name, whatsapp_number, invited_count,
+        invitation_note, table_number, unique_token, source, rsvp_status
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING');
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual', 'PENDING');
       `,
       {
         replacements: [
           guestId,
           wedding.id,
           wedding.event_id || null,
+          organizationId,
           name,
           phone,
           guestCount,
@@ -432,6 +488,10 @@ async function resendInvite(req, res) {
       `UPDATE rsvps SET attending_status = 'PENDING', attending_count = 0, wishes = NULL, submitted_at = NULL WHERE guest_id = ?;`,
       { replacements: [guestId] }
     );
+    await sequelize.query(
+      `DELETE FROM rsvp_change_requests WHERE guest_id = ?;`,
+      { replacements: [guestId] }
+    );
 
     const rows = await fetchGuestsForWedding(wedding.id, guestId);
     await createNotification(wedding.id, "invite_resent", "Invitation resent", `${existing[0].full_name}'s invitation has been reset. They can now RSVP again.`, guestId);
@@ -513,6 +573,44 @@ async function togglePin(req, res) {
   }
 }
 
+async function sendInviteToAll(req, res) {
+  try {
+    const { wedding, error } = await assertWedding(req);
+    if (error) {
+      return res.status(error.status).json({
+        error: "Not Found",
+        message: error.message,
+      });
+    }
+
+    await sequelize.query(
+      `UPDATE guests SET invite_shared_at = NOW() WHERE wedding_id = ?;`,
+      { replacements: [wedding.id] }
+    );
+
+    const rows = await fetchGuestsForWedding(wedding.id);
+    await createNotification(
+      wedding.id,
+      "invites_sent_all",
+      "Public Invitations Sent",
+      `Public invitation link broadcast to ${rows.length} guests. 24 hours window given to confirm RSVP.`,
+      null
+    );
+
+    return res.status(200).json({
+      message: "Invitations sent to all guests successfully",
+      count: rows.length,
+      guests: rows.map(mapGuestRow),
+    });
+  } catch (err) {
+    console.error("sendInviteToAll error:", err);
+    return res.status(500).json({
+      error: "Internal Server Error",
+      message: "Failed to send invites to all",
+    });
+  }
+}
+
 module.exports = {
   listGuests,
   getGuest,
@@ -522,6 +620,7 @@ module.exports = {
   cancelRsvp,
   resendInvite,
   markInviteShared,
+  sendInviteToAll,
   togglePin,
   fetchGuestsForWedding,
   mapGuestRow,

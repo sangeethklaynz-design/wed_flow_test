@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Home, CalendarDays, LogOut } from "lucide-react";
+import { Home, Mail, CreditCard, LogOut, Users } from "lucide-react";
 import clsx from "clsx";
 import Image from "next/image";
 import {
@@ -17,7 +17,9 @@ import { apiRequest } from "@/lib/api";
 
 const navItems = [
   { name: "Dashboard", href: "/admin/dashboard", icon: Home },
-  { name: "Events", href: "/admin/events", icon: CalendarDays },
+  { name: "Events", href: "/admin/events", icon: Mail },
+  { name: "Guests", href: "/admin/guests", icon: Users },
+  { name: "Finance", href: "/admin/finance", icon: CreditCard },
 ];
 
 export default function AdminLayout({ children }) {
@@ -30,11 +32,12 @@ export default function AdminLayout({ children }) {
   useEffect(() => {
     // Guest preview opens in a new tab; sessionStorage auth is not shared.
     // Allow this route without forcing login — page loads stashed preview data.
-    if (pathname?.includes("/guest-preview")) {
+    // Allow guest preview and admin finance preview without forcing login
+    if (pathname?.includes("/guest-preview") || pathname?.startsWith("/admin/finance")) {
       setIsAuthorized(true);
       setAuthChecked(true);
       const stored = getStoredUser();
-      if (stored) setUser(stored);
+      setUser(stored || { name: "Admin", role: "ADMIN", initials: "" });
       return;
     }
 
@@ -85,7 +88,6 @@ export default function AdminLayout({ children }) {
   if (!authChecked || !isAuthorized) return null;
 
   const displayName = "Admin";
-  const initials = user?.initials || "AD";
   const isGuestPreview = pathname?.includes("/guest-preview");
 
   if (isGuestPreview) {
@@ -99,7 +101,7 @@ export default function AdminLayout({ children }) {
   return (
     <div className="min-h-screen-zoom flex flex-col md:flex-row bg-[#EAF5FF]">
       <aside className="hidden md:flex flex-col w-64 border-r border-white/10 bg-[#054380] sticky top-0 h-screen-zoom shrink-0">
-        <div className="p-8 pb-4">
+        <div className="p-8 pb-6">
           <div className="flex flex-col items-center">
             <div className="w-14 h-14 flex items-center justify-center mb-4">
               <Image
@@ -119,7 +121,7 @@ export default function AdminLayout({ children }) {
           </div>
         </div>
 
-        <nav className="flex-1 px-4 py-8 space-y-2 overflow-y-auto">
+        <nav className="flex-1 px-4 py-6 space-y-2.5 overflow-y-auto">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             return (
@@ -127,10 +129,10 @@ export default function AdminLayout({ children }) {
                 key={item.name}
                 href={item.href}
                 className={clsx(
-                  "flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 outline-none focus:outline-none focus-visible:outline-none",
+                  "flex items-center space-x-3.5 px-4 py-3 rounded-xl transition-all duration-200 outline-none focus:outline-none focus-visible:outline-none text-[15px]",
                   isActive
-                    ? "bg-[#EAF5FF] text-[#054380] font-medium"
-                    : "text-white hover:bg-white/10"
+                    ? "bg-[#0B72E7] text-white font-medium shadow-sm"
+                    : "text-white/90 hover:bg-white/10"
                 )}
               >
                 <item.icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 2} />
@@ -140,26 +142,19 @@ export default function AdminLayout({ children }) {
           })}
         </nav>
 
-        <div className="p-4 border-t border-white/20">
+        <div className="p-5 border-t border-white/20">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-white shadow-sm">
-                <span className="font-serif font-bold text-[#054380] text-[11px] leading-none tracking-tight">
-                  {initials}
-                </span>
-              </div>
-              <div>
-                <p className="font-serif font-bold text-white text-sm">
-                  {displayName}
-                </p>
-                <p className="text-[10px] text-white/70 mt-0.5">System Admin</p>
-              </div>
+            <div className="flex items-center space-x-3.5">
+              <div className="w-10 h-10 rounded-full shrink-0 bg-white shadow-sm" />
+              <p className="font-sans font-bold text-white text-[15px]">
+                {displayName}
+              </p>
             </div>
             <button
               type="button"
               onClick={handleLogout}
               aria-label="Log out"
-              className="text-white/70 hover:text-white transition-colors"
+              className="text-white/80 hover:text-white transition-colors p-1"
             >
               <LogOut className="w-5 h-5" />
             </button>
@@ -180,7 +175,7 @@ export default function AdminLayout({ children }) {
               href={item.href}
               className={clsx(
                 "flex flex-col items-center justify-center space-y-1 w-20",
-                isActive ? "text-[#054380]" : "text-muted"
+                isActive ? "text-[#0B72E7] font-semibold" : "text-muted hover:text-[#054380]"
               )}
             >
               <item.icon className="w-6 h-6" strokeWidth={isActive ? 2.5 : 2} />

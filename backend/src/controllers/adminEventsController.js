@@ -22,6 +22,19 @@ const {
   publicResourceUrl,
 } = require("../utils/eventTemplates");
 const { syncTemplateScheduleToDb, inferIcon } = require("../utils/scheduleSync");
+const {
+  parseTicketTiersInput,
+  validateTicketTiersInput,
+  loadTicketTiersForEvent,
+  loadTicketTiersByEventIds,
+  replaceTicketTiers,
+} = require("../utils/ticketing");
+const {
+  createOrganizationWithOwner,
+  listVendorOrganizations,
+  getOrganizationById,
+  countOrgEvents,
+} = require("../services/organizations");
 
 function todayDateOnly() {
   return new Date().toISOString().slice(0, 10);
@@ -51,7 +64,7 @@ function parseTemplateConfig(raw) {
   }
 }
 
-function mapEventRow(row) {
+function mapEventRow(row, { ticketTiers = [] } = {}) {
   const eventDate = toDateOnly(row.event_date);
   return {
     id: row.id,
@@ -64,13 +77,62 @@ function mapEventRow(row) {
     location: row.location || null,
     googleMapsLink: row.google_maps_link || null,
     paymentLink: row.payment_link || null,
+    ticketingEnabled: Boolean(
+      row.is_ticketing_enabled != null
+        ? Number(row.is_ticketing_enabled)
+        : row.ticketing_enabled
+    ),
+    isTicketingEnabled: Boolean(
+      row.is_ticketing_enabled != null
+        ? Number(row.is_ticketing_enabled)
+        : row.ticketing_enabled
+    ),
+    publicInviteEnabled: Boolean(Number(row.public_invite_enabled)),
+    publicInviteToken: row.public_invite_token || null,
+    publicInviteUrl: row.public_invite_token
+      ? buildPublicInviteUrl(row.public_invite_token)
+      : null,
+    ticketTiers,
     status: deriveStatus(eventDate),
     userId: row.user_id || null,
+    organizationId: row.organization_id || null,
     clientSlug: row.client_slug || null,
     clientEmail: row.client_email || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+function buildPublicInviteUrl(token) {
+  const { env } = require("../config/env");
+  const base = String(env.APP_PUBLIC_URL || env.FRONTEND_ORIGIN || "")
+    .split(",")[0]
+    .trim()
+    .replace(/\/$/, "");
+  if (!base || !token) return null;
+  return `${base}/p/${token}`;
+}
+
+function generatePublicInviteToken() {
+  return crypto.randomBytes(24).toString("hex");
+}
+
+function parseTicketingEnabled(body = {}) {
+  if (body.ticketingEnabled !== undefined) return Boolean(body.ticketingEnabled);
+  if (body.ticketing_enabled !== undefined) {
+    return Boolean(body.ticketing_enabled);
+  }
+  return undefined;
+}
+
+function parsePublicInviteEnabled(body = {}) {
+  if (body.publicInviteEnabled !== undefined) {
+    return Boolean(body.publicInviteEnabled);
+  }
+  if (body.public_invite_enabled !== undefined) {
+    return Boolean(body.public_invite_enabled);
+  }
+  return undefined;
 }
 
 function parseBody(body = {}) {
@@ -91,6 +153,9 @@ function parseBody(body = {}) {
   const clientEmail = String(body.clientEmail || body.client_email || "")
     .trim()
     .toLowerCase();
+  const ticketingEnabled = parseTicketingEnabled(body);
+  const publicInviteEnabled = parsePublicInviteEnabled(body);
+  const ticketTiers = parseTicketTiersInput(body);
 
   return {
     name,
@@ -102,7 +167,37 @@ function parseBody(body = {}) {
     paymentLink,
     resourcePackId,
     clientEmail,
+    ticketingEnabled,
+    publicInviteEnabled,
+    ticketTiers,
   };
+}
+
+function isPartyOrCorporate(type) {
+  const t = String(type || "").toLowerCase();
+  return t === "corporate" || t === "party";
+}
+
+function validateTicketingForType(type, ticketingEnabled) {
+  if (ticketingEnabled && type === "wedding") {
+    return "ticketingEnabled is only allowed for corporate or party events";
+  }
+  return null;
+}
+
+function validatePublicInviteForType(type, publicInviteEnabled) {
+  if (publicInviteEnabled && type === "wedding") {
+    return "publicInviteEnabled is only allowed for corporate or party events";
+  }
+  return null;
+}
+
+async function mapEventRowsWithTiers(rows) {
+  const ids = rows.map((r) => r.id);
+  const tiersByEvent = await loadTicketTiersByEventIds(ids);
+  return rows.map((row) =>
+    mapEventRow(row, { ticketTiers: tiersByEvent.get(row.id) || [] })
+  );
 }
 
 function validatePayload(payload, { requireAll = true, requireClientEmail = false } = {}) {
@@ -268,7 +363,7 @@ async function getDashboard(req, res) {
         corporate: Number(totals?.corporate || 0),
         parties: Number(totals?.parties || 0),
       },
-      recentEvents: recentRows.map(mapEventRow),
+      recentEvents: await mapEventRowsWithTiers(recentRows),
     });
   } catch (err) {
     console.error("admin getDashboard error:", err);
@@ -291,7 +386,7 @@ async function listEvents(req, res) {
     );
 
     return res.status(200).json({
-      events: rows.map(mapEventRow),
+      events: await mapEventRowsWithTiers(rows),
     });
   } catch (err) {
     console.error("admin listEvents error:", err);
@@ -302,33 +397,217 @@ async function listEvents(req, res) {
   }
 }
 
+async function listOrganizations(req, res) {
+  try {
+    const type = String(req.query.type || "vendor").trim().toLowerCase();
+    if (type !== "vendor") {
+      return res.status(400).json({
+        error: "Bad Request",
+        message: "Only type=vendor is supported for the dropdown",
+      });
+    }
+    const organizations = await listVendorOrganizations();
+    return res.status(200).json({ organizations });
+  } catch (err) {
+    console.error("admin listOrganizations error:", err);
+    return res.status(500).json({
+      error: "Internal Server Error",
+      message: "Failed to list organizations",
+    });
+  }
+}
+
 async function createEvent(req, res) {
   const transaction = await sequelize.transaction();
   try {
     const payload = parseBody(req.body);
+    const registrationMode = String(
+      req.body?.registrationMode ||
+        req.body?.registration_mode ||
+        "new_vendor"
+    )
+      .trim()
+      .toLowerCase();
+    const organizationIdInput = String(
+      req.body?.organizationId || req.body?.organization_id || ""
+    ).trim();
+    const vendorName = String(
+      req.body?.vendorName || req.body?.vendor_name || payload.name || ""
+    ).trim();
+    const maxStaffAccounts = Number(
+      req.body?.maxStaffAccounts ?? req.body?.max_staff_accounts ?? 5
+    );
+
+    const requireClientEmail = registrationMode !== "existing_vendor";
     const error = validatePayloadWithDate(payload, {
       requireAll: true,
-      requireClientEmail: true,
+      requireClientEmail,
     });
     if (error) {
       await transaction.rollback();
       return res.status(400).json({ error: "Bad Request", message: error });
     }
 
-    const [existingUser] = await sequelize.query(
-      `SELECT id FROM users WHERE email = ? LIMIT 1;`,
-      { replacements: [payload.clientEmail], transaction }
-    );
-    if (existingUser[0]) {
+    if (
+      !["existing_vendor", "new_vendor", "standalone"].includes(registrationMode)
+    ) {
       await transaction.rollback();
-      return res.status(409).json({
-        error: "Conflict",
-        message: "A client account with this email already exists",
+      return res.status(400).json({
+        error: "Bad Request",
+        message:
+          "registrationMode must be existing_vendor, new_vendor, or standalone",
       });
     }
 
+    const requestedTicketing = Boolean(payload.ticketingEnabled);
+    const ticketingTypeError = validateTicketingForType(
+      payload.type,
+      requestedTicketing
+    );
+    if (ticketingTypeError) {
+      await transaction.rollback();
+      return res
+        .status(400)
+        .json({ error: "Bad Request", message: ticketingTypeError });
+    }
+    const ticketingEnabled = isPartyOrCorporate(payload.type)
+      ? requestedTicketing
+      : false;
+
+    const requestedPublicInvite = Boolean(payload.publicInviteEnabled);
+    const publicInviteTypeError = validatePublicInviteForType(
+      payload.type,
+      requestedPublicInvite
+    );
+    if (publicInviteTypeError) {
+      await transaction.rollback();
+      return res
+        .status(400)
+        .json({ error: "Bad Request", message: publicInviteTypeError });
+    }
+    const publicInviteEnabled = isPartyOrCorporate(payload.type)
+      ? requestedPublicInvite
+      : false;
+    const publicInviteToken = publicInviteEnabled
+      ? generatePublicInviteToken()
+      : null;
+
+    const tiersError = validateTicketTiersInput(payload.ticketTiers);
+    if (tiersError) {
+      await transaction.rollback();
+      return res.status(400).json({ error: "Bad Request", message: tiersError });
+    }
+
+    let userId;
+    let organizationId;
+    let credentials = null;
+
+    if (registrationMode === "existing_vendor") {
+      if (!organizationIdInput) {
+        await transaction.rollback();
+        return res.status(400).json({
+          error: "Bad Request",
+          message: "organizationId is required for existing_vendor",
+        });
+      }
+      const org = await getOrganizationById(organizationIdInput, {
+        transaction,
+      });
+      if (!org || org.type !== "vendor") {
+        await transaction.rollback();
+        return res.status(400).json({
+          error: "Bad Request",
+          message: "organizationId must refer to a vendor organization",
+        });
+      }
+      organizationId = org.id;
+      userId = org.owner_user_id;
+      if (!userId) {
+        await transaction.rollback();
+        return res.status(400).json({
+          error: "Bad Request",
+          message: "Vendor organization has no owner",
+        });
+      }
+      if (Number.isFinite(maxStaffAccounts) && maxStaffAccounts >= 0) {
+        await sequelize.query(
+          `UPDATE organizations SET max_staff_accounts = ? WHERE id = ?;`,
+          {
+            replacements: [Math.floor(maxStaffAccounts), organizationId],
+            transaction,
+          }
+        );
+      }
+    } else if (registrationMode === "new_vendor") {
+      const [existingUser] = await sequelize.query(
+        `SELECT id FROM users WHERE email = ? LIMIT 1;`,
+        { replacements: [payload.clientEmail], transaction }
+      );
+      if (existingUser[0]) {
+        await transaction.rollback();
+        return res.status(409).json({
+          error: "Conflict",
+          message: "A client account with this email already exists",
+        });
+      }
+      const created = await createOrganizationWithOwner({
+        name: vendorName || payload.name,
+        type: "vendor",
+        ownerEmail: payload.clientEmail,
+        maxStaffAccounts,
+        transaction,
+      });
+      organizationId = created.organizationId;
+      userId = created.userId;
+      credentials = {
+        email: created.email,
+        username: created.loginUsername,
+        password: created.plainPassword,
+      };
+    } else {
+      // standalone
+      const [existingUser] = await sequelize.query(
+        `SELECT id FROM users WHERE email = ? LIMIT 1;`,
+        { replacements: [payload.clientEmail], transaction }
+      );
+      if (existingUser[0]) {
+        await transaction.rollback();
+        return res.status(409).json({
+          error: "Conflict",
+          message: "A client account with this email already exists",
+        });
+      }
+      const created = await createOrganizationWithOwner({
+        name: payload.name,
+        type: "standalone",
+        ownerEmail: payload.clientEmail,
+        maxStaffAccounts,
+        transaction,
+      });
+      organizationId = created.organizationId;
+      userId = created.userId;
+      credentials = {
+        email: created.email,
+        username: created.loginUsername,
+        password: created.plainPassword,
+      };
+    }
+
+    const org = await getOrganizationById(organizationId, { transaction });
+    if (org?.type === "standalone") {
+      const existingCount = await countOrgEvents(organizationId, {
+        transaction,
+      });
+      if (existingCount >= 1) {
+        await transaction.rollback();
+        return res.status(400).json({
+          error: "Bad Request",
+          message: "Standalone organizations can only have one event",
+        });
+      }
+    }
+
     const id = crypto.randomUUID();
-    const userId = crypto.randomUUID();
     const weddingId = crypto.randomUUID();
     const invitationId = crypto.randomUUID();
     const baseSlug = clientSlugFromName(payload.name);
@@ -339,35 +618,27 @@ async function createEvent(req, res) {
       payload.type,
       payload.templateKey
     );
-    const plainPassword = generateClientPassword();
-    const passwordHash = await hashPassword(plainPassword);
     const names = splitEventDisplayNames(payload.name);
-
-    await sequelize.query(
-      `
-      INSERT INTO users (id, email, password_hash, role)
-      VALUES (?, ?, ?, 'COUPLE');
-      `,
-      {
-        replacements: [userId, payload.clientEmail, passwordHash],
-        transaction,
-      }
-    );
+    const eventPassword =
+      credentials?.password || generateClientPassword();
 
     await sequelize.query(
       `
       INSERT INTO events (
-        id, user_id, name, client_slug, client_password, type, template_key, resource_pack_id,
-        template_config, event_date, location, google_maps_link, payment_link
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        id, user_id, organization_id, name, client_slug, client_password, type, template_key, resource_pack_id,
+        template_config, event_date, location, google_maps_link, payment_link,
+        ticketing_enabled, is_ticketing_enabled,
+        public_invite_enabled, public_invite_token
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
       `,
       {
         replacements: [
           id,
           userId,
+          organizationId,
           payload.name,
           clientSlug,
-          plainPassword,
+          eventPassword,
           payload.type,
           payload.templateKey,
           resourcePackId,
@@ -375,16 +646,20 @@ async function createEvent(req, res) {
           payload.eventDate,
           payload.location,
           payload.googleMapsLink,
-          payload.type === "corporate" || payload.type === "party"
-            ? payload.paymentLink
-            : null,
+          isPartyOrCorporate(payload.type) ? payload.paymentLink : null,
+          ticketingEnabled ? 1 : 0,
+          ticketingEnabled ? 1 : 0,
+          publicInviteEnabled ? 1 : 0,
+          publicInviteToken,
         ],
         transaction,
       }
     );
 
-    // Every client gets a weddings+invitation stub so existing dashboard APIs work;
-    // corporate still uses events.type/template_key for invite rendering.
+    if (Array.isArray(payload.ticketTiers) && ticketingEnabled) {
+      await replaceTicketTiers(id, payload.ticketTiers, { transaction });
+    }
+
     await sequelize.query(
       `
       INSERT INTO weddings (
@@ -443,13 +718,16 @@ async function createEvent(req, res) {
       { replacements: [id] }
     );
 
-    return res.status(201).json({
-      event: mapEventRow(rows[0]),
-      credentials: {
-        email: payload.clientEmail,
-        password: plainPassword,
-      },
-    });
+    const ticketTiers = await loadTicketTiersForEvent(id);
+    const response = {
+      event: mapEventRow(rows[0], { ticketTiers }),
+      organizationId,
+      registrationMode,
+    };
+    if (credentials) {
+      response.credentials = credentials;
+    }
+    return res.status(201).json(response);
   } catch (err) {
     try {
       await transaction.rollback();
@@ -465,17 +743,20 @@ async function createEvent(req, res) {
 }
 
 async function updateEvent(req, res) {
+  const transaction = await sequelize.transaction();
   try {
     const id = String(req.params.id || "").trim();
     if (!id) {
+      await transaction.rollback();
       return res.status(400).json({ error: "Bad Request", message: "id is required" });
     }
 
     const [existingRows] = await sequelize.query(
       `SELECT * FROM events WHERE id = ? LIMIT 1;`,
-      { replacements: [id] }
+      { replacements: [id], transaction }
     );
     if (!existingRows[0]) {
+      await transaction.rollback();
       return res.status(404).json({ error: "Not Found", message: "Event not found" });
     }
 
@@ -499,11 +780,24 @@ async function updateEvent(req, res) {
         req.body?.google_maps_link !== undefined
           ? parsed.googleMapsLink
           : existing.googleMapsLink,
+      paymentLink:
+        req.body?.paymentLink !== undefined || req.body?.payment_link !== undefined
+          ? parsed.paymentLink
+          : existing.paymentLink,
       resourcePackId:
         req.body?.resourcePackId !== undefined ||
         req.body?.resource_pack_id !== undefined
           ? parsed.resourcePackId || existing.resourcePackId
           : existing.resourcePackId,
+      ticketingEnabled:
+        parsed.ticketingEnabled !== undefined
+          ? parsed.ticketingEnabled
+          : existing.ticketingEnabled,
+      publicInviteEnabled:
+        parsed.publicInviteEnabled !== undefined
+          ? parsed.publicInviteEnabled
+          : existing.publicInviteEnabled,
+      ticketTiers: parsed.ticketTiers,
     };
 
     const error = validatePayloadWithDate(payload, {
@@ -511,18 +805,71 @@ async function updateEvent(req, res) {
       existingEventDate: existing.eventDate,
     });
     if (error) {
+      await transaction.rollback();
       return res.status(400).json({ error: "Bad Request", message: error });
+    }
+
+    const requestedTicketing = Boolean(payload.ticketingEnabled);
+    const ticketingTypeError = validateTicketingForType(
+      payload.type,
+      requestedTicketing
+    );
+    if (ticketingTypeError) {
+      await transaction.rollback();
+      return res
+        .status(400)
+        .json({ error: "Bad Request", message: ticketingTypeError });
+    }
+    const ticketingEnabled = isPartyOrCorporate(payload.type)
+      ? requestedTicketing
+      : false;
+
+    const requestedPublicInvite = Boolean(payload.publicInviteEnabled);
+    const publicInviteTypeError = validatePublicInviteForType(
+      payload.type,
+      requestedPublicInvite
+    );
+    if (publicInviteTypeError) {
+      await transaction.rollback();
+      return res
+        .status(400)
+        .json({ error: "Bad Request", message: publicInviteTypeError });
+    }
+    const publicInviteEnabled = isPartyOrCorporate(payload.type)
+      ? requestedPublicInvite
+      : false;
+
+    let publicInviteToken = existing.publicInviteToken || null;
+    if (publicInviteEnabled && !publicInviteToken) {
+      publicInviteToken = generatePublicInviteToken();
+    }
+    if (!publicInviteEnabled) {
+      // Keep token for re-enable stability, but flag off
+      publicInviteToken = publicInviteToken || null;
+    }
+
+    const tiersError = validateTicketTiersInput(payload.ticketTiers);
+    if (tiersError) {
+      await transaction.rollback();
+      return res.status(400).json({ error: "Bad Request", message: tiersError });
     }
 
     if (payload.resourcePackId) {
       ensureResourcePack(payload.type, payload.resourcePackId);
     }
 
+    const paymentLinkValue = isPartyOrCorporate(payload.type)
+      ? payload.paymentLink
+      : null;
+
     await sequelize.query(
       `
       UPDATE events
       SET name = ?, type = ?, template_key = ?, resource_pack_id = ?,
-          event_date = ?, location = ?, google_maps_link = ?, updated_at = NOW()
+          event_date = ?, location = ?, google_maps_link = ?, payment_link = ?,
+          ticketing_enabled = ?, is_ticketing_enabled = ?,
+          public_invite_enabled = ?, public_invite_token = ?,
+          updated_at = NOW()
       WHERE id = ?;
       `,
       {
@@ -534,24 +881,103 @@ async function updateEvent(req, res) {
           payload.eventDate,
           payload.location,
           payload.googleMapsLink,
+          paymentLinkValue,
+          ticketingEnabled ? 1 : 0,
+          ticketingEnabled ? 1 : 0,
+          publicInviteEnabled ? 1 : 0,
+          publicInviteEnabled ? publicInviteToken : publicInviteToken,
           id,
         ],
+        transaction,
       }
     );
 
+    if (Array.isArray(payload.ticketTiers)) {
+      await replaceTicketTiers(id, ticketingEnabled ? payload.ticketTiers : [], {
+        transaction,
+      });
+    } else if (!ticketingEnabled) {
+      await replaceTicketTiers(id, [], { transaction });
+    }
+
+    await transaction.commit();
     await syncEventStaticDetailsToClient(id, payload);
 
     const [rows] = await sequelize.query(
       `SELECT * FROM events WHERE id = ? LIMIT 1;`,
       { replacements: [id] }
     );
+    const ticketTiers = await loadTicketTiersForEvent(id);
 
-    return res.status(200).json({ event: mapEventRow(rows[0]) });
+    return res
+      .status(200)
+      .json({ event: mapEventRow(rows[0], { ticketTiers }) });
   } catch (err) {
+    try {
+      await transaction.rollback();
+    } catch {
+      // ignore
+    }
     console.error("admin updateEvent error:", err);
     return res.status(500).json({
       error: "Internal Server Error",
       message: "Failed to update event",
+    });
+  }
+}
+
+async function replaceEventTicketTiers(req, res) {
+  try {
+    const id = String(req.params.id || "").trim();
+    if (!id) {
+      return res.status(400).json({ error: "Bad Request", message: "id is required" });
+    }
+
+    const [existingRows] = await sequelize.query(
+      `SELECT * FROM events WHERE id = ? LIMIT 1;`,
+      { replacements: [id] }
+    );
+    if (!existingRows[0]) {
+      return res.status(404).json({ error: "Not Found", message: "Event not found" });
+    }
+
+    const event = existingRows[0];
+    const ticketingOn = Boolean(
+      event.is_ticketing_enabled != null
+        ? Number(event.is_ticketing_enabled)
+        : event.ticketing_enabled
+    );
+    if (!ticketingOn) {
+      return res.status(400).json({
+        error: "Bad Request",
+        message: "Ticketing is not enabled for this event",
+      });
+    }
+    if (event.type === "wedding") {
+      return res.status(400).json({
+        error: "Bad Request",
+        message: "ticketingEnabled is only allowed for corporate or party events",
+      });
+    }
+
+    const tiers = parseTicketTiersInput(req.body);
+    const tiersError = validateTicketTiersInput(
+      tiers === undefined ? null : tiers
+    );
+    if (tiersError) {
+      return res.status(400).json({ error: "Bad Request", message: tiersError });
+    }
+
+    await replaceTicketTiers(id, tiers);
+    const ticketTiers = await loadTicketTiersForEvent(id);
+    return res.status(200).json({
+      event: mapEventRow(event, { ticketTiers }),
+    });
+  } catch (err) {
+    console.error("admin replaceEventTicketTiers error:", err);
+    return res.status(500).json({
+      error: "Internal Server Error",
+      message: "Failed to update ticket tiers",
     });
   }
 }
@@ -1047,8 +1473,10 @@ async function deleteEventResource(req, res) {
 module.exports = {
   getDashboard,
   listEvents,
+  listOrganizations,
   createEvent,
   updateEvent,
+  replaceEventTicketTiers,
   deleteEvent,
   getEventCredentials,
   regenerateEventPassword,

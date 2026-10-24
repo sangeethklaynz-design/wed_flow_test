@@ -1,6 +1,6 @@
 const crypto = require("crypto");
 const { sequelize } = require("../models");
-const { getWeddingForUser, toDateOnly } = require("../utils/wedding");
+const { getWeddingForUser, getWeddingForRequest, toDateOnly } = require("../utils/wedding");
 const {
   loadStaticInvitationBundle,
   loadGuestByToken,
@@ -10,7 +10,7 @@ const {
 
 async function getCoupleInvitationTemplate(req, res) {
   try {
-    const wedding = await getWeddingForUser(req.user.id, req.user.weddingId);
+    const wedding = await getWeddingForRequest(req.user);
     if (!wedding) {
       return res.status(404).json({
         error: "Not Found",
@@ -100,7 +100,7 @@ async function updateCoupleInvitationTemplate(req, res) {
   const transaction = await sequelize.transaction();
 
   try {
-    const wedding = await getWeddingForUser(req.user.id, req.user.weddingId);
+    const wedding = await getWeddingForRequest(req.user);
     if (!wedding) {
       await transaction.rollback();
       return res.status(404).json({
