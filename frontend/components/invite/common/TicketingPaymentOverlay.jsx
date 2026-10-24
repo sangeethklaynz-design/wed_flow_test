@@ -6,14 +6,15 @@ export function TicketingPaymentOverlay({
   isOpen,
   onClose,
   onBack,
+  onEditAttendee,
   onPaySuccess,
+  onUpdateBookingData,
   bookingData = {},
   eventMeta = {},
   theme = "corporate",
 }) {
   const [isProcessing, setIsProcessing] = useState(false);
-
-  if (!isOpen) return null;
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const isParty = theme === "party";
 
@@ -24,29 +25,136 @@ export function TicketingPaymentOverlay({
     totalCount = 3,
   } = bookingData;
 
-  const firstName =
+  const initialFirstName =
     bookingData?.firstName ||
     (rawFullName ? rawFullName.trim().split(/\s+/)[0] : "Kavindu") ||
     "Kavindu";
-  const lastName =
+  const initialLastName =
     bookingData?.lastName ||
     (rawFullName && rawFullName.trim().split(/\s+/).length > 1
       ? rawFullName.trim().split(/\s+/).slice(1).join(" ")
       : "Perera") ||
     "Perera";
-  const email =
+  const initialEmail =
     bookingData?.email ||
     bookingData?.emailAddress ||
     "kavindu@gmail.com";
-  const mobileNumber =
+  const initialMobile =
     bookingData?.mobileNumber ||
     bookingData?.phone ||
     bookingData?.whatsappNumber ||
     "+94 77 123 4567";
-  const nic =
+  const initialNic =
     bookingData?.nic ||
     bookingData?.nicNumber ||
     "199012345678";
+
+  const [attendee, setAttendee] = useState({
+    firstName: initialFirstName,
+    lastName: initialLastName,
+    email: initialEmail,
+    mobileNumber: initialMobile,
+    nic: initialNic,
+  });
+
+  const [draftAttendee, setDraftAttendee] = useState({
+    firstName: initialFirstName,
+    lastName: initialLastName,
+    email: initialEmail,
+    mobileNumber: initialMobile,
+    nic: initialNic,
+  });
+
+  React.useEffect(() => {
+    if (bookingData) {
+      const bRawName = bookingData.fullName || "";
+      const bFirst =
+        bookingData.firstName ||
+        (bRawName ? bRawName.trim().split(/\s+/)[0] : "") ||
+        "Kavindu";
+      const bLast =
+        bookingData.lastName ||
+        (bRawName && bRawName.trim().split(/\s+/).length > 1
+          ? bRawName.trim().split(/\s+/).slice(1).join(" ")
+          : "") ||
+        "Perera";
+      const bEmail =
+        bookingData.email ||
+        bookingData.emailAddress ||
+        "kavindu@gmail.com";
+      const bPhone =
+        bookingData.mobileNumber ||
+        bookingData.phone ||
+        bookingData.whatsappNumber ||
+        "+94 77 123 4567";
+      const bNic =
+        bookingData.nic ||
+        bookingData.nicNumber ||
+        "199012345678";
+
+      setAttendee((prev) => ({
+        firstName: bookingData.firstName || prev.firstName || bFirst,
+        lastName: bookingData.lastName || prev.lastName || bLast,
+        email: bookingData.email || bookingData.emailAddress || prev.email || bEmail,
+        mobileNumber: bookingData.mobileNumber || bookingData.phone || bookingData.whatsappNumber || prev.mobileNumber || bPhone,
+        nic: bookingData.nic || bookingData.nicNumber || prev.nic || bNic,
+      }));
+    }
+  }, [
+    bookingData?.firstName,
+    bookingData?.lastName,
+    bookingData?.fullName,
+    bookingData?.email,
+    bookingData?.emailAddress,
+    bookingData?.mobileNumber,
+    bookingData?.phone,
+    bookingData?.whatsappNumber,
+    bookingData?.nic,
+    bookingData?.nicNumber,
+  ]);
+
+  const handleOpenEditModal = () => {
+    setDraftAttendee({ ...attendee });
+    setIsEditModalOpen(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
+  };
+
+  const handleDraftChange = (field, value) => {
+    setDraftAttendee((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleSaveAttendee = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const updated = {
+      firstName: (draftAttendee.firstName ?? "").trim() || attendee.firstName,
+      lastName: (draftAttendee.lastName ?? "").trim() || attendee.lastName,
+      email: (draftAttendee.email ?? "").trim() || attendee.email,
+      mobileNumber: (draftAttendee.mobileNumber ?? "").trim() || attendee.mobileNumber,
+      nic: (draftAttendee.nic ?? "").trim() || attendee.nic,
+    };
+    const fullName = `${updated.firstName} ${updated.lastName}`.trim();
+    setAttendee(updated);
+    setIsEditModalOpen(false);
+
+    const updatedBooking = {
+      ...bookingData,
+      ...updated,
+      fullName,
+      emailAddress: updated.email,
+      phone: updated.mobileNumber,
+      nicNumber: updated.nic,
+    };
+
+    if (typeof onUpdateBookingData === "function") {
+      onUpdateBookingData(updatedBooking);
+    }
+  };
 
   const eventName =
     eventMeta.eventName ||
@@ -70,13 +178,27 @@ export function TicketingPaymentOverlay({
 
   const handlePay = () => {
     setIsProcessing(true);
+    const fullName = `${attendee.firstName} ${attendee.lastName}`.trim();
+    const updatedBooking = {
+      ...bookingData,
+      ...attendee,
+      fullName,
+      emailAddress: attendee.email,
+      phone: attendee.mobileNumber,
+      nicNumber: attendee.nic,
+    };
+    if (typeof onUpdateBookingData === "function") {
+      onUpdateBookingData(updatedBooking);
+    }
     setTimeout(() => {
       setIsProcessing(false);
       if (onPaySuccess) {
-        onPaySuccess();
+        onPaySuccess(updatedBooking);
       }
     }, 600);
   };
+
+  if (!isOpen) return null;
 
   return (
     <div
@@ -129,7 +251,7 @@ export function TicketingPaymentOverlay({
             </p>
           </div>
 
-          {/* Attendee Details Card (Matching Screenshot 1) */}
+          {/* Attendee Details Card */}
           <div className="w-full bg-[#EFF6FE] border-[1.5px] border-[#D0E2FB] rounded-[14px] p-4 mt-4 shadow-[0_1px_4px_rgba(191,219,254,0.25)]">
             <div className="flex items-center justify-between pb-2.5 border-b border-[#D0E2FB]/70">
               <span className="font-bold text-[14px] text-[#0A2569]">
@@ -138,7 +260,7 @@ export function TicketingPaymentOverlay({
               <button
                 type="button"
                 id="edit-attendee-btn"
-                onClick={onBack || onClose}
+                onClick={handleOpenEditModal}
                 className="text-[12.5px] font-semibold text-[#2563EB] underline hover:text-[#1D4ED8] cursor-pointer"
               >
                 Edit
@@ -148,32 +270,32 @@ export function TicketingPaymentOverlay({
             <div className="space-y-2 pt-3 text-[12px]">
               <div className="flex justify-between items-center">
                 <span className="text-[#64748B]">First Name</span>
-                <span className="font-semibold text-[#0A2569] text-right">
-                  {firstName}
+                <span className="font-semibold text-[#0A2569] text-right" id="display-attendee-firstname">
+                  {attendee.firstName}
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-[#64748B]">Last Name</span>
-                <span className="font-semibold text-[#0A2569] text-right">
-                  {lastName}
+                <span className="font-semibold text-[#0A2569] text-right" id="display-attendee-lastname">
+                  {attendee.lastName}
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-[#64748B]">Email Address</span>
-                <span className="font-semibold text-[#0A2569] text-right">
-                  {email}
+                <span className="font-semibold text-[#0A2569] text-right" id="display-attendee-email">
+                  {attendee.email}
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-[#64748B]">Mobile Number</span>
-                <span className="font-semibold text-[#0A2569] text-right">
-                  {mobileNumber}
+                <span className="font-semibold text-[#0A2569] text-right" id="display-attendee-mobile">
+                  {attendee.mobileNumber}
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-[#64748B]">NIC</span>
-                <span className="font-semibold text-[#0A2569] text-right">
-                  {nic}
+                <span className="font-semibold text-[#0A2569] text-right" id="display-attendee-nic">
+                  {attendee.nic}
                 </span>
               </div>
             </div>
@@ -210,7 +332,7 @@ export function TicketingPaymentOverlay({
               </div>
               <div className="flex justify-between items-start">
                 <span className="text-[#64748B]">Venue</span>
-                <span className="font-medium text-[#0A2569] text-right max-w-[190px] truncate">
+                <span className="font-medium text-[#0A2569] text-right max-w-[200px] break-words text-[11.5px] leading-tight">
                   {eventVenue}
                 </span>
               </div>
@@ -380,6 +502,165 @@ export function TicketingPaymentOverlay({
             width={185}
             height={255}
           />
+        </div>
+      )}
+
+      {/* Edit Attendee Details Modal Popup */}
+      {isEditModalOpen && (
+        <div
+          id="edit-attendee-modal-backdrop"
+          className="absolute inset-0 bg-[#020A24]/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-in fade-in duration-150"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="edit-attendee-modal-title"
+        >
+          <div
+            id="edit-attendee-modal"
+            className="w-full max-w-[340px] bg-white rounded-[20px] shadow-[0_20px_50px_rgba(2,18,43,0.35)] border border-[#CBD5E1] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200"
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-[#E2E8F0]">
+              <h2
+                id="edit-attendee-modal-title"
+                className="font-petrona font-bold text-[18px] leading-tight text-[#0A2569] m-0"
+              >
+                Edit Attendee Details
+              </h2>
+              <button
+                type="button"
+                id="close-attendee-modal-btn"
+                onClick={handleCloseEditModal}
+                aria-label="Close"
+                className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-slate-100 text-[#64748B] hover:text-[#0A2569] transition-colors cursor-pointer"
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleSaveAttendee} className="px-5 py-4 space-y-3">
+              {/* 1. First Name */}
+              <div>
+                <label
+                  htmlFor="attendee-first-name-input"
+                  className="block text-[11.5px] font-semibold text-[#475569] mb-1"
+                >
+                  First Name
+                </label>
+                <input
+                  type="text"
+                  id="attendee-first-name-input"
+                  value={draftAttendee.firstName}
+                  onChange={(e) => handleDraftChange("firstName", e.target.value)}
+                  placeholder="First Name"
+                  className="w-full h-[38px] px-3 rounded-[10px] bg-[#F8FAFC] border border-[#CBD5E1] text-[13px] text-[#0A2569] placeholder-[#94A3B8] focus:bg-white focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 outline-none transition-all font-medium"
+                />
+              </div>
+
+              {/* 2. Last Name */}
+              <div>
+                <label
+                  htmlFor="attendee-last-name-input"
+                  className="block text-[11.5px] font-semibold text-[#475569] mb-1"
+                >
+                  Last Name
+                </label>
+                <input
+                  type="text"
+                  id="attendee-last-name-input"
+                  value={draftAttendee.lastName}
+                  onChange={(e) => handleDraftChange("lastName", e.target.value)}
+                  placeholder="Last Name"
+                  className="w-full h-[38px] px-3 rounded-[10px] bg-[#F8FAFC] border border-[#CBD5E1] text-[13px] text-[#0A2569] placeholder-[#94A3B8] focus:bg-white focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 outline-none transition-all font-medium"
+                />
+              </div>
+
+              {/* 3. Email Address */}
+              <div>
+                <label
+                  htmlFor="attendee-email-input"
+                  className="block text-[11.5px] font-semibold text-[#475569] mb-1"
+                >
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  id="attendee-email-input"
+                  value={draftAttendee.email}
+                  onChange={(e) => handleDraftChange("email", e.target.value)}
+                  placeholder="Email Address"
+                  className="w-full h-[38px] px-3 rounded-[10px] bg-[#F8FAFC] border border-[#CBD5E1] text-[13px] text-[#0A2569] placeholder-[#94A3B8] focus:bg-white focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 outline-none transition-all font-medium"
+                />
+              </div>
+
+              {/* 4. Mobile Number */}
+              <div>
+                <label
+                  htmlFor="attendee-mobile-input"
+                  className="block text-[11.5px] font-semibold text-[#475569] mb-1"
+                >
+                  Mobile Number
+                </label>
+                <input
+                  type="tel"
+                  id="attendee-mobile-input"
+                  value={draftAttendee.mobileNumber}
+                  onChange={(e) => handleDraftChange("mobileNumber", e.target.value)}
+                  placeholder="+94 77 123 4567"
+                  className="w-full h-[38px] px-3 rounded-[10px] bg-[#F8FAFC] border border-[#CBD5E1] text-[13px] text-[#0A2569] placeholder-[#94A3B8] focus:bg-white focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 outline-none transition-all font-medium"
+                />
+              </div>
+
+              {/* 5. NIC */}
+              <div>
+                <label
+                  htmlFor="attendee-nic-input"
+                  className="block text-[11.5px] font-semibold text-[#475569] mb-1"
+                >
+                  NIC
+                </label>
+                <input
+                  type="text"
+                  id="attendee-nic-input"
+                  value={draftAttendee.nic}
+                  onChange={(e) => handleDraftChange("nic", e.target.value)}
+                  placeholder="NIC Number"
+                  className="w-full h-[38px] px-3 rounded-[10px] bg-[#F8FAFC] border border-[#CBD5E1] text-[13px] text-[#0A2569] placeholder-[#94A3B8] focus:bg-white focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 outline-none transition-all font-medium"
+                />
+              </div>
+
+              {/* Actions: Cancel & Save / OK */}
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#E2E8F0] mt-2">
+                <button
+                  type="button"
+                  id="cancel-attendee-details-modal-btn"
+                  onClick={handleCloseEditModal}
+                  className="px-3.5 py-2 text-[12.5px] font-semibold text-[#64748B] hover:text-[#334155] rounded-[9px] transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  id="save-attendee-details-modal-btn"
+                  className="px-5 py-2 text-[12.5px] font-bold text-white bg-[#0A2569] hover:bg-[#081E54] active:scale-95 rounded-[9px] shadow-sm transition-all cursor-pointer"
+                >
+                  Save
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

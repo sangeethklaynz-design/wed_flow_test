@@ -16,6 +16,7 @@ export const PARTY_PAGE_ORDER = [
   "location",
   "details",
   "saveTheDate",
+  "ticketing",
 ];
 
 /** Schedule timeline */
@@ -268,6 +269,10 @@ export function computePartyPageHeight(pageId, fields = {}) {
       return computeRsvpHeight(fields.rsvpQuestions);
     case "saveTheDate":
       return computeSaveTheDateHeight(fields.calendarLinks);
+    case "ticketing": {
+      const tickets = Array.isArray(fields?.ticketTypes) ? fields.ticketTypes : [1, 2, 3];
+      return Math.max(PARTY_BASE_HEIGHT, 540 + tickets.length * 135);
+    }
     default:
       return PARTY_BASE_HEIGHT;
   }

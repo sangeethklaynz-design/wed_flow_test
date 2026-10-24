@@ -1,141 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
-import { Clock, ArrowRight, Check, ArrowLeft, Download } from "lucide-react";
-import { jsPDF } from "jspdf";
-
-function generateIndividualTicketPdf(ticket, index = 0, eventInfo = {}) {
-  const doc = new jsPDF({
-    orientation: "portrait",
-    unit: "mm",
-    format: [105, 175],
-  });
-
-  const isParty = eventInfo.theme === "party";
-  const eventName = eventInfo.eventName || (isParty ? "ANNUAL GALA NIGHT 2026" : "ANNUAL BUSINESS SUMMIT 2026");
-  const eventSubtitle = eventInfo.eventSubtitle || (isParty ? "CELEBRATION. ELEGANCE. MEMORIES" : "IDEAS TODAY. OPPORTUNITIES TOMORROW");
-  const eventDate = eventInfo.eventDate || "Thursday, 12 November 2026";
-  const eventTime = eventInfo.eventTime || "6:00 PM Onwards";
-  const venue = eventInfo.venue || "Cinnamon Lakeside Colombo";
-  const attendeeName = ticket.attendeeName || eventInfo.attendeeName || "Kavindu Perera";
-  const ticketId = ticket.id || `TKT-2026-${String(index + 1).padStart(3, "0")}`;
-  const category = (ticket.typeName || ticket.name || "STANDARD").toUpperCase().replace(/\s*TICKET\s*/i, "").trim();
-  const price = Number(ticket.price || 1000).toLocaleString("en-US");
-
-  // 1. Top Header Banner (Deep Blue #021235)
-  doc.setFillColor(2, 18, 53);
-  doc.rect(0, 0, 105, 34, "F");
-
-  // Wed Flow Branding
-  doc.setTextColor(56, 189, 248);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.text("Wed Flow", 52.5, 9, { align: "center" });
-
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(6.5);
-  doc.text("Events. People. Possibilities", 52.5, 13, { align: "center" });
-
-  // Event Name
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.text(eventName.toUpperCase(), 52.5, 22, { align: "center" });
-
-  // Subtitle
-  doc.setTextColor(203, 213, 225);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(6.5);
-  doc.text(eventSubtitle.toUpperCase(), 52.5, 28, { align: "center" });
-
-  // 2. Body Background & Ticket Container
-  doc.setFillColor(248, 250, 252);
-  doc.rect(0, 34, 105, 141, "F");
-
-  doc.setFillColor(255, 255, 255);
-  doc.setDrawColor(203, 213, 225);
-  doc.setLineWidth(0.4);
-  doc.roundedRect(8, 38, 89, 106, 3, 3, "FD");
-
-  // Category Badge
-  doc.setFillColor(234, 243, 254);
-  doc.roundedRect(12, 42, 81, 10, 2, 2, "F");
-  doc.setTextColor(8, 4, 128);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8.5);
-  doc.text(`${category} TICKET`, 52.5, 48.5, { align: "center" });
-
-  // Attendee & Ticket ID
-  doc.setTextColor(15, 23, 42);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.text(attendeeName, 52.5, 59, { align: "center" });
-
-  doc.setTextColor(8, 4, 128);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8.5);
-  doc.text(`TICKET NO: ${ticketId}`, 52.5, 65, { align: "center" });
-
-  // Dashed Cut Line
-  doc.setDrawColor(203, 213, 225);
-  doc.setLineDashPattern([2, 1.5], 0);
-  doc.line(12, 70, 93, 70);
-  doc.setLineDashPattern([], 0);
-
-  // Event Details Grid
-  doc.setFontSize(7);
-  doc.setTextColor(100, 116, 139);
-  doc.text("DATE & TIME", 14, 76);
-  doc.text("VENUE", 14, 88);
-  doc.text("PRICE", 14, 100);
-  doc.text("SEAT", 56, 100);
-
-  doc.setTextColor(15, 23, 42);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7.5);
-  doc.text(`${eventDate}`, 14, 81);
-  doc.text(`${eventTime}`, 14, 85);
-  doc.text(venue, 14, 93);
-  doc.text(`LKR ${price}`, 14, 105);
-  doc.text(ticket.seatNo || "GENERAL ADMISSION", 56, 105);
-
-  // QR Code Area
-  doc.setFillColor(241, 245, 249);
-  doc.roundedRect(14, 110, 77, 28, 2, 2, "F");
-  doc.setTextColor(8, 4, 128);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
-  doc.text("SCAN FOR EVENT ENTRY", 52.5, 117, { align: "center" });
-  doc.setTextColor(100, 116, 139);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(6.5);
-  doc.text("Valid for one admission • Present at entrance gate", 52.5, 123, { align: "center" });
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7.5);
-  doc.setTextColor(8, 4, 128);
-  doc.text(`[ QR CODE: ${ticketId} ]`, 52.5, 131, { align: "center" });
-
-  // 3. Bottom Terms & Footer
-  doc.setFillColor(2, 18, 53);
-  doc.rect(0, 148, 105, 27, "F");
-
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(6.5);
-  doc.text("IMPORTANT EVENT GUIDELINES", 52.5, 153, { align: "center" });
-
-  doc.setTextColor(203, 213, 225);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(5.5);
-  doc.text("• Please present this e-ticket on your mobile device or printed at check-in.", 52.5, 158, { align: "center" });
-  doc.text("• Non-transferable & non-refundable. Organizers reserve right of admission.", 52.5, 162, { align: "center" });
-
-  doc.setTextColor(148, 163, 184);
-  doc.setFontSize(5);
-  doc.text("Wed Flow © 2026 • Events. People. Possibilities", 52.5, 168, { align: "center" });
-
-  return doc;
-}
+import { Clock, ArrowRight, Check, ArrowLeft } from "lucide-react";
 
 function TicketStubIcon({ color = "#94A3B8" }) {
   return (
@@ -159,6 +25,7 @@ function TicketStubIcon({ color = "#94A3B8" }) {
 }
 
 export function TicketingSelectionPage({
+  fields = {},
   ticketTypes = [],
   onProceedToPayment,
   defaultName = "Kavindu Perera",
@@ -172,9 +39,33 @@ export function TicketingSelectionPage({
   hasPurchasedTickets = false,
   initialReservedCount = 1,
 }) {
-  const normalizedTickets = useMemo(() => {
+  const title = fields?.ticketingTitle || "Select Your Tickets";
+  const subtitle =
+    fields?.ticketingSubtitle ||
+    "Choose your ticket type & quantity to continue";
+  const rsvpConfirmedText =
+    fields?.ticketingRsvpConfirmedText || "Your RSVP is confirmed!";
+  const timerHeading =
+    fields?.ticketingTimerHeading ||
+    "Complete Your Payment\nWithin 24 Hours";
+  const timerDescription =
+    fields?.ticketingTimerDescription ||
+    "1 ticket has been reserved for you for 24 hours. You can purchase it below or add more tickets.";
+  const buttonText = fields?.ticketingButtonText || "Proceed to Payment";
+
+  const effectiveTicketTypes = useMemo(() => {
+    if (Array.isArray(fields?.ticketTypes) && fields.ticketTypes.length > 0) {
+      return fields.ticketTypes;
+    }
     if (Array.isArray(ticketTypes) && ticketTypes.length > 0) {
-      return ticketTypes.map((t, idx) => {
+      return ticketTypes;
+    }
+    return [];
+  }, [fields?.ticketTypes, ticketTypes]);
+
+  const normalizedTickets = useMemo(() => {
+    if (Array.isArray(effectiveTicketTypes) && effectiveTicketTypes.length > 0) {
+      return effectiveTicketTypes.map((t, idx) => {
         let badgeColor = "#94A3B8";
         let defaultStock = "850 left";
         const lowerName = String(t.name || "").toLowerCase();
@@ -230,23 +121,23 @@ export function TicketingSelectionPage({
         stockLeft: "50 left",
       },
     ];
-  }, [ticketTypes]);
+  }, [effectiveTicketTypes]);
 
-  // Initial quantities: matching Screenshot 1 where 3 Standard tickets are selected, VIP has 0, Premium has 0
+  // Initial quantities: all ticket types default to 0
   const [quantities, setQuantities] = useState(() => {
     const initial = {};
-    normalizedTickets.forEach((t, idx) => {
-      initial[t.id] = idx === 0 ? 3 : 0;
+    normalizedTickets.forEach((t) => {
+      initial[t.id] = 0;
     });
     return initial;
   });
 
-  // 1-Hour Real Countdown Timer
+  // 24-Hour Real Countdown Timer
   const [timeLeft, setTimeLeft] = useState(() => {
     return {
-      hours: 1,
-      minutes: 0,
-      seconds: 0,
+      hours: 23,
+      minutes: 59,
+      seconds: 45,
     };
   });
 
@@ -288,102 +179,13 @@ export function TicketingSelectionPage({
 
     const standardTicket = normalizedTickets[0];
     const unitPrice = standardTicket ? standardTicket.price : 1000;
-    const text = `LKR ${unitPrice.toLocaleString("en-US")} × ${count} ticket${count === 1 ? "" : "s"}`;
+    const text =
+      count === 0
+        ? "0 tickets selected"
+        : `LKR ${unitPrice.toLocaleString("en-US")} × ${count} ticket${count === 1 ? "" : "s"}`;
 
     return { totalAmount: sum, totalCount: count, breakdownText: text };
   }, [normalizedTickets, quantities]);
-
-  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
-  const [toastMessage, setToastMessage] = useState(null);
-
-  const getTicketsToDownload = () => {
-    if (purchasedBookingData?.individualTickets && purchasedBookingData.individualTickets.length > 0) {
-      return purchasedBookingData.individualTickets;
-    }
-
-    const selected = [];
-    let counter = 1;
-    const bookingRef = purchasedBookingData?.bookingRef || "LN2026-0001";
-
-    normalizedTickets.forEach((t) => {
-      const qty = quantities[t.id] || 0;
-      for (let i = 0; i < qty; i++) {
-        selected.push({
-          id: `${bookingRef}-${counter++}`,
-          name: t.name,
-          typeName: t.name.toUpperCase(),
-          price: t.price,
-          quantity: 1,
-          seatNo: "GENERAL ADMISSION",
-          attendeeName: defaultName || "Kavindu Perera",
-        });
-      }
-    });
-
-    if (selected.length === 0) {
-      const first = normalizedTickets[0] || { name: "Standard", price: 1000 };
-      selected.push({
-        id: `${bookingRef}-1`,
-        name: first.name,
-        typeName: first.name.toUpperCase(),
-        price: first.price,
-        quantity: 1,
-        seatNo: "GENERAL ADMISSION",
-        attendeeName: defaultName || "Kavindu Perera",
-      });
-    }
-
-    return selected;
-  };
-
-  const handleDownloadAllTickets = async () => {
-    if (isDownloadingAll) return;
-    setIsDownloadingAll(true);
-    setToastMessage("Generating separate PDFs for each ticket...");
-
-    try {
-      const tickets = getTicketsToDownload();
-      for (let i = 0; i < tickets.length; i++) {
-        const ticket = tickets[i];
-        const doc = generateIndividualTicketPdf(ticket, i, {
-          theme,
-          eventName:
-            eventData?.eventName ||
-            (theme === "party"
-              ? "Annual Gala Night 2026"
-              : "Annual Business Summit 2026"),
-          eventSubtitle:
-            eventData?.eventSubtitle ||
-            (theme === "party"
-              ? "CELEBRATION. ELEGANCE. MEMORIES"
-              : "IDEAS TODAY. OPPORTUNITIES TOMORROW"),
-          eventDate: eventData?.eventDate || "Thursday, 12 November 2026",
-          eventTime: eventData?.eventTime || "6:00 PM Onwards",
-          venue: eventData?.venue || "Cinnamon Lakeside Colombo",
-          attendeeName:
-            ticket.attendeeName ||
-            defaultName ||
-            purchasedBookingData?.fullName ||
-            "Kavindu Perera",
-        });
-
-        const safeId = String(ticket.id || `TKT-${i + 1}`).replace(/\s+/g, "_");
-        doc.save(`Ticket-${safeId}.pdf`);
-
-        if (i < tickets.length - 1) {
-          await new Promise((r) => setTimeout(r, 450));
-        }
-      }
-      setToastMessage(`Downloaded ${tickets.length} ticket${tickets.length > 1 ? "s" : ""} as separate PDFs!`);
-      setTimeout(() => setToastMessage(null), 3000);
-    } catch (err) {
-      console.error("Error downloading tickets:", err);
-      setToastMessage("Failed to download tickets. Please try again.");
-      setTimeout(() => setToastMessage(null), 3000);
-    } finally {
-      setIsDownloadingAll(false);
-    }
-  };
 
   const handleProceed = (e) => {
     if (e && e.preventDefault) e.preventDefault();
@@ -396,21 +198,17 @@ export function TicketingSelectionPage({
         subtotal: t.price * quantities[t.id],
       }));
 
+    if (selectedTickets.length === 0 || totalCount === 0) {
+      return;
+    }
+
     if (onProceedToPayment) {
       onProceedToPayment({
         fullName: defaultName,
         email: defaultEmail,
-        selectedTickets: selectedTickets.length
-          ? selectedTickets
-          : [
-              {
-                ...normalizedTickets[0],
-                quantity: 1,
-                subtotal: normalizedTickets[0].price,
-              },
-            ],
-        totalAmount: totalAmount || (normalizedTickets[0]?.price ?? 1000),
-        totalCount: totalCount || 1,
+        selectedTickets,
+        totalAmount,
+        totalCount,
         quantities,
       });
     }
@@ -466,10 +264,10 @@ export function TicketingSelectionPage({
             className="font-serif font-bold text-[24px] leading-[30px] text-[#080480] tracking-[-0.01em] m-0"
             style={{ fontFamily: "'Playfair Display', 'Petrona', 'Georgia', serif" }}
           >
-            Select Your Tickets
+            {title}
           </h1>
           <p className="font-sans font-medium text-[11.5px] leading-[16px] text-[#334155] mt-1.5 m-0">
-            Choose your ticket type &amp; quantity to continue
+            {subtitle}
           </p>
         </div>
       </div>
@@ -480,7 +278,7 @@ export function TicketingSelectionPage({
           <Check className="w-5 h-5 stroke-[3]" />
         </div>
         <h2 className="font-sans font-bold text-[18px] leading-tight text-[#16A34A] mt-2 tracking-normal m-0">
-          Your RSVP is confirmed!
+          {rsvpConfirmedText}
         </h2>
       </div>
 
@@ -492,15 +290,13 @@ export function TicketingSelectionPage({
         </div>
 
         {/* Heading */}
-        <h3 className="font-sans font-bold text-[15.5px] leading-[20px] text-[#080480] m-0 tracking-[-0.01em]">
-          Complete Your Payment
-          <br />
-          Within 1 Hour
+        <h3 className="font-sans font-bold text-[15.5px] leading-[20px] text-[#080480] m-0 tracking-[-0.01em] whitespace-pre-line">
+          {timerHeading}
         </h3>
 
         {/* Description */}
-        <p className="font-sans text-[11px] leading-[15px] text-[#475569] mt-2 mb-3 max-w-[270px]">
-          1 ticket has been reserved for you for 1 hour. You can purchase it below or add more tickets.
+        <p className="font-sans text-[11px] leading-[15px] text-[#475569] mt-2 mb-3 max-w-[270px] whitespace-pre-line">
+          {timerDescription}
         </p>
 
         {/* Live Countdown Timer Blocks: [ 23 Hours ] : [ 59 Minutes ] : [ 45 Seconds ] */}
@@ -658,24 +454,11 @@ export function TicketingSelectionPage({
         type="button"
         id="proceed-to-payment-btn"
         onClick={handleProceed}
-        className="w-full h-[46px] rounded-[12px] bg-[#080480] hover:bg-[#060368] active:scale-[0.99] font-sans font-bold text-[14.5px] text-white flex items-center justify-center gap-2 cursor-pointer shadow-[0_4px_14px_rgba(8,4,128,0.25)] transition-all duration-150 mt-1"
+        disabled={totalCount === 0}
+        className="w-full h-[46px] rounded-[12px] bg-[#080480] hover:bg-[#060368] active:scale-[0.99] font-sans font-bold text-[14.5px] text-white flex items-center justify-center gap-2 cursor-pointer shadow-[0_4px_14px_rgba(8,4,128,0.25)] transition-all duration-150 mt-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
       >
-        <span>Proceed to Payment</span>
+        <span>{buttonText}</span>
         <ArrowRight className="w-4 h-4 stroke-[2.5]" />
-      </button>
-
-      {/* Download All Tickets Button (Separate PDFs) */}
-      <button
-        type="button"
-        id="download-all-tickets-btn"
-        disabled={isDownloadingAll}
-        onClick={handleDownloadAllTickets}
-        className="w-full h-[46px] rounded-[12px] bg-white hover:bg-[#F8FAFC] active:scale-[0.99] border-2 border-[#080480] font-sans font-bold text-[14.5px] text-[#080480] flex items-center justify-center gap-2 cursor-pointer shadow-sm transition-all duration-150 mt-2.5 disabled:opacity-60 disabled:cursor-not-allowed"
-      >
-        <Download className="w-4 h-4 stroke-[2.2]" />
-        <span>
-          {isDownloadingAll ? "Downloading Separate PDFs..." : "Download All Tickets"}
-        </span>
       </button>
 
       {/* Optional Confirmed Tickets quick access */}
@@ -691,17 +474,6 @@ export function TicketingSelectionPage({
         >
           View Already Purchased Tickets
         </button>
-      )}
-
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#080480] text-white text-xs font-semibold py-2 px-4 rounded-full shadow-lg z-50 animate-in fade-in slide-in-from-bottom-2 whitespace-nowrap"
-        >
-          {toastMessage}
-        </div>
       )}
     </div>
   );

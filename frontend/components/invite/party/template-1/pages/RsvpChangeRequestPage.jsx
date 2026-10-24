@@ -11,6 +11,7 @@ export default function RsvpChangeRequestPage({
   hasPurchasedTickets = false,
   purchasedBookingData = null,
   onViewPurchasedTickets = null,
+  onPurchaseMoreTickets = null,
 }) {
   const [reason, setReason] = useState("");
   const [requestSubmitted, setRequestSubmitted] = useState(false);
@@ -32,6 +33,16 @@ export default function RsvpChangeRequestPage({
       onViewPurchasedTickets();
     } else if (typeof window !== "undefined") {
       window.location.hash = "#ticket";
+    }
+  };
+
+  const handlePurchaseMoreTickets = () => {
+    if (typeof onPurchaseMoreTickets === "function") {
+      onPurchaseMoreTickets();
+    } else if (typeof window !== "undefined") {
+      try {
+        window.location.hash = "#ticketing";
+      } catch (e) {}
     }
   };
 
@@ -110,9 +121,9 @@ export default function RsvpChangeRequestPage({
             transform: `translateX(-50%) scale(${contentScale})`,
           }}
         >
-        {/* Top Option: View Already Purchased Tickets */}
+        {/* Top Option: View Already Purchased Tickets & Purchase More Tickets */}
         {showTicketOption && (
-          <div style={{ width: "100%", maxWidth: "320px", margin: "4px auto 12px", position: "relative", zIndex: 20 }}>
+          <div style={{ width: "100%", maxWidth: "320px", margin: "4px auto 14px", position: "relative", zIndex: 20, display: "flex", flexDirection: "column", gap: "8px" }}>
             <button
               type="button"
               id="party-view-purchased-tickets-top-btn"
@@ -144,6 +155,44 @@ export default function RsvpChangeRequestPage({
                   </svg>
                 </div>
                 <span>View Already Purchased Tickets</span>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+
+            {/* Purchase More Tickets Button */}
+            <button
+              type="button"
+              id="party-purchase-more-tickets-btn"
+              onClick={handlePurchaseMoreTickets}
+              style={{
+                width: "100%",
+                height: "42px",
+                padding: "0 14px",
+                borderRadius: "14px",
+                backgroundColor: "#FFFFFF",
+                color: "#080480",
+                border: "2px solid #080480",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                boxShadow: "0 2px 8px rgba(8,4,128,0.08)",
+                cursor: "pointer",
+                fontFamily: "'Plus Jakarta Sans', sans-serif",
+                fontWeight: 700,
+                fontSize: "12.5px",
+                transition: "all 0.15s ease",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#EFF6FE", display: "flex", alignItems: "center", justifyContent: "center", color: "#080480" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                </div>
+                <span>Purchase More Tickets</span>
               </div>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <polyline points="9 18 15 12 9 6" />

@@ -10,6 +10,7 @@ export const RsvpChangeRequestPage = ({
   hasPurchasedTickets = false,
   purchasedBookingData = null,
   onViewPurchasedTickets = null,
+  onPurchaseMoreTickets = null,
 }) => {
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -31,6 +32,16 @@ export const RsvpChangeRequestPage = ({
       onViewPurchasedTickets();
     } else if (typeof window !== 'undefined') {
       window.location.hash = '#ticket';
+    }
+  };
+
+  const handlePurchaseMoreTickets = () => {
+    if (typeof onPurchaseMoreTickets === 'function') {
+      onPurchaseMoreTickets();
+    } else if (typeof window !== 'undefined') {
+      try {
+        window.location.hash = '#ticketing';
+      } catch (e) {}
     }
   };
 
@@ -105,9 +116,9 @@ export const RsvpChangeRequestPage = ({
       />
 
       <div className="relative z-[2] w-[390px] min-h-[844px] mx-auto px-[35px] pt-[72px] pb-[32px] flex flex-col items-center justify-start select-none">
-        {/* Top Option: View Already Purchased Tickets */}
+        {/* Top Option: View Already Purchased Tickets & Purchase More Tickets */}
         {showTicketOption && (
-          <div className="w-full flex justify-center mb-3.5 z-20">
+          <div className="w-full flex flex-col items-center gap-2 mb-3.5 z-20">
             <button
               type="button"
               id="view-purchased-tickets-top-btn"
@@ -124,6 +135,29 @@ export const RsvpChangeRequestPage = ({
                 </div>
                 <span className="font-sans font-bold text-[12.5px] tracking-tight">
                   View Already Purchased Tickets
+                </span>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="group-hover:translate-x-0.5 transition-transform">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+
+            {/* Purchase More Tickets Button */}
+            <button
+              type="button"
+              id="purchase-more-tickets-btn"
+              onClick={handlePurchaseMoreTickets}
+              className="w-full max-w-[320px] h-[42px] px-4 rounded-[14px] bg-white hover:bg-[#F8FAFC] border-2 border-[#080480] text-[#080480] flex items-center justify-between shadow-[0_2px_8px_rgba(8,4,128,0.08)] active:scale-[0.98] transition-all cursor-pointer group"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-[26px] h-[26px] rounded-full bg-[#EFF6FE] flex items-center justify-center text-[#080480]">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                </div>
+                <span className="font-sans font-bold text-[12.5px] tracking-tight">
+                  Purchase More Tickets
                 </span>
               </div>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="group-hover:translate-x-0.5 transition-transform">

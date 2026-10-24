@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { jsPDF } from 'jspdf';
+import { downloadVectorTicketPdf } from '@/lib/ticketPdfGenerator';
 
 export const TicketQrOverlay = ({
   isOpen,
@@ -11,7 +12,7 @@ export const TicketQrOverlay = ({
   onScrollNext,
   showScrollExplore = false,
   attendeeName = 'Kavindu Perera',
-  ticketId = 'WL 2026-001',
+  ticketId = 'LN2026-0001-1',
   tickets = [],
   eventName: eventNameProp,
   eventDescription: eventDescriptionProp,
@@ -23,31 +24,79 @@ export const TicketQrOverlay = ({
   paymentReference: paymentRefProp,
   bookingDateTime: bookingDateProp,
   paymentMethod: paymentMethodProp,
+  fields = {},
+  embedded = false,
 }) => {
   const isParty = theme === 'party';
 
   const eventName =
+    fields?.ticketEventTitle ||
     eventNameProp ||
-    (isParty ? 'Annual Gala Night 2026' : 'Annual Business Summit   2026');
+    (isParty ? 'Annual Gala Night 2026' : 'Auto Test Event 06');
 
   const eventSubtitle =
+    fields?.ticketSubtitle ||
     eventDescriptionProp ||
     (isParty
       ? 'CELEBRATION. ELEGANCE. MEMORIES'
-      : 'IDEAS TODAY. OPPORTUNITIES TOMORROW');
+      : 'AN EVENING CELEBRATION, NETWORKING, & ENTERTAINMENT.');
 
-  // Format date to match screenshot 1: e.g. "12 November 2026"
+  const orgName =
+    fields?.ticketOrgName ||
+    (isParty ? 'GALA' : 'NEXORA');
+
+  const qrLabel =
+    fields?.ticketQrLabel ||
+    'Scan at Check-In';
+
+  const bannerNotice =
+    fields?.ticketBannerNotice ||
+    'THIS IS AN E-TICKET – Present this ticket at event check-in.';
+
+  const downloadBtnText =
+    fields?.ticketDownloadButtonText ||
+    'Download Ticket';
+
+  const termsTitle =
+    fields?.ticketTermsTitle ||
+    'EVENT TERMS & CONDITIONS';
+
+  const termsPoints = React.useMemo(() => {
+    if (fields?.ticketTermsText && typeof fields.ticketTermsText === 'string') {
+      const lines = fields.ticketTermsText
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean);
+      if (lines.length > 0) return lines;
+    }
+    return [
+      `This ticket is valid only for the ${eventName}.`,
+      'Please present this e-ticket (digital or printed) at the event check-in counter.',
+      'Each ticket admits one person as per the quantity purchased.',
+      'Tickets are non-transferable and non-refundable, except in case of event cancellation.',
+      'The organizer reserves the right to refuse entry for invalid or duplicated tickets.',
+      'Please follow the event guidelines and instructions from the event staff.',
+    ];
+  }, [fields?.ticketTermsText, eventName]);
+
+  // Format date to match screenshot 2: e.g. "12 November 2026"
   const formattedDate = React.useMemo(() => {
-    let dateStr = eventDateProp || '12 November 2026';
+    let dateStr = fields?.ticketDateLabel || eventDateProp || '12 November 2026';
     dateStr = dateStr.replace(/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Mon|Tue|Wed|Thu|Fri|Sat|Sun),\s*/i, '');
     return dateStr;
-  }, [eventDateProp]);
+  }, [fields?.ticketDateLabel, eventDateProp]);
 
-  const formattedTime = eventTimeProp || '6.00 PM Onwards';
+  const formattedTime = fields?.ticketTimeLabel || eventTimeProp || '6:00 PM Onwards';
 
   // Venue & City
   const { venueName, venueCity } = React.useMemo(() => {
-    const raw = eventVenueProp || 'Cinnamon Lakeside Colombo';
+    if (fields?.ticketVenueName) {
+      return {
+        venueName: fields.ticketVenueName,
+        venueCity: fields.ticketVenueCity || 'Colombo',
+      };
+    }
+    const raw = eventVenueProp || 'Colombo Grand Ballroom, Colombo';
     if (raw.toLowerCase().includes('cinnamon lakeside')) {
       return {
         venueName: 'Cinnamon Lakeside',
@@ -65,7 +114,7 @@ export const TicketQrOverlay = ({
       venueName: raw,
       venueCity: 'Colombo',
     };
-  }, [eventVenueProp]);
+  }, [fields?.ticketVenueName, fields?.ticketVenueCity, eventVenueProp]);
 
   // Payment details
   const paymentReference =
@@ -73,13 +122,13 @@ export const TicketQrOverlay = ({
     bookingData?.paymentRef ||
     bookingData?.paymentReference ||
     bookingData?.bookingRef ||
-    'TXN987514213';
+    'LN2026-0001';
 
   const bookingDateTime =
     bookingDateProp ||
     bookingData?.bookingDate ||
     bookingData?.createdAt ||
-    '21 Oct 2026,  03:14 PM';
+    '21 Oct 2026, 03:14 PM';
 
   const paymentMethod =
     paymentMethodProp ||
@@ -96,15 +145,18 @@ export const TicketQrOverlay = ({
     if (Array.isArray(tickets) && tickets.length > 0) {
       return tickets.map((t, idx) => {
         const id = t.id || `${ticketId}-${idx + 1}`;
-        const rawName = t.typeName || t.name || 'STANDARD';
+        const rawName = fields?.ticketCategory || t.typeName || t.name || 'VIP';
         const cleanCategory = rawName.toUpperCase().replace(/\s*TICKET\s*/i, '').trim();
         return {
           id,
           name: t.name || cleanCategory,
           typeName: cleanCategory,
-          price: t.price || 2000,
-          quantity: t.quantity || (tickets.length === 1 && bookingData?.totalCount ? bookingData.totalCount : 1),
-          seatNo: t.seatNo || 'GENERAL ADMISSION',
+          price: fields?.ticketPrice
+            ? Number(String(fields.ticketPrice).replace(/[^0-9.]/g, ''))
+            : (t.price || 2000),
+          quantity: t.quantity || 1,
+          seatNo: fields?.ticketSeatLabel || t.seatNo || 'GENERAL ADMISSION',
+          attendeeName: t.attendeeName || bookingData?.fullName || attendeeName,
         };
       });
     }
@@ -112,39 +164,45 @@ export const TicketQrOverlay = ({
     if (bookingData?.individualTickets && bookingData.individualTickets.length > 0) {
       return bookingData.individualTickets.map((t, idx) => {
         const id = t.id || `${ticketId}-${idx + 1}`;
-        const rawName = t.typeName || t.name || 'STANDARD';
+        const rawName = fields?.ticketCategory || t.typeName || t.name || 'VIP';
         const cleanCategory = rawName.toUpperCase().replace(/\s*TICKET\s*/i, '').trim();
         return {
           id,
           name: t.name || cleanCategory,
           typeName: cleanCategory,
-          price: t.price || 1000,
+          price: fields?.ticketPrice
+            ? Number(String(fields.ticketPrice).replace(/[^0-9.]/g, ''))
+            : (t.price || 2000),
           quantity: 1,
-          seatNo: t.seatNo || 'GENERAL ADMISSION',
+          seatNo: fields?.ticketSeatLabel || t.seatNo || 'GENERAL ADMISSION',
+          attendeeName: t.attendeeName || bookingData?.fullName || attendeeName,
         };
       });
     }
 
-    // Default to the 2 tickets shown in screenshot 1 for instant multi-ticket scroll verification
+    // Default to the 1 ticket shown in Screenshot 2
     return [
       {
-        id: 'WL 2026-001-1',
-        typeName: 'STANDARD',
-        name: 'Standard',
-        price: 2000,
-        quantity: 2,
-        seatNo: 'GENERAL ADMISSION',
-      },
-      {
-        id: 'WL 2026-001-2',
-        typeName: 'STANDARD',
-        name: 'Standard',
-        price: 2000,
-        quantity: 2,
-        seatNo: 'GENERAL ADMISSION',
+        id: ticketId || 'LN2026-0001-1',
+        typeName: (fields?.ticketCategory || 'VIP').toUpperCase(),
+        name: fields?.ticketCategory || 'VIP',
+        price: fields?.ticketPrice
+          ? Number(String(fields.ticketPrice).replace(/[^0-9.]/g, ''))
+          : 2000,
+        quantity: 1,
+        seatNo: fields?.ticketSeatLabel || 'GENERAL ADMISSION',
+        attendeeName: attendeeName || 'Kavindu Perera',
       },
     ];
-  }, [tickets, ticketId, bookingData]);
+  }, [
+    tickets,
+    ticketId,
+    bookingData,
+    fields?.ticketCategory,
+    fields?.ticketPrice,
+    fields?.ticketSeatLabel,
+    attendeeName,
+  ]);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -165,14 +223,33 @@ export const TicketQrOverlay = ({
         throw new Error('Ticket element not found');
       }
 
-      const htmlToImage = await import('html-to-image');
-      const imgData = await htmlToImage.toPng(ticketEl, {
-        pixelRatio: 2,
-        backgroundColor: '#020A24',
-        cacheBust: true,
-      });
+      // Temporarily hide download button so it does not appear inside the downloaded PDF
+      const btnEl = ticketEl.querySelector('[data-pdf-ignore="true"]');
+      const originalDisplay = btnEl ? btnEl.style.display : null;
+      if (btnEl) btnEl.style.display = 'none';
 
-      const elementHeight = ticketEl.offsetHeight || 844;
+      let imgData;
+      let elementHeight = 844;
+      try {
+        const htmlToImage = await import('html-to-image');
+        elementHeight = ticketEl.offsetHeight || 844;
+        imgData = await htmlToImage.toPng(ticketEl, {
+          pixelRatio: 2,
+          backgroundColor: '#020A24',
+          cacheBust: true,
+          filter: (node) => {
+            if (node && node.nodeType === 1) {
+              if (node.getAttribute('data-pdf-ignore') === 'true') {
+                return false;
+              }
+            }
+            return true;
+          },
+        });
+      } finally {
+        if (btnEl) btnEl.style.display = originalDisplay;
+      }
+
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'px',
@@ -201,10 +278,12 @@ export const TicketQrOverlay = ({
 
         doc.setTextColor(8, 4, 128);
         doc.setFontSize(11);
-        doc.text(`TICKET ID: ${t.id}`, 52.5, 36, { align: 'center' });
-        doc.setFontSize(9);
-        doc.text(`${formattedDate} • ${formattedTime}`, 52.5, 43, { align: 'center' });
-        doc.text(`${venueName}, ${venueCity}`, 52.5, 49, { align: 'center' });
+        doc.text(`TICKET ID: ${t.id}`, 52.5, 34, { align: 'center' });
+        doc.setFontSize(8.5);
+        doc.text(`ATTENDEE: ${t.attendeeName || attendeeName}`, 52.5, 39, { align: 'center' });
+        doc.setFontSize(8);
+        doc.text(`${formattedDate} • ${formattedTime}`, 52.5, 45, { align: 'center' });
+        doc.text(`${venueName}, ${venueCity}`, 52.5, 50, { align: 'center' });
         doc.text(`CATEGORY: ${t.typeName}  |  QTY: ${t.quantity}`, 52.5, 56, { align: 'center' });
         doc.text(`PRICE: LKR ${Number(t.price).toLocaleString('en-US')}`, 52.5, 62, { align: 'center' });
         doc.text(`SEAT: ${t.seatNo}`, 52.5, 68, { align: 'center' });
@@ -244,6 +323,27 @@ export const TicketQrOverlay = ({
     }
   };
 
+  // Back navigation to Payment Success page
+  const handleBackToPaymentSuccess = () => {
+    if (typeof onBackToPayment === 'function') {
+      onBackToPayment();
+      return;
+    }
+    if (typeof onClose === 'function') {
+      onClose();
+      return;
+    }
+    if (typeof window !== 'undefined') {
+      try {
+        window.history.pushState(null, '', '#payment-success');
+        window.dispatchEvent(new PopStateEvent('popstate'));
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
+      } catch (e) {
+        window.location.hash = '#payment-success';
+      }
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -252,46 +352,55 @@ export const TicketQrOverlay = ({
       role="dialog"
       aria-modal="true"
       aria-label="Event Ticket and QR Code"
-      className="absolute top-0 left-0 w-[390px] h-[844px] rounded-[26px] overflow-hidden z-[120] shadow-card select-none animate-in fade-in zoom-in-95 duration-300"
+      className={
+        embedded
+          ? "relative w-[390px] min-h-[844px] overflow-hidden select-none"
+          : "absolute top-0 left-0 w-[390px] h-[844px] rounded-[26px] overflow-hidden z-[120] shadow-card select-none animate-in fade-in zoom-in-95 duration-300"
+      }
       style={{
         background: '#021235',
       }}
     >
+      {/* Top-Left Floating Back Button to Payment Success Page */}
+      {!embedded && (
+        <button
+          type="button"
+          id="ticket-back-btn"
+          data-pdf-ignore="true"
+          onClick={handleBackToPaymentSuccess}
+          aria-label="Back to payment success"
+          className="absolute top-[14px] left-[12px] w-[34px] h-[34px] flex items-center justify-center rounded-full bg-white/25 hover:bg-white/40 active:scale-90 text-white transition-all cursor-pointer z-[150] p-0 shadow-lg backdrop-blur-md border border-white/25"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#FFFFFF"
+            strokeWidth="2.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <line x1="19" y1="12" x2="5" y2="12" />
+            <polyline points="12 19 5 12 12 5" />
+          </svg>
+        </button>
+      )}
+
       {/* Scrollable Container for ALL tickets when scrolling down */}
       <div
         ref={scrollContainerRef}
-        className="w-[390px] h-[844px] overflow-y-auto overflow-x-hidden relative"
+        className={
+          embedded
+            ? "w-[390px] overflow-visible relative"
+            : "w-[390px] h-[844px] overflow-y-auto overflow-x-hidden relative"
+        }
         style={{
           scrollbarWidth: 'thin',
           scrollbarColor: '#3B82F6 #021235',
         }}
       >
-        {/* Fixed Top-Left Back / Close Button */}
-        {(onBackToPayment || onClose) && (
-          <button
-            type="button"
-            id="ticket-back-btn"
-            data-pdf-ignore="true"
-            onClick={onBackToPayment || onClose}
-            aria-label="Back"
-            className="fixed top-[16px] left-[14px] w-8 h-8 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/35 active:scale-95 text-white transition-all cursor-pointer z-50 p-0 shadow-md backdrop-blur-md"
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#FFFFFF"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <line x1="19" y1="12" x2="5" y2="12" />
-              <polyline points="12 19 5 12 12 5" />
-            </svg>
-          </button>
-        )}
 
         {/* =========================================================================
             EACH TICKET IN ITS COMPLETE FORM (ONE AFTER ONE TO SCROLL DOWN)
@@ -327,7 +436,11 @@ export const TicketQrOverlay = ({
 
                   {/* Top Decorative Blue Wave swooshes */}
                   <img
-                    src="/assets/events/corporate-events/templates/template-1/chrome/ticket-page/upper background.webp"
+                    src={
+                      isParty
+                        ? '/assets/events/parties/templates/template-1/chrome/ticket-page/upper background.webp'
+                        : '/assets/events/corporate-events/templates/template-1/chrome/ticket-page/upper background.webp'
+                    }
                     alt=""
                     className="absolute top-0 left-0 w-[390px] h-[140px] object-cover pointer-events-none opacity-70 z-[1]"
                     width={390}
@@ -336,13 +449,15 @@ export const TicketQrOverlay = ({
                   />
 
                   {/* Wed Flow Logo at Top Left */}
-                  <div className="relative z-10 flex items-center gap-2 pl-9 pt-0.5 mb-2.5 text-left">
-                    <div className="w-5 h-5 relative shrink-0">
-                      <svg width="22" height="20" viewBox="0 0 26 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M13 1C13 1 16.5 6.5 16.5 11.5C16.5 13.5 15 16 13 17.5C11 16 9.5 13.5 9.5 11.5C9.5 6.5 13 1 13 1Z" fill="#38BDF8" />
-                        <path d="M13 6.5C13 6.5 18.5 8.5 21 12.5C23 16 21.5 18.5 19 19C16.5 19.5 14 17 13 15.5C13 15.5 13 9.5 13 6.5Z" fill="#0284C7" />
-                        <path d="M13 6.5C13 6.5 7.5 8.5 5 12.5C3 16 4.5 18.5 7 19C9.5 19.5 12 17 13 15.5C13 15.5 13 9.5 13 6.5Z" fill="#0284C7" />
-                      </svg>
+                  <div className={`relative z-10 flex items-center gap-2 ${embedded ? 'pl-4' : 'pl-[46px]'} pt-0.5 mb-2.5 text-left`}>
+                    <div className="w-[22px] h-[22px] relative shrink-0 flex items-center justify-center">
+                      <img
+                        src="/wedflow-logo.png"
+                        alt="Wed Flow"
+                        className="w-full h-full object-contain block drop-shadow-sm"
+                        width={22}
+                        height={22}
+                      />
                     </div>
                     <div className="flex flex-col">
                       <span className="font-serif font-bold text-[14px] leading-none text-white tracking-wide">
@@ -354,7 +469,7 @@ export const TicketQrOverlay = ({
                     </div>
                   </div>
 
-                  {/* Event Title (Annual Business Summit 2026) */}
+                  {/* Event Title (Auto Test Event 06 / Annual Business Summit 2026) */}
                   <div className="relative z-10 mt-1">
                     <h1
                       className="font-serif font-bold text-[20px] leading-[25px] text-white tracking-wide m-0"
@@ -367,7 +482,7 @@ export const TicketQrOverlay = ({
                     </h1>
                   </div>
 
-                  {/* Subtitle with Left and Right Lines (IDEAS TODAY. OPPORTUNITIES TOMORROW) */}
+                  {/* Subtitle with Left and Right Lines (AN EVENING CELEBRATION, NETWORKING, & ENTERTAINMENT.) */}
                   <div className="relative z-10 flex items-center justify-center gap-2.5 mt-2 px-6">
                     <div className="h-[1px] flex-1 bg-white/40" />
                     <span className="text-white text-[9px] font-semibold tracking-[0.16em] uppercase whitespace-nowrap">
@@ -385,8 +500,11 @@ export const TicketQrOverlay = ({
                     <div
                       className="relative w-[164px] h-[164px] rounded-[18px] overflow-hidden border-2 border-[#1E60D4] shadow-[0_4px_16px_rgba(2,18,43,0.18)] shrink-0 bg-slate-900"
                       style={{
-                        backgroundImage:
-                          "url('/assets/events/corporate-events/templates/template-1/chrome/landing/landing page background.webp')",
+                        backgroundImage: fields?.ticketHeroImage
+                          ? `url('${fields.ticketHeroImage.startsWith('http') || fields.ticketHeroImage.startsWith('/') ? fields.ticketHeroImage : `/api/resources/images/${encodeURIComponent(fields.ticketHeroImage)}`}')`
+                          : (isParty
+                              ? "url('/assets/events/parties/templates/template-1/chrome/landing-page/background.webp')"
+                              : "url('/assets/events/corporate-events/templates/template-1/chrome/landing/landing page background.webp')"),
                         backgroundPosition: 'center 86%',
                         backgroundSize: 'cover',
                         backgroundRepeat: 'no-repeat',
@@ -395,17 +513,21 @@ export const TicketQrOverlay = ({
                       {/* Dark gradient overlay for contrast */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/30 pointer-events-none" />
 
-                      {/* NEXORA Logo Overlaid (Upper Center) */}
+                      {/* NEXORA / Org Logo Overlaid (Upper Center) */}
                       <div className="absolute top-4 left-0 w-full flex flex-col items-center justify-center text-center select-none z-10 pointer-events-none">
                         <img
-                          src="/assets/events/corporate-events/templates/template-1/chrome/landing/ChatGPT Image Sep 17, 2026, 12_07_42 AM.webp"
-                          alt="Nexora Icon"
+                          src={
+                            isParty
+                              ? '/assets/events/parties/templates/template-1/chrome/ticket-page/organization logo.webp'
+                              : '/assets/events/corporate-events/templates/template-1/chrome/landing/ChatGPT Image Sep 17, 2026, 12_07_42 AM.webp'
+                          }
+                          alt="Org Icon"
                           className="w-[32px] h-[32px] object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]"
                           width={32}
                           height={32}
                         />
                         <span className="font-sans font-semibold text-[11px] leading-tight text-white tracking-[0.25em] uppercase mt-1 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
-                          {isParty ? 'GALA' : 'NEXORA'}
+                          {orgName}
                         </span>
                       </div>
                     </div>
@@ -414,7 +536,11 @@ export const TicketQrOverlay = ({
                     <div className="w-[164px] h-[164px] rounded-[18px] bg-white border border-[#CBD5E1]/60 shadow-[0_4px_16px_rgba(2,18,43,0.08)] flex flex-col items-center justify-center p-2 shrink-0">
                       <div className="w-[114px] h-[114px] flex items-center justify-center bg-white p-1">
                         <img
-                          src="/assets/events/corporate-events/templates/template-1/chrome/ticket-page/QR.webp"
+                          src={
+                            isParty
+                              ? '/assets/events/parties/templates/template-1/chrome/ticket-page/QR.webp'
+                              : '/assets/events/corporate-events/templates/template-1/chrome/ticket-page/QR.webp'
+                          }
                           alt={`QR Code for ${ticket.id}`}
                           className="w-full h-full object-contain block"
                           width={110}
@@ -422,16 +548,16 @@ export const TicketQrOverlay = ({
                         />
                       </div>
                       <span className="text-[#64748B] font-sans font-medium text-[11px] leading-tight mt-1 text-center">
-                        Scan at Check-In
+                        {qrLabel}
                       </span>
                     </div>
                   </div>
 
                   {/* Three Columns Info Badges (Date | Venue | Ticket ID) */}
-                  <div className="w-[342px] grid grid-cols-3 items-center divide-x divide-[#CBD5E1] mt-5 py-1">
+                  <div className="w-[342px] grid grid-cols-3 items-start divide-x divide-[#CBD5E1] mt-5 py-1">
                     {/* Column 1: Date */}
                     <div className="flex flex-col items-center text-center px-1">
-                      <div className="w-[38px] h-[38px] rounded-full bg-[#DCEBFC] flex items-center justify-center mb-1.5 text-[#080480] shadow-sm">
+                      <div className="w-[38px] h-[38px] rounded-full bg-[#DCEBFC] flex items-center justify-center mb-1.5 text-[#080480] shadow-sm shrink-0">
                         <svg
                           className="w-[18px] h-[18px] text-[#080480]"
                           viewBox="0 0 24 24"
@@ -448,7 +574,7 @@ export const TicketQrOverlay = ({
                           <line x1="3" y1="10" x2="21" y2="10" />
                         </svg>
                       </div>
-                      <span className="font-sans font-bold text-[11.5px] leading-tight text-[#080480]">
+                      <span className="font-sans font-bold text-[11px] leading-tight text-[#080480]">
                         {formattedDate}
                       </span>
                       <span className="font-sans text-[10px] leading-tight text-[#080480] mt-0.5 whitespace-nowrap">
@@ -458,7 +584,7 @@ export const TicketQrOverlay = ({
 
                     {/* Column 2: Venue */}
                     <div className="flex flex-col items-center text-center px-1">
-                      <div className="w-[38px] h-[38px] rounded-full bg-[#DCEBFC] flex items-center justify-center mb-1.5 text-[#080480] shadow-sm">
+                      <div className="w-[38px] h-[38px] rounded-full bg-[#DCEBFC] flex items-center justify-center mb-1.5 text-[#080480] shadow-sm shrink-0">
                         <svg
                           className="w-[18px] h-[18px] text-[#080480]"
                           viewBox="0 0 24 24"
@@ -473,17 +599,19 @@ export const TicketQrOverlay = ({
                           <circle cx="12" cy="10" r="3" />
                         </svg>
                       </div>
-                      <span className="font-sans font-bold text-[11.5px] leading-tight text-[#080480] truncate max-w-[105px]">
+                      <span className="font-sans font-bold text-[9.5px] leading-[13px] text-[#080480] break-words max-w-[105px] text-center">
                         {venueName}
                       </span>
-                      <span className="font-sans text-[10px] leading-tight text-[#080480] mt-0.5">
-                        {venueCity}
-                      </span>
+                      {venueCity && (
+                        <span className="font-sans text-[9px] leading-tight text-[#080480] mt-0.5 max-w-[105px] break-words text-center">
+                          {venueCity}
+                        </span>
+                      )}
                     </div>
 
                     {/* Column 3: Ticket ID */}
                     <div className="flex flex-col items-center text-center px-1">
-                      <div className="w-[38px] h-[38px] rounded-full bg-[#DCEBFC] flex items-center justify-center mb-1.5 text-[#080480] shadow-sm">
+                      <div className="w-[38px] h-[38px] rounded-full bg-[#DCEBFC] flex items-center justify-center mb-1.5 text-[#080480] shadow-sm shrink-0">
                         <svg
                           className="w-[18px] h-[18px] text-[#080480]"
                           viewBox="0 0 24 24"
@@ -498,7 +626,7 @@ export const TicketQrOverlay = ({
                           <line x1="9" y1="12" x2="15" y2="12" />
                         </svg>
                       </div>
-                      <span className="font-sans font-bold text-[11.5px] leading-tight text-[#080480]">
+                      <span className="font-sans font-bold text-[11px] leading-tight text-[#080480]">
                         Ticket ID
                       </span>
                       <span className="font-sans font-medium text-[10.5px] leading-tight text-[#080480] mt-0.5 tracking-tight whitespace-nowrap">
@@ -520,7 +648,7 @@ export const TicketQrOverlay = ({
                     {/* Table Data Row */}
                     <div className="grid grid-cols-4 bg-[#E1EDF9] py-2.5 text-center items-center divide-x divide-[#CFE1F5]">
                       <div className="font-sans font-bold text-[12px] text-[#080480]">
-                        {ticket.quantity || 2}
+                        {ticket.quantity || 1}
                       </div>
                       <div className="font-sans font-bold text-[11px] text-[#080480] uppercase">
                         {ticket.typeName}
@@ -536,6 +664,12 @@ export const TicketQrOverlay = ({
 
                   {/* Payment Details Card (Under table for each ticket) */}
                   <div className="w-[342px] rounded-[16px] border border-[#A8C7EC] bg-white/75 backdrop-blur-sm p-4 space-y-2 mt-4 shadow-sm">
+                    <div className="flex items-center justify-between text-[11.5px]">
+                      <span className="font-sans font-bold text-[#080480]">Attendee</span>
+                      <span className="font-sans font-semibold text-[#080480]">
+                        {ticket.attendeeName || attendeeName}
+                      </span>
+                    </div>
                     <div className="flex items-center justify-between text-[11.5px]">
                       <span className="font-sans font-bold text-[#080480]">Payment Reference</span>
                       <span className="font-sans font-normal text-[#556987] tracking-wide">
@@ -556,10 +690,11 @@ export const TicketQrOverlay = ({
                     </div>
                   </div>
 
-                  {/* Download Ticket Button (Included in screenshot 2) */}
+                  {/* Download Ticket Button (Excluded from exported PDF) */}
                   <button
                     type="button"
                     id={`ticket-download-btn-${ticket.id}`}
+                    data-pdf-ignore="true"
                     onClick={() => handleDownloadTicket(ticket)}
                     disabled={Boolean(downloadingTicketId)}
                     className="w-[342px] h-[46px] bg-[#080480] hover:bg-[#060368] active:scale-[0.99] text-white rounded-[14px] flex items-center justify-center gap-2.5 shadow-[0_4px_16px_rgba(8,4,128,0.28)] transition-all cursor-pointer mt-4 disabled:opacity-50"
@@ -582,7 +717,7 @@ export const TicketQrOverlay = ({
                     <span className="font-sans font-bold text-[14.5px] text-white tracking-wide">
                       {downloadingTicketId === ticket.id
                         ? 'Generating PDF...'
-                        : 'Download Ticket'}
+                        : downloadBtnText}
                     </span>
                   </button>
                 </div>
@@ -608,10 +743,7 @@ export const TicketQrOverlay = ({
                     </svg>
                   </div>
                   <div className="font-sans font-bold text-[10.5px] leading-tight tracking-wide text-white pl-3">
-                    THIS IS AN E-TICKET &nbsp;–&nbsp;{' '}
-                    <span className="font-normal text-[10px] text-white/95 tracking-normal">
-                      Present this ticket at event check-in.
-                    </span>
+                    {bannerNotice}
                   </div>
                 </div>
 
@@ -619,36 +751,18 @@ export const TicketQrOverlay = ({
                 <footer className="w-[390px] bg-[#020A24] text-white px-5 pt-4 pb-6 shrink-0">
                   <div className="mb-3">
                     <h3 className="font-sans font-bold text-[11.5px] text-white tracking-[0.14em] uppercase m-0 p-0">
-                      EVENT TERMS &amp; CONDITIONS
+                      {termsTitle}
                     </h3>
                     <div className="w-[180px] h-[1px] bg-blue-400/60 mt-1" />
                   </div>
 
                   <ul className="space-y-1.5 list-none p-0 m-0 text-white/85 font-sans text-[9.5px] leading-[13.5px] text-left">
-                    <li className="flex items-start gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0 mt-[4px]" />
-                      <span>This ticket is valid only for the {eventName}.</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0 mt-[4px]" />
-                      <span>Please present this e-ticket (digital or printed) at the event check-in counter.</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0 mt-[4px]" />
-                      <span>Each ticket admits one person as per the quantity purchased.</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0 mt-[4px]" />
-                      <span>Tickets are non-transferable and non-refundable, except in case of event cancellation.</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0 mt-[4px]" />
-                      <span>The organizer reserves the right to refuse entry for invalid or duplicated tickets.</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0 mt-[4px]" />
-                      <span>Please follow the event guidelines and instructions from the event staff.</span>
-                    </li>
+                    {termsPoints.map((point, pIdx) => (
+                      <li key={pIdx} className="flex items-start gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0 mt-[4px]" />
+                        <span>{point}</span>
+                      </li>
+                    ))}
                   </ul>
 
                   {/* Wed Flow Footer Bottom Line */}
@@ -695,7 +809,7 @@ export const TicketQrOverlay = ({
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
-            <span>Download All Tickets ({ticketsList.length} PDFs)</span>
+            <span>Download All Tickets</span>
           </button>
         </div>
 

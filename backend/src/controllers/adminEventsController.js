@@ -54,6 +54,95 @@ function deriveStatus(eventDate) {
   return "past";
 }
 
+function normalizeEventTemplateConfig(config, eventType) {
+  if (!config || typeof config !== "object") return config;
+  const fields = config.fields;
+  if (!fields || typeof fields !== "object") return config;
+  const type = String(eventType || "").toLowerCase();
+  if (type !== "corporate" && type !== "party") return config;
+
+  if (Array.isArray(fields.rsvpQuestions)) {
+    let questions = [...fields.rsvpQuestions];
+    let changed = false;
+
+    // Check if "Full name" exists
+    const fullNameIdx = questions.findIndex((q) =>
+      /full\s*name/i.test(q?.label || "")
+    );
+    if (fullNameIdx >= 0) {
+      changed = true;
+      const firstNameQ = {
+        label: "First Name",
+        inputType: "text",
+        options: "",
+        placeholder: "Kavindu",
+      };
+      const lastNameQ = {
+        label: "Last Name",
+        inputType: "text",
+        options: "",
+        placeholder: "Perera",
+      };
+      questions.splice(fullNameIdx, 1, firstNameQ, lastNameQ);
+    }
+
+    // Check email & mobile labels
+    questions = questions.map((q) => {
+      if (/^email$/i.test(q?.label || "")) {
+        changed = true;
+        return {
+          ...q,
+          label: "Email Address",
+          placeholder: q.placeholder || "kavindu@gmail.com",
+        };
+      }
+      if (/phone(\s*number)?/i.test(q?.label || "")) {
+        changed = true;
+        return {
+          ...q,
+          label: "Mobile Number",
+          placeholder: q.placeholder || "+94  77  123  4567",
+        };
+      }
+      return q;
+    });
+
+    // Check if NIC exists
+    const hasNic = questions.some((q) => /nic|identity/i.test(q?.label || ""));
+    if (!hasNic) {
+      changed = true;
+      const mobileIdx = questions.findIndex((q) =>
+        /mobile|phone/i.test(q?.label || "")
+      );
+      const nicQ = {
+        label: "NIC (National Identity Card)",
+        inputType: "text",
+        options: "",
+        placeholder: "199012345678",
+        helperText:
+          "You can update your NIC later when purchasing tickets if you need.",
+      };
+      if (mobileIdx >= 0) {
+        questions.splice(mobileIdx + 1, 0, nicQ);
+      } else {
+        questions.splice(2, 0, nicQ);
+      }
+    }
+
+    if (changed) {
+      return {
+        ...config,
+        fields: {
+          ...fields,
+          rsvpQuestions: questions,
+        },
+      };
+    }
+  }
+
+  return config;
+}
+
 function parseTemplateConfig(raw) {
   if (raw == null) return {};
   if (typeof raw === "object") return raw;
@@ -72,7 +161,10 @@ function mapEventRow(row, { ticketTiers = [] } = {}) {
     type: row.type,
     templateKey: row.template_key,
     resourcePackId: row.resource_pack_id || row.id,
-    templateConfig: parseTemplateConfig(row.template_config),
+    templateConfig: normalizeEventTemplateConfig(
+      parseTemplateConfig(row.template_config),
+      row.type
+    ),
     eventDate,
     location: row.location || null,
     googleMapsLink: row.google_maps_link || null,
@@ -381,7 +473,7 @@ async function listEvents(req, res) {
       SELECT e.*, u.email AS client_email
       FROM events e
       LEFT JOIN users u ON u.id = e.user_id
-      ORDER BY e.event_date DESC, e.created_at DESC;
+      ORDER BY e.created_at DESC, e.id DESC;
       `
     );
 
@@ -1254,6 +1346,47 @@ async function updateTemplateConfig(req, res) {
 
     if (Array.isArray(incomingSchedule)) {
       await syncTemplateScheduleToDb(id, null, incomingSchedule, existing.type);
+    }
+
+    if (nextConfig.pages?.ticketing !== undefined) {
+      const isTicketing = nextConfig.pages.ticketing !== false;
+      try {
+        await sequelize.query(
+          `UPDATE events SET is_ticketing_enabled = ?, updated_at = NOW() WHERE id = ?;`,
+          { replacements: [isTicketing ? 1 : 0, id] }
+        );
+      } catch (err) {
+        // non-fatal
+      }
+    }
+
+    if (Array.isArray(nextConfig.fields?.ticketTypes) && nextConfig.fields.ticketTypes.length > 0) {
+      try {
+        await sequelize.query(
+          `DELETE FROM ticket_types WHERE event_id = ?;`,
+          { replacements: [id] }
+        );
+        for (let idx = 0; idx < nextConfig.fields.ticketTypes.length; idx++) {
+          const tt = nextConfig.fields.ticketTypes[idx];
+          if (!tt || !tt.name) continue;
+          await sequelize.query(
+            `INSERT INTO ticket_types (id, event_id, name, price, description, display_order)
+             VALUES (?, ?, ?, ?, ?, ?);`,
+            {
+              replacements: [
+                crypto.randomUUID(),
+                id,
+                String(tt.name || "").trim(),
+                Number(tt.price) || 0,
+                String(tt.description || "").trim(),
+                idx + 1,
+              ],
+            }
+          );
+        }
+      } catch (err) {
+        console.error("Failed to sync ticketTypes to DB:", err);
+      }
     }
 
     const effectivePackId = req.body?.resourcePackId || existing.resourcePackId;
