@@ -332,7 +332,7 @@ export function TicketingPaymentOverlay({
               </div>
               <div className="flex justify-between items-start">
                 <span className="text-[#64748B]">Venue</span>
-                <span className="font-medium text-[#0A2569] text-right max-w-[190px] truncate">
+                <span className="font-medium text-[#0A2569] text-right max-w-[200px] break-words text-[11.5px] leading-tight">
                   {eventVenue}
                 </span>
               </div>

@@ -434,10 +434,10 @@ export const TicketQrOverlay = ({
                   </div>
 
                   {/* Three Columns Info Badges (Date | Venue | Ticket ID) */}
-                  <div className="w-[342px] grid grid-cols-3 items-center divide-x divide-[#CBD5E1] mt-5 py-1">
+                  <div className="w-[342px] grid grid-cols-3 items-start divide-x divide-[#CBD5E1] mt-5 py-1">
                     {/* Column 1: Date */}
                     <div className="flex flex-col items-center text-center px-1">
-                      <div className="w-[38px] h-[38px] rounded-full bg-[#DCEBFC] flex items-center justify-center mb-1.5 text-[#080480] shadow-sm">
+                      <div className="w-[38px] h-[38px] rounded-full bg-[#DCEBFC] flex items-center justify-center mb-1.5 text-[#080480] shadow-sm shrink-0">
                         <svg
                           className="w-[18px] h-[18px] text-[#080480]"
                           viewBox="0 0 24 24"
@@ -454,7 +454,7 @@ export const TicketQrOverlay = ({
                           <line x1="3" y1="10" x2="21" y2="10" />
                         </svg>
                       </div>
-                      <span className="font-sans font-bold text-[11.5px] leading-tight text-[#080480]">
+                      <span className="font-sans font-bold text-[11px] leading-tight text-[#080480]">
                         {formattedDate}
                       </span>
                       <span className="font-sans text-[10px] leading-tight text-[#080480] mt-0.5 whitespace-nowrap">
@@ -464,7 +464,7 @@ export const TicketQrOverlay = ({
 
                     {/* Column 2: Venue */}
                     <div className="flex flex-col items-center text-center px-1">
-                      <div className="w-[38px] h-[38px] rounded-full bg-[#DCEBFC] flex items-center justify-center mb-1.5 text-[#080480] shadow-sm">
+                      <div className="w-[38px] h-[38px] rounded-full bg-[#DCEBFC] flex items-center justify-center mb-1.5 text-[#080480] shadow-sm shrink-0">
                         <svg
                           className="w-[18px] h-[18px] text-[#080480]"
                           viewBox="0 0 24 24"
@@ -479,17 +479,19 @@ export const TicketQrOverlay = ({
                           <circle cx="12" cy="10" r="3" />
                         </svg>
                       </div>
-                      <span className="font-sans font-bold text-[11.5px] leading-tight text-[#080480] truncate max-w-[105px]">
+                      <span className="font-sans font-bold text-[9.5px] leading-[13px] text-[#080480] break-words max-w-[105px] text-center">
                         {venueName}
                       </span>
-                      <span className="font-sans text-[10px] leading-tight text-[#080480] mt-0.5">
-                        {venueCity}
-                      </span>
+                      {venueCity && (
+                        <span className="font-sans text-[9px] leading-tight text-[#080480] mt-0.5 max-w-[105px] break-words text-center">
+                          {venueCity}
+                        </span>
+                      )}
                     </div>
 
                     {/* Column 3: Ticket ID */}
                     <div className="flex flex-col items-center text-center px-1">
-                      <div className="w-[38px] h-[38px] rounded-full bg-[#DCEBFC] flex items-center justify-center mb-1.5 text-[#080480] shadow-sm">
+                      <div className="w-[38px] h-[38px] rounded-full bg-[#DCEBFC] flex items-center justify-center mb-1.5 text-[#080480] shadow-sm shrink-0">
                         <svg
                           className="w-[18px] h-[18px] text-[#080480]"
                           viewBox="0 0 24 24"
@@ -504,7 +506,7 @@ export const TicketQrOverlay = ({
                           <line x1="9" y1="12" x2="15" y2="12" />
                         </svg>
                       </div>
-                      <span className="font-sans font-bold text-[11.5px] leading-tight text-[#080480]">
+                      <span className="font-sans font-bold text-[11px] leading-tight text-[#080480]">
                         Ticket ID
                       </span>
                       <span className="font-sans font-medium text-[10.5px] leading-tight text-[#080480] mt-0.5 tracking-tight whitespace-nowrap">
