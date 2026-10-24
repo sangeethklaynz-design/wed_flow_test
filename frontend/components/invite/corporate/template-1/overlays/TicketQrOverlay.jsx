@@ -341,12 +341,14 @@ export const TicketQrOverlay = ({
 
                   {/* Wed Flow Logo at Top Left */}
                   <div className="relative z-10 flex items-center gap-2 pl-9 pt-0.5 mb-2.5 text-left">
-                    <div className="w-5 h-5 relative shrink-0">
-                      <svg width="22" height="20" viewBox="0 0 26 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M13 1C13 1 16.5 6.5 16.5 11.5C16.5 13.5 15 16 13 17.5C11 16 9.5 13.5 9.5 11.5C9.5 6.5 13 1 13 1Z" fill="#38BDF8" />
-                        <path d="M13 6.5C13 6.5 18.5 8.5 21 12.5C23 16 21.5 18.5 19 19C16.5 19.5 14 17 13 15.5C13 15.5 13 9.5 13 6.5Z" fill="#0284C7" />
-                        <path d="M13 6.5C13 6.5 7.5 8.5 5 12.5C3 16 4.5 18.5 7 19C9.5 19.5 12 17 13 15.5C13 15.5 13 9.5 13 6.5Z" fill="#0284C7" />
-                      </svg>
+                    <div className="w-[22px] h-[22px] relative shrink-0 flex items-center justify-center">
+                      <img
+                        src="/wedflow-logo.png"
+                        alt="Wed Flow"
+                        className="w-full h-full object-contain block drop-shadow-sm"
+                        width={22}
+                        height={22}
+                      />
                     </div>
                     <div className="flex flex-col">
                       <span className="font-serif font-bold text-[14px] leading-none text-white tracking-wide">
