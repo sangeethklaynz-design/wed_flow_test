@@ -247,7 +247,7 @@ export default function RsvpPage({
         method: "POST",
         body: {
           status,
-          attendingCount: status === "ATTENDING" ? guestCountVal : 0,
+          attendingCount: status === "ATTENDING" ? attendingCount : 0,
           wishes: wishesPayload,
           fullName: fullNameVal || undefined,
           whatsappNumber: phoneVal || undefined,
