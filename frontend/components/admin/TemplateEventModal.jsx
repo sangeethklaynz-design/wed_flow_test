@@ -80,6 +80,90 @@ function normalizeWeddingColorFields(fields, eventType) {
   return next;
 }
 
+function normalizeRsvpQuestions(fields, eventType) {
+  if (!fields || typeof fields !== "object") return fields || {};
+  const type = String(eventType || "").toLowerCase();
+  if (type !== "corporate" && type !== "party") return fields;
+
+  const next = { ...fields };
+  let questions = Array.isArray(next.rsvpQuestions) ? [...next.rsvpQuestions] : null;
+
+  if (!questions || questions.length === 0) {
+    return next;
+  }
+
+  let hasChanged = false;
+
+  // Check if "Full name" exists
+  const fullNameIdx = questions.findIndex((q) =>
+    /full\s*name/i.test(q?.label || "")
+  );
+
+  if (fullNameIdx >= 0) {
+    hasChanged = true;
+    const firstNameQ = {
+      label: "First Name",
+      inputType: "text",
+      options: "",
+      placeholder: "Kavindu",
+    };
+    const lastNameQ = {
+      label: "Last Name",
+      inputType: "text",
+      options: "",
+      placeholder: "Perera",
+    };
+    questions.splice(fullNameIdx, 1, firstNameQ, lastNameQ);
+  }
+
+  // Update Email to Email Address if needed
+  questions = questions.map((q) => {
+    if (/^email$/i.test(q?.label || "")) {
+      hasChanged = true;
+      return {
+        ...q,
+        label: "Email Address",
+        placeholder: q.placeholder || "kavindu@gmail.com",
+      };
+    }
+    if (/phone(\s*number)?/i.test(q?.label || "")) {
+      hasChanged = true;
+      return {
+        ...q,
+        label: "Mobile Number",
+        placeholder: q.placeholder || "+94  77  123  4567",
+      };
+    }
+    return q;
+  });
+
+  // Check if NIC exists
+  const hasNic = questions.some((q) => /nic|identity/i.test(q?.label || ""));
+  if (!hasNic) {
+    hasChanged = true;
+    const mobileIdx = questions.findIndex((q) =>
+      /mobile|phone/i.test(q?.label || "")
+    );
+    const nicQ = {
+      label: "NIC (National Identity Card)",
+      inputType: "text",
+      options: "",
+      placeholder: "199012345678",
+      helperText: "You can update your NIC later when purchasing tickets if you need.",
+    };
+    if (mobileIdx >= 0) {
+      questions.splice(mobileIdx + 1, 0, nicQ);
+    } else {
+      questions.splice(2, 0, nicQ);
+    }
+  }
+
+  if (hasChanged) {
+    next.rsvpQuestions = questions;
+  }
+  return next;
+}
+
 function pagesForPageDropdown(manifest, eventType) {
   const pages = manifest?.pages || [];
   if (String(eventType || "").toLowerCase() !== "wedding") {
@@ -383,8 +467,11 @@ export default function TemplateEventModal({ open, onClose, event, onSaved }) {
       const defaults = emptyConfigFromManifest(m);
       const existing = event.templateConfig || {};
       const pages = { ...defaults.pages, ...(existing.pages || {}) };
-      const mergedFields = normalizeWeddingColorFields(
-        { ...defaults.fields, ...(existing.fields || {}) },
+      const mergedFields = normalizeRsvpQuestions(
+        normalizeWeddingColorFields(
+          { ...defaults.fields, ...(existing.fields || {}) },
+          event.type
+        ),
         event.type
       );
       const savedSnapshot = JSON.stringify({
