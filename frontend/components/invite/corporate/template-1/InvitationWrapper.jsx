@@ -294,6 +294,7 @@ function CorporateInvitationFull({
   const [hasSubmittedRsvp, setHasSubmittedRsvp] = useState(() =>
     guestAlreadyRsvped(templateData)
   );
+  const [isEditingAttendee, setIsEditingAttendee] = useState(false);
   const [rsvpData, setRsvpData] = useState(() => {
     const guestRsvp = guest?.rsvp;
     if (guestRsvp && (guestRsvp.hasSubmitted || guestAlreadyRsvped(templateData))) {
@@ -568,6 +569,7 @@ function CorporateInvitationFull({
     setRsvpData(answers || null);
     setTicketingBookingData(null);
     setHasSubmittedRsvp(true);
+    setIsEditingAttendee(false);
     if (!interactive) return;
     if (typeof onRsvpSuccessProp === 'function') {
       onRsvpSuccessProp(answers);
@@ -625,6 +627,31 @@ function CorporateInvitationFull({
         }
       }
     }, 50);
+  };
+
+  const handleEditAttendeeFromPayment = () => {
+    setIsTicketingPaymentOpen(false);
+    setIsTicketingOpen(false);
+    setIsPaymentSuccessOpen(false);
+    setIsTicketOpen(false);
+    setIsEditingAttendee(true);
+    setHash('#rsvp');
+    setTimeout(() => {
+      const rsvpTarget =
+        document.querySelector('[data-invite-page="rsvp"]') ||
+        document.getElementById('page-6') ||
+        document.getElementById('page-3');
+      if (rsvpTarget) {
+        if (embedded && containerRef.current) {
+          containerRef.current.scrollTo({
+            top: rsvpTarget.offsetTop,
+            behavior: 'smooth',
+          });
+        } else if (typeof window !== 'undefined') {
+          rsvpTarget.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+    }, 60);
   };
 
   const handleProceedToTicketingPayment = (data) => {
@@ -822,7 +849,7 @@ function CorporateInvitationFull({
       templateData?.static?.event?.isTicketingEnabled
     );
 
-    if (pageId === 'rsvp' && hasSubmittedRsvp) {
+    if (pageId === 'rsvp' && hasSubmittedRsvp && !isEditingAttendee) {
       return (
         <RsvpChangeRequestPage
           key="rsvp-change"
@@ -854,6 +881,9 @@ function CorporateInvitationFull({
         <Page
           key={pageId}
           fields={fields}
+          guest={guest}
+          rsvpData={rsvpData}
+          initialValues={rsvpData}
           guestToken={guestToken}
           maxGuests={maxGuests}
           previewBypassValidation={previewBypassValidation || !guestToken}
@@ -1018,6 +1048,7 @@ function CorporateInvitationFull({
           isOpen={isTicketingPaymentOpen}
           onClose={handleCloseTicketingPayment}
           onBack={handleCloseTicketingPayment}
+          onEditAttendee={handleEditAttendeeFromPayment}
           onPaySuccess={handleTicketingPaymentSuccess}
           bookingData={ticketingBookingData || {}}
           theme="corporate"
@@ -1189,6 +1220,7 @@ function CorporateInvitationFull({
             isOpen={isTicketingPaymentOpen}
             onClose={handleCloseTicketingPayment}
             onBack={handleCloseTicketingPayment}
+            onEditAttendee={handleEditAttendeeFromPayment}
             onPaySuccess={handleTicketingPaymentSuccess}
             bookingData={ticketingBookingData || {}}
             theme="corporate"

@@ -20,6 +20,9 @@ export const RsvpPage = ({
   previewBypassValidation = false,
   guestToken = null,
   maxGuests = 1,
+  guest = null,
+  rsvpData = null,
+  initialValues = null,
   onScrollNext = null,
 }) => {
   const questions =
@@ -31,21 +34,46 @@ export const RsvpPage = ({
 
   const initialAnswers = useMemo(() => {
     const next = {};
+    const data = initialValues || rsvpData || {};
     questions.forEach((q, i) => {
       const key = fieldKey(q, i);
       const type = String(q?.inputType || 'text').toLowerCase();
+      const lbl = String(q?.label || '').toLowerCase();
+
+      let val = data[key];
+      if (val === undefined || val === null) {
+        if (/first\s*name/i.test(lbl)) val = data.firstName;
+        else if (/last\s*name/i.test(lbl)) val = data.lastName;
+        else if (/full\s*name/i.test(lbl)) val = data.fullName;
+        else if (/email/i.test(lbl)) val = data.emailAddress || data.email;
+        else if (/phone|mobile/i.test(lbl)) val = data.mobileNumber || data.phone;
+        else if (/nic|identity/i.test(lbl)) val = data.nic || data.nicNumber;
+        else if (/attend/i.test(lbl)) val = data.attendance;
+        else if (/number of guest|guests? count/i.test(lbl)) val = data.guestCount || data.attendingCount;
+        else if (/meal/i.test(lbl)) val = data.mealPreference;
+        else if (/special requirement|requirement/i.test(lbl)) val = data.specialRequirements;
+      }
+      if ((val === undefined || val === null) && guest) {
+        if (/first\s*name/i.test(lbl)) val = guest.firstName || (guest.name ? guest.name.split(' ')[0] : '');
+        else if (/last\s*name/i.test(lbl)) val = guest.lastName || (guest.name ? guest.name.split(' ').slice(1).join(' ') : '');
+        else if (/full\s*name/i.test(lbl)) val = guest.name || guest.full_name || '';
+        else if (/email/i.test(lbl)) val = guest.email || '';
+        else if (/phone|mobile/i.test(lbl)) val = guest.phone || guest.mobile || '';
+        else if (/nic|identity/i.test(lbl)) val = guest.nic || '';
+      }
+
       if (type === 'radio') {
         const opts = parseOptionList(q?.options);
-        next[key] = opts[0] || "Yes, I'll attend";
+        next[key] = val || opts[0] || "Yes, I'll attend";
       } else if (type === 'dropdown') {
         const opts = parseOptionList(q?.options);
-        next[key] = opts[0] || 'Veg or Non-Veg';
+        next[key] = val || opts[0] || 'Veg or Non-Veg';
       } else {
-        next[key] = '';
+        next[key] = val || '';
       }
     });
     return next;
-  }, [questions]);
+  }, [questions, initialValues, rsvpData, guest]);
 
   const [answers, setAnswers] = useState(initialAnswers);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -62,25 +90,36 @@ export const RsvpPage = ({
     setAnswers((prev) => {
       let changed = false;
       const next = { ...prev };
+      const data = initialValues || rsvpData || {};
       questions.forEach((q, i) => {
         const key = fieldKey(q, i);
-        if (next[key] === undefined) {
+        const lbl = String(q?.label || '').toLowerCase();
+        let fallbackVal = data[key];
+        if (fallbackVal === undefined || fallbackVal === null) {
+          if (/first\s*name/i.test(lbl)) fallbackVal = data.firstName;
+          else if (/last\s*name/i.test(lbl)) fallbackVal = data.lastName;
+          else if (/full\s*name/i.test(lbl)) fallbackVal = data.fullName;
+          else if (/email/i.test(lbl)) fallbackVal = data.emailAddress || data.email;
+          else if (/phone|mobile/i.test(lbl)) fallbackVal = data.mobileNumber || data.phone;
+          else if (/nic|identity/i.test(lbl)) fallbackVal = data.nic || data.nicNumber;
+        }
+        if (next[key] === undefined || (next[key] === '' && fallbackVal)) {
           changed = true;
           const type = String(q?.inputType || 'text').toLowerCase();
           if (type === 'radio') {
             const opts = parseOptionList(q?.options);
-            next[key] = opts[0] || "Yes, I'll attend";
+            next[key] = fallbackVal || opts[0] || "Yes, I'll attend";
           } else if (type === 'dropdown') {
             const opts = parseOptionList(q?.options);
-            next[key] = opts[0] || 'Veg or Non-Veg';
+            next[key] = fallbackVal || opts[0] || 'Veg or Non-Veg';
           } else {
-            next[key] = '';
+            next[key] = fallbackVal || '';
           }
         }
       });
       return changed ? next : prev;
     });
-  }, [questionKeyList, questions]);
+  }, [questionKeyList, questions, initialValues, rsvpData]);
 
   const setAnswer = (key, value) => {
     setAnswers((prev) => ({ ...prev, [key]: value }));

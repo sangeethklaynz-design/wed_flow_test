@@ -6,6 +6,7 @@ export function TicketingPaymentOverlay({
   isOpen,
   onClose,
   onBack,
+  onEditAttendee,
   onPaySuccess,
   bookingData = {},
   eventMeta = {},
@@ -138,7 +139,7 @@ export function TicketingPaymentOverlay({
               <button
                 type="button"
                 id="edit-attendee-btn"
-                onClick={onBack || onClose}
+                onClick={onEditAttendee || onBack || onClose}
                 className="text-[12.5px] font-semibold text-[#2563EB] underline hover:text-[#1D4ED8] cursor-pointer"
               >
                 Edit

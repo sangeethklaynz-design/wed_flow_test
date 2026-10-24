@@ -292,6 +292,7 @@ function PartyInvitationFull({
     guestAlreadyRsvped(templateData) || Boolean(initialRsvp?.hasSubmitted);
 
   const [hasSubmittedRsvp, setHasSubmittedRsvp] = useState(isInitiallyRsvped);
+  const [isEditingAttendee, setIsEditingAttendee] = useState(false);
   const [rsvpData, setRsvpData] = useState(() => {
     if (!initialRsvp && !isInitiallyRsvped) return null;
     const isAttending =
@@ -558,6 +559,22 @@ function PartyInvitationFull({
     }, 50);
   };
 
+  const handleEditAttendeeFromPayment = () => {
+    setIsTicketingPaymentOpen(false);
+    setIsTicketingOpen(false);
+    setShowPaymentSuccess(false);
+    setIsTicketOpen(false);
+    setIsEditingAttendee(true);
+    if (typeof window !== "undefined") {
+      try {
+        window.history.pushState(null, "", "#rsvp");
+      } catch (e) {}
+    }
+    setTimeout(() => {
+      scrollToPage("rsvp");
+    }, 60);
+  };
+
   const handleOpenTicket = () => {
     if (!ticketingBookingData) {
       const bookingRef = 'LN2026-0001';
@@ -620,6 +637,7 @@ function PartyInvitationFull({
     setRsvpData(data || null);
     setTicketingBookingData(null);
     setHasSubmittedRsvp(true);
+    setIsEditingAttendee(false);
     if (typeof onRsvpSuccessProp === "function") {
       onRsvpSuccessProp(data);
     }
@@ -724,7 +742,7 @@ function PartyInvitationFull({
       templateData?.static?.event?.isTicketingEnabled
     );
 
-    if (pageId === "rsvp" && hasSubmittedRsvp) {
+    if (pageId === "rsvp" && hasSubmittedRsvp && !isEditingAttendee) {
       return (
         <RsvpChangeRequestPage
           key="rsvp-change"
@@ -770,6 +788,8 @@ function PartyInvitationFull({
           guest={guest}
           guestToken={guestToken}
           maxGuests={maxGuests}
+          rsvpData={rsvpData}
+          initialValues={rsvpData}
           contentScale={1}
           previewBypassValidation={previewBypassValidation || !guestToken}
           onRsvpSuccess={interactive ? handleRsvpSuccess : () => {}}
@@ -950,6 +970,7 @@ function PartyInvitationFull({
           isOpen={isTicketingPaymentOpen}
           onClose={handleCloseTicketingPayment}
           onBack={handleCloseTicketingPayment}
+          onEditAttendee={handleEditAttendeeFromPayment}
           onPaySuccess={handleTicketingPaymentSuccess}
           bookingData={ticketingBookingData || {}}
           theme="party"
@@ -1146,6 +1167,7 @@ function PartyInvitationFull({
             isOpen={isTicketingPaymentOpen}
             onClose={handleCloseTicketingPayment}
             onBack={handleCloseTicketingPayment}
+            onEditAttendee={handleEditAttendeeFromPayment}
             onPaySuccess={handleTicketingPaymentSuccess}
             bookingData={ticketingBookingData || {}}
             theme="party"
