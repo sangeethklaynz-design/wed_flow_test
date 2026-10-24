@@ -16,6 +16,7 @@ export const CORPORATE_PAGE_ORDER = [
   "location",
   "resources",
   "addToCalendar",
+  "ticketing",
 ];
 
 /** Agenda timeline */
@@ -175,6 +176,10 @@ export function computeCorporatePageHeight(pageId, fields = {}, isRsvpConfirmed 
       return computeResourcesHeight(fields.resourcesList);
     case "rsvp":
       return computeRsvpHeight(fields.rsvpQuestions);
+    case "ticketing": {
+      const tickets = Array.isArray(fields?.ticketTypes) ? fields.ticketTypes : [1, 2, 3];
+      return Math.max(CORPORATE_BASE_HEIGHT, 540 + tickets.length * 135);
+    }
     default:
       return CORPORATE_BASE_HEIGHT;
   }

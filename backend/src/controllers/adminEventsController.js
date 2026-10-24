@@ -922,6 +922,47 @@ async function updateTemplateConfig(req, res) {
       await syncTemplateScheduleToDb(id, null, incomingSchedule, existing.type);
     }
 
+    if (nextConfig.pages?.ticketing !== undefined) {
+      const isTicketing = nextConfig.pages.ticketing !== false;
+      try {
+        await sequelize.query(
+          `UPDATE events SET is_ticketing_enabled = ?, updated_at = NOW() WHERE id = ?;`,
+          { replacements: [isTicketing ? 1 : 0, id] }
+        );
+      } catch (err) {
+        // non-fatal
+      }
+    }
+
+    if (Array.isArray(nextConfig.fields?.ticketTypes) && nextConfig.fields.ticketTypes.length > 0) {
+      try {
+        await sequelize.query(
+          `DELETE FROM ticket_types WHERE event_id = ?;`,
+          { replacements: [id] }
+        );
+        for (let idx = 0; idx < nextConfig.fields.ticketTypes.length; idx++) {
+          const tt = nextConfig.fields.ticketTypes[idx];
+          if (!tt || !tt.name) continue;
+          await sequelize.query(
+            `INSERT INTO ticket_types (id, event_id, name, price, description, display_order)
+             VALUES (?, ?, ?, ?, ?, ?);`,
+            {
+              replacements: [
+                crypto.randomUUID(),
+                id,
+                String(tt.name || "").trim(),
+                Number(tt.price) || 0,
+                String(tt.description || "").trim(),
+                idx + 1,
+              ],
+            }
+          );
+        }
+      } catch (err) {
+        console.error("Failed to sync ticketTypes to DB:", err);
+      }
+    }
+
     const effectivePackId = req.body?.resourcePackId || existing.resourcePackId;
     const targetVideo =
       nextConfig.fields?.openingVideo || nextConfig.fields?.landingVideo;

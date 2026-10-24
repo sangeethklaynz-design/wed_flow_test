@@ -174,19 +174,34 @@ export function CorporatePagePreview({
   }
 
   if (pageId === 'ticketing') {
-    const ticketTypes =
-      templateData?.ticketTypes ||
-      templateData?.static?.ticketTypes ||
-      templateData?.event?.tickets ||
-      templateData?.static?.event?.tickets ||
-      [];
     return (
-      <div {...frameProps} style={{ ...frameProps.style, backgroundColor: '#FFFFFF' }}>
-        <TicketingSelectionPage
-          ticketTypes={ticketTypes}
+      <div {...frameProps} style={{ ...frameProps.style, backgroundColor: '#020A24', height: 'auto', minHeight: 844 }}>
+        <TicketQrOverlay
+          isOpen={true}
+          embedded={true}
           theme="corporate"
-          onProceedToPayment={() => {}}
-          onScrollNext={() => {}}
+          fields={fields}
+          eventName={fields?.ticketEventTitle || templateData?.event?.name || 'Auto Test Event 06'}
+          eventDescription={fields?.ticketSubtitle || templateData?.event?.subtitle || 'AN EVENING CELEBRATION, NETWORKING, & ENTERTAINMENT.'}
+          eventDate={fields?.ticketDateLabel || templateData?.event?.eventDate || '12 November 2026'}
+          eventTime={fields?.ticketTimeLabel || '6:00 PM Onwards'}
+          eventVenue={fields?.ticketVenueName ? `${fields.ticketVenueName}, ${fields.ticketVenueCity || 'Colombo'}` : (templateData?.event?.location || 'Colombo Grand Ballroom, Colombo')}
+          attendeeName="Kavindu Perera"
+          ticketId="LN2026-0001-1"
+          paymentReference="LN2026-0001"
+          bookingDateTime="21 Oct 2026, 03:14 PM"
+          paymentMethod="Google Pay"
+          tickets={[
+            {
+              id: 'LN2026-0001-1',
+              typeName: fields?.ticketCategory || 'VIP',
+              name: fields?.ticketCategory || 'VIP',
+              price: fields?.ticketPrice ? Number(String(fields.ticketPrice).replace(/[^0-9.]/g, '')) : 2000,
+              quantity: 1,
+              seatNo: fields?.ticketSeatLabel || 'GENERAL ADMISSION',
+              attendeeName: 'Kavindu Perera',
+            },
+          ]}
         />
       </div>
     );
@@ -1072,7 +1087,9 @@ function CorporateInvitationFull({
             }}
           >
             <TicketingSelectionPage
+              fields={fields}
               ticketTypes={
+                fields?.ticketTypes ||
                 templateData?.ticketTypes ||
                 templateData?.static?.ticketTypes ||
                 templateData?.event?.tickets ||
@@ -1126,6 +1143,14 @@ function CorporateInvitationFull({
           onViewTicket={handleOpenTicket}
           bookingData={ticketingBookingData}
           theme="corporate"
+          eventMeta={{
+            eventName: fields.ticketEventTitle || fields.eventName || templateData?.static?.event?.name || "Auto Test Event 06",
+            eventSubtitle: fields.ticketSubtitle || fields.eventDescription || templateData?.static?.event?.description,
+            eventDate: fields.ticketDateLabel || fields.eventDate || "12 November 2026",
+            eventTime: fields.ticketTimeLabel || fields.eventTime || "6:00 PM Onwards",
+            venueName: fields.ticketVenueName || location.locationName || "Colombo Grand Ballroom",
+            venueCity: fields.ticketVenueCity || "Colombo",
+          }}
         />
         <TicketQrOverlay
           isOpen={isTicketOpen}
@@ -1245,7 +1270,9 @@ function CorporateInvitationFull({
               }}
             >
               <TicketingSelectionPage
+                fields={fields}
                 ticketTypes={
+                  fields?.ticketTypes ||
                   templateData?.ticketTypes ||
                   templateData?.static?.ticketTypes ||
                   templateData?.event?.tickets ||
@@ -1299,6 +1326,14 @@ function CorporateInvitationFull({
             onViewTicket={handleOpenTicket}
             bookingData={ticketingBookingData}
             theme="corporate"
+            eventMeta={{
+              eventName: fields.ticketEventTitle || fields.eventName || templateData?.static?.event?.name || "Auto Test Event 06",
+              eventSubtitle: fields.ticketSubtitle || fields.eventDescription || templateData?.static?.event?.description,
+              eventDate: fields.ticketDateLabel || fields.eventDate || "12 November 2026",
+              eventTime: fields.ticketTimeLabel || fields.eventTime || "6:00 PM Onwards",
+              venueName: fields.ticketVenueName || location.locationName || "Colombo Grand Ballroom",
+              venueCity: fields.ticketVenueCity || "Colombo",
+            }}
           />
           <TicketQrOverlay
             isOpen={isTicketOpen}

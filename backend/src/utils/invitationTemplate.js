@@ -510,24 +510,37 @@ async function loadStaticInvitationBundle(weddingId) {
     milestones,
     scheduleEvents: await loadScheduleEventsForWedding(weddingId),
     contacts,
-    isTicketingEnabled: Boolean(Number(wedding.is_ticketing_enabled)),
-    ticketTypes: wedding.event_id
-      ? (
-          await sequelize.query(
-            `SELECT id, name, price, description, quantity, display_order
-             FROM ticket_types
-             WHERE event_id = ?
-             ORDER BY display_order ASC, created_at ASC;`,
-            { replacements: [wedding.event_id] }
-          )
-        )[0].map((t) => ({
-          id: t.id,
-          name: t.name,
-          price: Number(t.price),
-          description: t.description || "",
-          quantity: t.quantity != null ? Number(t.quantity) : null,
-        }))
-      : [],
+    isTicketingEnabled:
+      templateConfig?.pages?.ticketing !== undefined
+        ? templateConfig.pages.ticketing !== false
+        : Boolean(Number(wedding.is_ticketing_enabled)),
+    ticketTypes:
+      Array.isArray(templateConfig?.fields?.ticketTypes) &&
+      templateConfig.fields.ticketTypes.length > 0
+        ? templateConfig.fields.ticketTypes.map((t, idx) => ({
+            id: String(t.id || idx + 1),
+            name: t.name,
+            price: Number(t.price) || 0,
+            description: t.description || "",
+            stockLeft: t.stockLeft || "",
+          }))
+        : (wedding.event_id
+            ? (
+                await sequelize.query(
+                  `SELECT id, name, price, description, quantity, display_order
+                   FROM ticket_types
+                   WHERE event_id = ?
+                   ORDER BY display_order ASC, created_at ASC;`,
+                  { replacements: [wedding.event_id] }
+                )
+              )[0].map((t) => ({
+                id: t.id,
+                name: t.name,
+                price: Number(t.price),
+                description: t.description || "",
+                quantity: t.quantity != null ? Number(t.quantity) : null,
+              }))
+            : []),
   };
 }
 

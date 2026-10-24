@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { downloadVectorTicketPdf } from '@/lib/ticketPdfGenerator';
 
 export const PaymentSuccessOverlay = ({
   isOpen,
@@ -13,8 +14,10 @@ export const PaymentSuccessOverlay = ({
   attendeeName: attendeeNameProp = 'Kavindu Perera',
   bookingRef: bookingRefProp = 'LN2026-0001',
   theme = 'corporate',
+  eventMeta = null,
 }) => {
   const [toastMessage, setToastMessage] = useState(null);
+  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
 
   const attendeeName = bookingData?.fullName || attendeeNameProp;
   const bookingRef = bookingData?.bookingRef || bookingRefProp;
@@ -31,7 +34,7 @@ export const PaymentSuccessOverlay = ({
     setToastMessage(msg);
     setTimeout(() => {
       setToastMessage(null);
-    }, 2500);
+    }, 2800);
   };
 
   const handleViewTicket = () => {
@@ -42,17 +45,108 @@ export const PaymentSuccessOverlay = ({
     }
   };
 
-  const handleDownloadAllTickets = () => {
+  // Expand list of tickets to download individually
+  const ticketsToDownload = React.useMemo(() => {
+    if (Array.isArray(bookingData?.individualTickets) && bookingData.individualTickets.length > 0) {
+      return bookingData.individualTickets.map((t, idx) => ({
+        id: t.id || `${bookingRef}-${idx + 1}`,
+        typeName: t.typeName || t.name || 'VIP',
+        name: t.name || t.typeName || 'VIP',
+        price: t.price || 2000,
+        quantity: 1,
+        seatNo: t.seatNo || 'GENERAL ADMISSION',
+        attendeeName: t.attendeeName || attendeeName,
+      }));
+    }
+    if (Array.isArray(bookingData?.selectedTickets) && bookingData.selectedTickets.length > 0) {
+      const list = [];
+      let idx = 1;
+      bookingData.selectedTickets.forEach((st) => {
+        const qty = Number(st.quantity) || 1;
+        for (let q = 0; q < qty; q++) {
+          list.push({
+            id: `${bookingRef}-${idx}`,
+            typeName: st.name || 'VIP',
+            name: st.name || 'VIP',
+            price: st.price || 2000,
+            quantity: 1,
+            seatNo: 'GENERAL ADMISSION',
+            attendeeName: attendeeName,
+          });
+          idx++;
+        }
+      });
+      if (list.length > 0) return list;
+    }
+    return [
+      {
+        id: `${bookingRef}-1`,
+        typeName: 'VIP',
+        name: 'VIP',
+        price: 2000,
+        quantity: 1,
+        seatNo: 'GENERAL ADMISSION',
+        attendeeName: attendeeName,
+      },
+    ];
+  }, [bookingData?.individualTickets, bookingData?.selectedTickets, bookingRef, attendeeName]);
+
+  // Download all purchased tickets as separate PDF files directly without redirecting
+  const handleDownloadAllTickets = async () => {
+    if (isDownloadingAll) return;
     if (typeof onDownloadAllTickets === 'function') {
       onDownloadAllTickets();
       return;
     }
-    showToast('Downloading all tickets...');
-    setTimeout(() => {
-      if (typeof onViewTicket === 'function') {
-        onViewTicket();
+
+    setIsDownloadingAll(true);
+    showToast(`Downloading ${ticketsToDownload.length} ticket(s)...`);
+
+    const eventName =
+      eventMeta?.eventName ||
+      (isParty ? 'Annual Gala Night 2026' : 'Auto Test Event 06');
+    const eventSubtitle =
+      eventMeta?.eventSubtitle ||
+      (isParty
+        ? 'CELEBRATION. ELEGANCE. MEMORIES'
+        : 'AN EVENING CELEBRATION, NETWORKING, & ENTERTAINMENT.');
+    const formattedDate = eventMeta?.eventDate || '12 November 2026';
+    const formattedTime = eventMeta?.eventTime || '6:00 PM Onwards';
+    const venueName = eventMeta?.venueName || 'Colombo Grand Ballroom';
+    const venueCity = eventMeta?.venueCity || 'Colombo';
+    const bookingDateTime =
+      bookingData?.bookingDate ||
+      bookingData?.createdAt ||
+      '21 Oct 2026, 03:14 PM';
+    const paymentMethod = bookingData?.paymentMethod || 'Google Pay';
+
+    try {
+      for (let i = 0; i < ticketsToDownload.length; i++) {
+        const t = ticketsToDownload[i];
+        await downloadVectorTicketPdf(t, {
+          isParty,
+          eventName,
+          eventSubtitle,
+          formattedDate,
+          formattedTime,
+          venueName,
+          venueCity,
+          attendeeName: t.attendeeName || attendeeName,
+          paymentReference: bookingRef,
+          bookingDateTime,
+          paymentMethod,
+        });
+        if (i < ticketsToDownload.length - 1) {
+          await new Promise((r) => setTimeout(r, 400));
+        }
       }
-    }, 500);
+      showToast(`Downloaded all ${ticketsToDownload.length} ticket(s) as separate PDFs.`);
+    } catch (err) {
+      console.error('Failed to download tickets:', err);
+      showToast('Download failed. Please try again.');
+    } finally {
+      setIsDownloadingAll(false);
+    }
   };
 
   const handleAddToCalendar = () => {
@@ -295,10 +389,11 @@ export const PaymentSuccessOverlay = ({
                 type="button"
                 id="download-all-tickets-btn"
                 onClick={handleDownloadAllTickets}
-                className="w-full h-[46px] bg-white border-[1.5px] border-[#080480] hover:bg-[#F8FAFC] active:scale-[0.99] text-[#080480] font-jakarta font-bold text-[15px] rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm"
+                disabled={isDownloadingAll}
+                className="w-full h-[46px] bg-white border-[1.5px] border-[#080480] hover:bg-[#F8FAFC] active:scale-[0.99] text-[#080480] font-jakarta font-bold text-[15px] rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <svg
-                  className="w-[18px] h-[18px] flex-shrink-0"
+                  className={`w-[18px] h-[18px] flex-shrink-0 ${isDownloadingAll ? 'animate-bounce' : ''}`}
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="#0174EF"
@@ -311,7 +406,7 @@ export const PaymentSuccessOverlay = ({
                   <polyline points="7 10 12 15 17 10" />
                   <line x1="12" y1="15" x2="12" y2="3" />
                 </svg>
-                <span>Download All Tickets</span>
+                <span>{isDownloadingAll ? 'Downloading Tickets...' : 'Download All Tickets'}</span>
               </button>
 
               <button

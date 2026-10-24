@@ -165,11 +165,18 @@ function normalizeRsvpQuestions(fields, eventType) {
 }
 
 function pagesForPageDropdown(manifest, eventType) {
-  const pages = manifest?.pages || [];
-  if (String(eventType || "").toLowerCase() !== "wedding") {
-    return pages;
+  let pages = manifest?.pages ? [...manifest.pages] : [];
+  const typeLower = String(eventType || "").toLowerCase();
+  if (typeLower === "wedding") {
+    return pages.filter((p) => p.id !== "openingVideo");
   }
-  return pages.filter((p) => p.id !== "openingVideo");
+  if (
+    (typeLower === "corporate" || typeLower === "party") &&
+    !pages.some((p) => p.id === "ticketing")
+  ) {
+    pages.push({ id: "ticketing", label: "Ticketing", defaultEnabled: true });
+  }
+  return pages;
 }
 
 function defaultSelectedPageId(manifest, eventType) {
@@ -231,6 +238,122 @@ function fullTemplateFieldIds(eventType) {
   const type = String(eventType || "wedding").toLowerCase();
   return FULL_TEMPLATE_FIELDS_BY_TYPE[type] || FULL_TEMPLATE_FIELDS_BY_TYPE.wedding;
 }
+
+const DEFAULT_TICKETING_DYNAMIC_FIELDS = [
+  {
+    id: "ticketEventTitle",
+    pageId: "ticketing",
+    type: "text",
+    label: "Event title on ticket",
+    defaultValue: "Auto Test Event 06",
+  },
+  {
+    id: "ticketSubtitle",
+    pageId: "ticketing",
+    type: "text",
+    label: "Event tagline / subtitle",
+    defaultValue: "AN EVENING CELEBRATION, NETWORKING, & ENTERTAINMENT.",
+  },
+  {
+    id: "ticketHeroImage",
+    pageId: "ticketing",
+    type: "media",
+    mediaKind: "images",
+    label: "Ticket hero / venue image",
+  },
+  {
+    id: "ticketOrgName",
+    pageId: "ticketing",
+    type: "text",
+    label: "Organization badge text (over hero)",
+    defaultValue: "NEXORA",
+  },
+  {
+    id: "ticketQrLabel",
+    pageId: "ticketing",
+    type: "text",
+    label: "QR code caption",
+    defaultValue: "Scan at Check-In",
+  },
+  {
+    id: "ticketDateLabel",
+    pageId: "ticketing",
+    type: "text",
+    label: "Event date on ticket",
+    defaultValue: "12 November 2026",
+  },
+  {
+    id: "ticketTimeLabel",
+    pageId: "ticketing",
+    type: "text",
+    label: "Event time on ticket",
+    defaultValue: "6:00 PM Onwards",
+  },
+  {
+    id: "ticketVenueName",
+    pageId: "ticketing",
+    type: "text",
+    label: "Venue name",
+    defaultValue: "Colombo Grand Ballroom",
+  },
+  {
+    id: "ticketVenueCity",
+    pageId: "ticketing",
+    type: "text",
+    label: "Venue city / location",
+    defaultValue: "Colombo",
+  },
+  {
+    id: "ticketCategory",
+    pageId: "ticketing",
+    type: "text",
+    label: "Ticket category / tier",
+    defaultValue: "VIP",
+  },
+  {
+    id: "ticketPrice",
+    pageId: "ticketing",
+    type: "text",
+    label: "Ticket price (LKR)",
+    defaultValue: "2,000",
+  },
+  {
+    id: "ticketSeatLabel",
+    pageId: "ticketing",
+    type: "text",
+    label: "Seat no. / Admission note",
+    defaultValue: "GENERAL ADMISSION",
+  },
+  {
+    id: "ticketDownloadButtonText",
+    pageId: "ticketing",
+    type: "text",
+    label: "Download button label",
+    defaultValue: "Download Ticket",
+  },
+  {
+    id: "ticketBannerNotice",
+    pageId: "ticketing",
+    type: "text",
+    label: "Red footer banner notice",
+    defaultValue: "THIS IS AN E-TICKET – Present this ticket at event check-in.",
+  },
+  {
+    id: "ticketTermsTitle",
+    pageId: "ticketing",
+    type: "text",
+    label: "Terms & conditions title",
+    defaultValue: "EVENT TERMS & CONDITIONS",
+  },
+  {
+    id: "ticketTermsText",
+    pageId: "ticketing",
+    type: "textarea",
+    label: "Terms & conditions points (one per line)",
+    defaultValue:
+      "This ticket is valid only for the event.\nPlease present this e-ticket (digital or printed) at the event check-in counter.\nEach ticket admits one person as per the quantity purchased.\nTickets are non-transferable and non-refundable, except in case of event cancellation.\nThe organizer reserves the right to refuse entry for invalid or duplicated tickets.\nPlease follow the event guidelines and instructions from the event staff.",
+  },
+];
 
 /** Preview chrome for post-RSVP screens (one page at a time). */
 function PreviewFlowChrome({ title, onBack, onContinue, continueLabel, children }) {
@@ -474,6 +597,34 @@ export default function TemplateEventModal({ open, onClose, event, onSaved }) {
         ),
         event.type
       );
+      if (
+        String(event.type || "").toLowerCase() === "corporate" ||
+        String(event.type || "").toLowerCase() === "party"
+      ) {
+        if (pages.ticketing === undefined) {
+          pages.ticketing =
+            event.is_ticketing_enabled !== undefined
+              ? Boolean(Number(event.is_ticketing_enabled))
+              : true;
+        }
+        if (!mergedFields.ticketEventTitle) {
+          mergedFields.ticketEventTitle = event.name || (String(event.type || "").toLowerCase() === "party" ? "Annual Gala Night 2026" : "Auto Test Event 06");
+        }
+        if (!mergedFields.ticketSubtitle) {
+          mergedFields.ticketSubtitle =
+            event.subtitle ||
+            (String(event.type || "").toLowerCase() === "party"
+              ? "CELEBRATION. ELEGANCE. MEMORIES"
+              : "AN EVENING CELEBRATION, NETWORKING, & ENTERTAINMENT.");
+        }
+        if (!mergedFields.ticketVenueName && event.location) {
+          const parts = String(event.location).split(",");
+          mergedFields.ticketVenueName = parts[0]?.trim() || "Colombo Grand Ballroom";
+          if (parts[1]) {
+            mergedFields.ticketVenueCity = parts.slice(1).join(", ").trim();
+          }
+        }
+      }
       const savedSnapshot = JSON.stringify({
         pages,
         fields: structuredClone
@@ -535,9 +686,13 @@ export default function TemplateEventModal({ open, onClose, event, onSaved }) {
     if (selectedPageId === FULL_TEMPLATE_ID) {
       return fields.filter((f) => fullIds.has(f.id));
     }
-    return fields.filter(
+    const filtered = fields.filter(
       (f) => f.pageId === selectedPageId && !fullIds.has(f.id)
     );
+    if (selectedPageId === "ticketing" && filtered.length === 0) {
+      return DEFAULT_TICKETING_DYNAMIC_FIELDS;
+    }
+    return filtered;
   }, [manifest, selectedPageId, event?.type]);
 
   const previewData = useMemo(
@@ -710,15 +865,22 @@ export default function TemplateEventModal({ open, onClose, event, onSaved }) {
                       <input
                         type="checkbox"
                         checked={pageEnabled}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const isChecked = e.target.checked;
                           setConfig((prev) => ({
                             ...prev,
                             pages: {
                               ...prev.pages,
-                              [selectedPageId]: e.target.checked,
+                              [selectedPageId]: isChecked,
                             },
-                          }))
-                        }
+                            fields: {
+                              ...prev.fields,
+                              ...(selectedPageId === "ticketing"
+                                ? { isTicketingEnabled: isChecked }
+                                : {}),
+                            },
+                          }));
+                        }}
                         className="h-4 w-4 rounded border-border text-navy focus:ring-[#054380]/50"
                       />
                       <span className="text-sm text-navy">
@@ -762,6 +924,14 @@ export default function TemplateEventModal({ open, onClose, event, onSaved }) {
                     <p className="text-xs text-muted mt-1">
                       Title, subtitle, and calendar options are fixed. Event name
                       and details for calendar invites come from the event.
+                    </p>
+                  </div>
+                ) : selectedPageId === "ticketing" ? (
+                  <div className="bg-white rounded-2xl border border-border p-4">
+                    <p className="text-sm font-medium text-navy">Ticketing page</p>
+                    <p className="text-xs text-muted mt-1">
+                      Configure event title, tagline, venue details, QR caption, ticket category & pricing, download button, and terms & conditions for the issued ticket.
+                      Turn the page On/Off above to enable or disable ticketing for guests.
                     </p>
                   </div>
                 ) : null}
@@ -1230,6 +1400,13 @@ function FieldEditor({ field, value, onChange, resources, onUpload }) {
       if (field.id === "aboutFeatures" && schemaKeys.includes("icon")) {
         blank.icon = "group";
       }
+      // Available ticket types for ticketing page
+      if (field.id === "ticketTypes") {
+        blank.name = "";
+        blank.price = "1000";
+        blank.description = "";
+        blank.stockLeft = "";
+      }
       onChange([...items, blank]);
     };
 
@@ -1281,6 +1458,9 @@ function FieldEditor({ field, value, onChange, resources, onUpload }) {
     const itemLabel = (index, item) => {
       if (isRsvpQuestions) return `Question ${index + 1}`;
       if (isJourneyImages) return `Image ${index + 1}`;
+      if (field.id === "ticketTypes") {
+        return `Ticket Type ${index + 1}${item?.name ? ` (${item.name})` : ""}`;
+      }
       if (String(item?.kind || "").toLowerCase() === "contact") return "Contact";
       return `Item ${index + 1}`;
     };
@@ -1718,12 +1898,26 @@ function FieldEditor({ field, value, onChange, resources, onUpload }) {
     );
   }
 
+  if (field.type === "textarea") {
+    return (
+      <div className="bg-white rounded-2xl border border-border p-4 space-y-2">
+        <label className="text-sm font-medium text-navy block">{field.label}</label>
+        <textarea
+          rows={field.rows || 4}
+          value={value ?? field.defaultValue ?? ""}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full px-4 py-3 rounded-xl border border-border text-navy text-sm font-sans"
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-2xl border border-border p-4 space-y-2">
       <label className="text-sm font-medium text-navy block">{field.label}</label>
       <input
         type="text"
-        value={value || ""}
+        value={value ?? field.defaultValue ?? ""}
         onChange={(e) => onChange(e.target.value)}
         className="w-full px-4 py-3 rounded-xl border border-border text-navy"
       />

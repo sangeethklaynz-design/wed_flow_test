@@ -25,6 +25,7 @@ function TicketStubIcon({ color = "#94A3B8" }) {
 }
 
 export function TicketingSelectionPage({
+  fields = {},
   ticketTypes = [],
   onProceedToPayment,
   defaultName = "Kavindu Perera",
@@ -38,9 +39,33 @@ export function TicketingSelectionPage({
   hasPurchasedTickets = false,
   initialReservedCount = 1,
 }) {
-  const normalizedTickets = useMemo(() => {
+  const title = fields?.ticketingTitle || "Select Your Tickets";
+  const subtitle =
+    fields?.ticketingSubtitle ||
+    "Choose your ticket type & quantity to continue";
+  const rsvpConfirmedText =
+    fields?.ticketingRsvpConfirmedText || "Your RSVP is confirmed!";
+  const timerHeading =
+    fields?.ticketingTimerHeading ||
+    "Complete Your Payment\nWithin 24 Hours";
+  const timerDescription =
+    fields?.ticketingTimerDescription ||
+    "1 ticket has been reserved for you for 24 hours. You can purchase it below or add more tickets.";
+  const buttonText = fields?.ticketingButtonText || "Proceed to Payment";
+
+  const effectiveTicketTypes = useMemo(() => {
+    if (Array.isArray(fields?.ticketTypes) && fields.ticketTypes.length > 0) {
+      return fields.ticketTypes;
+    }
     if (Array.isArray(ticketTypes) && ticketTypes.length > 0) {
-      return ticketTypes.map((t, idx) => {
+      return ticketTypes;
+    }
+    return [];
+  }, [fields?.ticketTypes, ticketTypes]);
+
+  const normalizedTickets = useMemo(() => {
+    if (Array.isArray(effectiveTicketTypes) && effectiveTicketTypes.length > 0) {
+      return effectiveTicketTypes.map((t, idx) => {
         let badgeColor = "#94A3B8";
         let defaultStock = "850 left";
         const lowerName = String(t.name || "").toLowerCase();
@@ -96,7 +121,7 @@ export function TicketingSelectionPage({
         stockLeft: "50 left",
       },
     ];
-  }, [ticketTypes]);
+  }, [effectiveTicketTypes]);
 
   // Initial quantities: all ticket types default to 0
   const [quantities, setQuantities] = useState(() => {
@@ -239,10 +264,10 @@ export function TicketingSelectionPage({
             className="font-serif font-bold text-[24px] leading-[30px] text-[#080480] tracking-[-0.01em] m-0"
             style={{ fontFamily: "'Playfair Display', 'Petrona', 'Georgia', serif" }}
           >
-            Select Your Tickets
+            {title}
           </h1>
           <p className="font-sans font-medium text-[11.5px] leading-[16px] text-[#334155] mt-1.5 m-0">
-            Choose your ticket type &amp; quantity to continue
+            {subtitle}
           </p>
         </div>
       </div>
@@ -253,7 +278,7 @@ export function TicketingSelectionPage({
           <Check className="w-5 h-5 stroke-[3]" />
         </div>
         <h2 className="font-sans font-bold text-[18px] leading-tight text-[#16A34A] mt-2 tracking-normal m-0">
-          Your RSVP is confirmed!
+          {rsvpConfirmedText}
         </h2>
       </div>
 
@@ -265,15 +290,13 @@ export function TicketingSelectionPage({
         </div>
 
         {/* Heading */}
-        <h3 className="font-sans font-bold text-[15.5px] leading-[20px] text-[#080480] m-0 tracking-[-0.01em]">
-          Complete Your Payment
-          <br />
-          Within 24 Hours
+        <h3 className="font-sans font-bold text-[15.5px] leading-[20px] text-[#080480] m-0 tracking-[-0.01em] whitespace-pre-line">
+          {timerHeading}
         </h3>
 
         {/* Description */}
-        <p className="font-sans text-[11px] leading-[15px] text-[#475569] mt-2 mb-3 max-w-[270px]">
-          1 ticket has been reserved for you for 24 hours. You can purchase it below or add more tickets.
+        <p className="font-sans text-[11px] leading-[15px] text-[#475569] mt-2 mb-3 max-w-[270px] whitespace-pre-line">
+          {timerDescription}
         </p>
 
         {/* Live Countdown Timer Blocks: [ 23 Hours ] : [ 59 Minutes ] : [ 45 Seconds ] */}
@@ -434,7 +457,7 @@ export function TicketingSelectionPage({
         disabled={totalCount === 0}
         className="w-full h-[46px] rounded-[12px] bg-[#080480] hover:bg-[#060368] active:scale-[0.99] font-sans font-bold text-[14.5px] text-white flex items-center justify-center gap-2 cursor-pointer shadow-[0_4px_14px_rgba(8,4,128,0.25)] transition-all duration-150 mt-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
       >
-        <span>Proceed to Payment</span>
+        <span>{buttonText}</span>
         <ArrowRight className="w-4 h-4 stroke-[2.5]" />
       </button>
 
