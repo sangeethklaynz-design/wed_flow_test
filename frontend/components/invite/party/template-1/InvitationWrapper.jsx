@@ -575,6 +575,23 @@ function PartyInvitationFull({
     }, 60);
   };
 
+  const handleOpenTicketingSelection = () => {
+    setShowPaymentSuccess(false);
+    setShowRsvpConfirmation(false);
+    setIsTicketOpen(false);
+    setIsTicketingPaymentOpen(false);
+    setIsTicketingOpen(true);
+    if (typeof window !== "undefined") {
+      try {
+        window.history.pushState(null, "", "#ticketing");
+        window.scrollTo({ top: 0, behavior: "instant" });
+      } catch (e) {}
+    }
+    if (embeddedContainerRef.current) {
+      embeddedContainerRef.current.scrollTo({ top: 0, behavior: "instant" });
+    }
+  };
+
   const handleOpenTicket = () => {
     if (!ticketingBookingData) {
       const bookingRef = 'LN2026-0001';
@@ -753,6 +770,7 @@ function PartyInvitationFull({
           hasPurchasedTickets={Boolean(ticketingBookingData?.individualTickets?.length || ticketingBookingData?.totalAmount)}
           purchasedBookingData={ticketingBookingData}
           onViewPurchasedTickets={handleOpenTicket}
+          onPurchaseMoreTickets={handleOpenTicketingSelection}
         />
       );
     }

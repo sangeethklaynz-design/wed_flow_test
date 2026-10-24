@@ -654,6 +654,21 @@ function CorporateInvitationFull({
     }, 60);
   };
 
+  const handleOpenTicketingSelection = () => {
+    setIsConfirmationOpen(false);
+    setIsPaymentSuccessOpen(false);
+    setIsTicketOpen(false);
+    setIsTicketingPaymentOpen(false);
+    setIsTicketingOpen(true);
+    setHash('#ticketing');
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+    if (containerRef.current) {
+      containerRef.current.scrollTo({ top: 0, behavior: 'instant' });
+    }
+  };
+
   const handleProceedToTicketingPayment = (data) => {
     const bookingRef = 'LN2026-0001';
     let ticketCounter = 1;
@@ -859,6 +874,7 @@ function CorporateInvitationFull({
           hasPurchasedTickets={Boolean(ticketingBookingData?.individualTickets?.length || ticketingBookingData?.totalAmount)}
           purchasedBookingData={ticketingBookingData}
           onViewPurchasedTickets={handleOpenTicket}
+          onPurchaseMoreTickets={handleOpenTicketingSelection}
         />
       );
     }
