@@ -98,11 +98,11 @@ export function TicketingSelectionPage({
     ];
   }, [ticketTypes]);
 
-  // Initial quantities: matching Screenshot 1 where 3 Standard tickets are selected, VIP has 0, Premium has 0
+  // Initial quantities: all ticket types default to 0
   const [quantities, setQuantities] = useState(() => {
     const initial = {};
-    normalizedTickets.forEach((t, idx) => {
-      initial[t.id] = idx === 0 ? 3 : 0;
+    normalizedTickets.forEach((t) => {
+      initial[t.id] = 0;
     });
     return initial;
   });
@@ -154,12 +154,13 @@ export function TicketingSelectionPage({
 
     const standardTicket = normalizedTickets[0];
     const unitPrice = standardTicket ? standardTicket.price : 1000;
-    const text = `LKR ${unitPrice.toLocaleString("en-US")} × ${count} ticket${count === 1 ? "" : "s"}`;
+    const text =
+      count === 0
+        ? "0 tickets selected"
+        : `LKR ${unitPrice.toLocaleString("en-US")} × ${count} ticket${count === 1 ? "" : "s"}`;
 
     return { totalAmount: sum, totalCount: count, breakdownText: text };
   }, [normalizedTickets, quantities]);
-
-
 
   const handleProceed = (e) => {
     if (e && e.preventDefault) e.preventDefault();
@@ -172,21 +173,17 @@ export function TicketingSelectionPage({
         subtotal: t.price * quantities[t.id],
       }));
 
+    if (selectedTickets.length === 0 || totalCount === 0) {
+      return;
+    }
+
     if (onProceedToPayment) {
       onProceedToPayment({
         fullName: defaultName,
         email: defaultEmail,
-        selectedTickets: selectedTickets.length
-          ? selectedTickets
-          : [
-              {
-                ...normalizedTickets[0],
-                quantity: 1,
-                subtotal: normalizedTickets[0].price,
-              },
-            ],
-        totalAmount: totalAmount || (normalizedTickets[0]?.price ?? 1000),
-        totalCount: totalCount || 1,
+        selectedTickets,
+        totalAmount,
+        totalCount,
         quantities,
       });
     }
@@ -434,7 +431,8 @@ export function TicketingSelectionPage({
         type="button"
         id="proceed-to-payment-btn"
         onClick={handleProceed}
-        className="w-full h-[46px] rounded-[12px] bg-[#080480] hover:bg-[#060368] active:scale-[0.99] font-sans font-bold text-[14.5px] text-white flex items-center justify-center gap-2 cursor-pointer shadow-[0_4px_14px_rgba(8,4,128,0.25)] transition-all duration-150 mt-1"
+        disabled={totalCount === 0}
+        className="w-full h-[46px] rounded-[12px] bg-[#080480] hover:bg-[#060368] active:scale-[0.99] font-sans font-bold text-[14.5px] text-white flex items-center justify-center gap-2 cursor-pointer shadow-[0_4px_14px_rgba(8,4,128,0.25)] transition-all duration-150 mt-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
       >
         <span>Proceed to Payment</span>
         <ArrowRight className="w-4 h-4 stroke-[2.5]" />
