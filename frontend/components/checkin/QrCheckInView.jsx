@@ -541,172 +541,179 @@ export default function QrCheckInView({ role = "admin" }) {
         </div>
       </section>
 
-      {/* 2. Main 2-Column Section (Left: Event Selector + Scanner Card; Right: Scanned Ticket Card) */}
-      <section className="w-full grid grid-cols-1 lg:grid-cols-[380px_1fr] xl:grid-cols-[410px_1fr] gap-6 items-start">
-        {/* LEFT COLUMN: Event Dropdown + Scanner Options Box */}
-        <div className="w-full flex flex-col gap-4">
-          {/* Event Selector Dropdown (Screenshot 1) */}
-          <div className="relative w-full" ref={eventDropdownRef}>
-            <button
-              type="button"
-              id="event-selector-dropdown-btn"
-              onClick={() => setIsEventDropdownOpen((prev) => !prev)}
-              className="w-full h-[48px] bg-white border border-[#CBD5E1] rounded-[12px] px-4 flex items-center justify-between text-left shadow-2xs hover:border-[#0A2569] transition-all cursor-pointer"
-            >
-              <span className="font-sans font-medium text-[14px] md:text-[15px] text-[#1E293B] truncate">
-                {currentEvent.name}
-              </span>
-              <ChevronDown
-                className={`w-5 h-5 text-[#64748B] transition-transform duration-200 shrink-0 ml-2 ${
-                  isEventDropdownOpen ? "rotate-180" : ""
-                }`}
-              />
-            </button>
+      {/* 2. Middle Section: Large White Card wrapping Scanner & Ticket details (Screenshot 1) */}
+      <section
+        id="qr-checkin-middle-card"
+        className="w-full bg-white rounded-[16px] md:rounded-[20px] p-5 sm:p-6 md:p-7 border border-[#E2E8F0]/80 shadow-sm"
+      >
+        <div className="w-full grid grid-cols-1 lg:grid-cols-[380px_1fr] xl:grid-cols-[410px_1fr] gap-6 items-stretch">
+          {/* LEFT COLUMN: Event Dropdown + Scanner Options Box */}
+          <div className="w-full flex flex-col gap-4">
+            {/* Event Selector Dropdown (Screenshot 1) */}
+            <div className="relative w-full" ref={eventDropdownRef}>
+              <button
+                type="button"
+                id="event-selector-dropdown-btn"
+                onClick={() => setIsEventDropdownOpen((prev) => !prev)}
+                className="w-full h-[48px] bg-white border border-[#CBD5E1] rounded-[12px] px-4 flex items-center justify-between text-left shadow-2xs hover:border-[#0A2569] transition-all cursor-pointer"
+              >
+                <span className="font-sans font-medium text-[14px] md:text-[15px] text-[#1E293B] truncate">
+                  {currentEvent.name}
+                </span>
+                <ChevronDown
+                  className={`w-5 h-5 text-[#64748B] transition-transform duration-200 shrink-0 ml-2 ${
+                    isEventDropdownOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
 
-            {isEventDropdownOpen && (
-              <div className="absolute top-[54px] left-0 w-full bg-white rounded-[12px] border border-[#E2E8F0] shadow-lg py-1.5 z-30 max-h-[220px] overflow-y-auto">
-                {eventsList.map((evt) => (
-                  <button
-                    key={evt.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedEventId(evt.id);
-                      setIsEventDropdownOpen(false);
-                    }}
-                    className={`w-full px-4 py-2.5 text-left text-[13.5px] font-sans flex items-center justify-between transition-colors cursor-pointer ${
-                      selectedEventId === evt.id
-                        ? "bg-[#EFF6FE] text-[#0A2569] font-bold"
-                        : "text-[#334155] hover:bg-slate-50"
-                    }`}
-                  >
-                    <span className="truncate">{evt.name}</span>
-                    {selectedEventId === evt.id && (
-                      <Check className="w-4 h-4 text-[#0B72E7] shrink-0" />
-                    )}
-                  </button>
-                ))}
+              {isEventDropdownOpen && (
+                <div className="absolute top-[54px] left-0 w-full bg-white rounded-[12px] border border-[#E2E8F0] shadow-lg py-1.5 z-30 max-h-[220px] overflow-y-auto">
+                  {eventsList.map((evt) => (
+                    <button
+                      key={evt.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedEventId(evt.id);
+                        setIsEventDropdownOpen(false);
+                      }}
+                      className={`w-full px-4 py-2.5 text-left text-[13.5px] font-sans flex items-center justify-between transition-colors cursor-pointer ${
+                        selectedEventId === evt.id
+                          ? "bg-[#EFF6FE] text-[#0A2569] font-bold"
+                          : "text-[#334155] hover:bg-slate-50"
+                      }`}
+                    >
+                      <span className="truncate">{evt.name}</span>
+                      {selectedEventId === evt.id && (
+                        <Check className="w-4 h-4 text-[#0B72E7] shrink-0" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Scanner Option Box (Screenshot 1: QR Graphic + 3 Action Buttons) */}
+            <div
+              id="qr-scanner-card"
+              className="w-full flex-1 bg-white rounded-[14px] border border-[#CBD5E1]/80 shadow-2xs p-6 sm:p-7 flex flex-col items-center text-center justify-between"
+            >
+              <div className="w-full flex flex-col items-center">
+                {/* Center QR Graphic Icon */}
+                <div className="w-[68px] h-[68px] rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-center text-[#0A1950] p-2.5 shadow-2xs mb-5">
+                  <QrCode className="w-full h-full text-[#080480]" strokeWidth={2} />
+                </div>
+
+                {/* Button 1: Scan with QR Code Reader (Dark Navy) */}
+                <button
+                  type="button"
+                  id="scan-with-qr-reader-btn"
+                  onClick={() => setIsCameraOpen(true)}
+                  className="w-full h-[46px] rounded-[10px] bg-[#080480] hover:bg-[#060368] active:scale-[0.99] text-white font-sans font-semibold text-[14px] flex items-center justify-center gap-2 shadow-[0_2px_8px_rgba(8,4,128,0.2)] transition-all cursor-pointer"
+                >
+                  <Camera className="w-4 h-4 text-white" />
+                  <span>Scan with QR Code Reader</span>
+                </button>
+
+                {/* Divider text: or */}
+                <span className="text-[#94A3B8] font-sans font-medium text-[12px] my-2">
+                  or
+                </span>
+
+                {/* Button 2: Upload QR Code Image (Outline Navy) */}
+                <button
+                  type="button"
+                  id="upload-qr-image-btn"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full h-[46px] rounded-[10px] bg-white hover:bg-slate-50/80 active:scale-[0.99] border-[1.5px] border-[#080480] text-[#080480] font-sans font-semibold text-[14px] flex items-center justify-center gap-2 shadow-2xs transition-all cursor-pointer"
+                >
+                  <Upload className="w-4 h-4 text-[#080480]" />
+                  <span>Upload QR Code Image</span>
+                </button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
+
+                {/* Divider text: or */}
+                <span className="text-[#94A3B8] font-sans font-medium text-[12px] my-2">
+                  or
+                </span>
+
+                {/* Button 3: Scan with Mobile (Outline Navy) */}
+                <button
+                  type="button"
+                  id="scan-with-mobile-btn"
+                  onClick={() => setIsMobileModalOpen(true)}
+                  className="w-full h-[46px] rounded-[10px] bg-white hover:bg-slate-50/80 active:scale-[0.99] border-[1.5px] border-[#080480] text-[#080480] font-sans font-semibold text-[14px] flex items-center justify-center gap-2 shadow-2xs transition-all cursor-pointer"
+                >
+                  <Smartphone className="w-4 h-4 text-[#080480]" />
+                  <span>Scan with Mobile</span>
+                </button>
               </div>
+
+              {/* Quick manual code input / USB Gun scanner fallback */}
+              <div className="w-full mt-4 pt-3.5 border-t border-[#F1F5F9] flex flex-col gap-1.5">
+                <span className="text-[11px] font-sans text-[#64748B] text-left">
+                  Manual Ticket ID / Barcode Gun Input:
+                </span>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (manualCode.trim()) {
+                      processTicketCode(manualCode.trim());
+                      setManualCode("");
+                    }
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <input
+                    type="text"
+                    value={manualCode}
+                    onChange={(e) => setManualCode(e.target.value)}
+                    placeholder="e.g. WL 2026-001-3"
+                    className="flex-1 h-[36px] px-3 text-[12.5px] bg-[#F8FAFC] border border-[#CBD5E1] rounded-[8px] focus:outline-none focus:ring-1 focus:ring-[#080480] text-[#1E293B]"
+                  />
+                  <button
+                    type="submit"
+                    className="h-[36px] px-3.5 bg-[#080480] text-white rounded-[8px] text-[12px] font-bold hover:bg-[#060368] transition-all cursor-pointer"
+                  >
+                    Verify
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN: Scanned Ticket Inspection Card (States 1, 2, or 3) */}
+          <div className="w-full h-full flex flex-col">
+            {activeState === "valid" && (
+              <ValidTicketCard ticket={currentTicket} />
+            )}
+
+            {activeState === "already_scanned" && (
+              <AlreadyScannedTicketCard
+                ticket={currentTicket}
+                onClose={() => {
+                  setActiveState("valid");
+                  setCurrentTicket(SAMPLE_TICKETS.valid);
+                }}
+              />
+            )}
+
+            {activeState === "invalid" && (
+              <InvalidTicketCard
+                ticket={currentTicket}
+                onClose={() => {
+                  setActiveState("valid");
+                  setCurrentTicket(SAMPLE_TICKETS.valid);
+                }}
+              />
             )}
           </div>
-
-          {/* Scanner Option Box (Screenshot 1: QR Graphic + 3 Action Buttons) */}
-          <div
-            id="qr-scanner-card"
-            className="w-full bg-white rounded-[16px] border border-[#E2E8F0]/80 shadow-sm p-6 sm:p-7 flex flex-col items-center text-center"
-          >
-            {/* Center QR Graphic Icon */}
-            <div className="w-[68px] h-[68px] rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-center text-[#0A1950] p-2.5 shadow-2xs mb-5">
-              <QrCode className="w-full h-full text-[#080480]" strokeWidth={2} />
-            </div>
-
-            {/* Button 1: Scan with QR Code Reader (Dark Navy) */}
-            <button
-              type="button"
-              id="scan-with-qr-reader-btn"
-              onClick={() => setIsCameraOpen(true)}
-              className="w-full h-[46px] rounded-[10px] bg-[#080480] hover:bg-[#060368] active:scale-[0.99] text-white font-sans font-semibold text-[14px] flex items-center justify-center gap-2 shadow-[0_2px_8px_rgba(8,4,128,0.2)] transition-all cursor-pointer"
-            >
-              <Camera className="w-4 h-4 text-white" />
-              <span>Scan with QR Code Reader</span>
-            </button>
-
-            {/* Divider text: or */}
-            <span className="text-[#94A3B8] font-sans font-medium text-[12px] my-2.5">
-              or
-            </span>
-
-            {/* Button 2: Upload QR Code Image (Outline Navy) */}
-            <button
-              type="button"
-              id="upload-qr-image-btn"
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full h-[46px] rounded-[10px] bg-white hover:bg-slate-50/80 active:scale-[0.99] border-[1.5px] border-[#080480] text-[#080480] font-sans font-semibold text-[14px] flex items-center justify-center gap-2 shadow-2xs transition-all cursor-pointer"
-            >
-              <Upload className="w-4 h-4 text-[#080480]" />
-              <span>Upload QR Code Image</span>
-            </button>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileUpload}
-              accept="image/*"
-              className="hidden"
-            />
-
-            {/* Divider text: or */}
-            <span className="text-[#94A3B8] font-sans font-medium text-[12px] my-2.5">
-              or
-            </span>
-
-            {/* Button 3: Scan with Mobile (Outline Navy) */}
-            <button
-              type="button"
-              id="scan-with-mobile-btn"
-              onClick={() => setIsMobileModalOpen(true)}
-              className="w-full h-[46px] rounded-[10px] bg-white hover:bg-slate-50/80 active:scale-[0.99] border-[1.5px] border-[#080480] text-[#080480] font-sans font-semibold text-[14px] flex items-center justify-center gap-2 shadow-2xs transition-all cursor-pointer"
-            >
-              <Smartphone className="w-4 h-4 text-[#080480]" />
-              <span>Scan with Mobile</span>
-            </button>
-
-            {/* Quick manual code input / USB Gun scanner fallback */}
-            <div className="w-full mt-5 pt-4 border-t border-[#F1F5F9] flex flex-col gap-2">
-              <span className="text-[11px] font-sans text-[#64748B] text-left">
-                Manual Ticket ID / Barcode Gun Input:
-              </span>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (manualCode.trim()) {
-                    processTicketCode(manualCode.trim());
-                    setManualCode("");
-                  }
-                }}
-                className="flex items-center gap-2"
-              >
-                <input
-                  type="text"
-                  value={manualCode}
-                  onChange={(e) => setManualCode(e.target.value)}
-                  placeholder="e.g. WL 2026-001-3"
-                  className="flex-1 h-[36px] px-3 text-[12.5px] bg-[#F8FAFC] border border-[#CBD5E1] rounded-[8px] focus:outline-none focus:ring-1 focus:ring-[#080480] text-[#1E293B]"
-                />
-                <button
-                  type="submit"
-                  className="h-[36px] px-3.5 bg-[#080480] text-white rounded-[8px] text-[12px] font-bold hover:bg-[#060368] transition-all cursor-pointer"
-                >
-                  Verify
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
-
-        {/* RIGHT COLUMN: Scanned Ticket Inspection Card (States 1, 2, or 3) */}
-        <div className="w-full">
-          {activeState === "valid" && (
-            <ValidTicketCard ticket={currentTicket} />
-          )}
-
-          {activeState === "already_scanned" && (
-            <AlreadyScannedTicketCard
-              ticket={currentTicket}
-              onClose={() => {
-                setActiveState("valid");
-                setCurrentTicket(SAMPLE_TICKETS.valid);
-              }}
-            />
-          )}
-
-          {activeState === "invalid" && (
-            <InvalidTicketCard
-              ticket={currentTicket}
-              onClose={() => {
-                setActiveState("valid");
-                setCurrentTicket(SAMPLE_TICKETS.valid);
-              }}
-            />
-          )}
         </div>
       </section>
 
@@ -943,7 +950,7 @@ function ValidTicketCard({ ticket }) {
   return (
     <div
       id="valid-ticket-result-card"
-      className="w-full bg-white rounded-[16px] border border-[#E2E8F0] shadow-sm p-5 sm:p-6 md:p-7 flex flex-col justify-between"
+      className="w-full h-full bg-white rounded-[14px] border border-[#CBD5E1]/80 shadow-2xs p-5 sm:p-6 md:p-7 flex flex-col justify-between"
     >
       {/* Top Header Row: Green Checkmark + Valid Ticket + Checked In At on right */}
       <div className="w-full flex items-start justify-between border-b border-[#F1F5F9] pb-4">
@@ -1033,7 +1040,7 @@ function AlreadyScannedTicketCard({ ticket, onClose }) {
   return (
     <div
       id="already-scanned-result-card"
-      className="w-full bg-white rounded-[16px] border border-[#FED7AA] shadow-sm overflow-hidden flex flex-col"
+      className="w-full h-full bg-white rounded-[14px] border border-[#FED7AA] shadow-2xs overflow-hidden flex flex-col justify-between"
     >
       {/* Top Alert Banner: Peach/Amber with Exclamation mark */}
       <div className="w-full bg-[#FFF7ED] border-b border-[#FED7AA] px-5 sm:px-6 py-4 flex items-center justify-between">
@@ -1147,7 +1154,7 @@ function InvalidTicketCard({ ticket, onClose }) {
   return (
     <div
       id="invalid-ticket-result-card"
-      className="w-full bg-white rounded-[16px] border border-[#FECACA] shadow-sm overflow-hidden flex flex-col"
+      className="w-full h-full bg-white rounded-[14px] border border-[#FECACA] shadow-2xs overflow-hidden flex flex-col justify-between"
     >
       {/* Top Alert Banner: Red with White 'X' icon */}
       <div className="w-full bg-[#FEF2F2] border-b border-[#FECACA] px-5 sm:px-6 py-4 flex items-center justify-between">

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Home, Mail, CreditCard, LogOut, Users, QrCode } from "lucide-react";
+import { Home, Mail, CreditCard, LogOut, Users } from "lucide-react";
 import clsx from "clsx";
 import Image from "next/image";
 import {
@@ -20,7 +20,6 @@ const navItems = [
   { name: "Events", href: "/admin/events", icon: Mail },
   { name: "Guests", href: "/admin/guests", icon: Users },
   { name: "Finance", href: "/admin/finance", icon: CreditCard },
-  { name: "QR Check-in", href: "/admin/qr-checkin", icon: QrCode },
 ];
 
 export default function AdminLayout({ children }) {
@@ -34,7 +33,7 @@ export default function AdminLayout({ children }) {
     // Guest preview opens in a new tab; sessionStorage auth is not shared.
     // Allow this route without forcing login — page loads stashed preview data.
     // Allow guest preview and admin finance preview without forcing login
-    if (pathname?.includes("/guest-preview") || pathname?.startsWith("/admin/finance") || pathname?.startsWith("/admin/qr-checkin")) {
+    if (pathname?.includes("/guest-preview") || pathname?.startsWith("/admin/finance")) {
       setIsAuthorized(true);
       setAuthChecked(true);
       const stored = getStoredUser();
