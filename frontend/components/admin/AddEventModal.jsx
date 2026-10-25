@@ -32,6 +32,13 @@ function minSelectableEventDate(mode, initialEventDate) {
   return today;
 }
 
+function merchantOptionLabel(merchant) {
+  const email = merchant.ownerEmail ? ` · ${merchant.ownerEmail}` : "";
+  const count =
+    merchant.eventCount != null ? ` (${merchant.eventCount} events)` : "";
+  return `${merchant.name}${email}${count}`;
+}
+
 export default function AddEventModal({
   open,
   onClose,
@@ -41,6 +48,8 @@ export default function AddEventModal({
 }) {
   const [templates, setTemplates] = useState([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [merchants, setMerchants] = useState([]);
+  const [merchantsLoading, setMerchantsLoading] = useState(false);
   const [formError, setFormError] = useState("");
   const {
     register,
@@ -59,16 +68,24 @@ export default function AddEventModal({
       googleMapsLink: "",
       paymentLink: "",
       clientEmail: "",
+      vendorName: "",
+      registrationMode: "new_vendor",
+      organizationId: "",
       ticketingEnabled: false,
       publicInviteEnabled: false,
     },
   });
 
   const selectedType = watch("type");
+  const registrationMode = watch("registrationMode");
   const isPartyOrCorporate =
     selectedType === "corporate" || selectedType === "party";
   const showPaymentLink = mode === "add" && isPartyOrCorporate;
   const showTicketingAndPublic = isPartyOrCorporate;
+  const showMerchantOptions = mode === "add" && isPartyOrCorporate;
+  const useExistingMerchant =
+    showMerchantOptions && registrationMode === "existing_vendor";
+  const useNewMerchant = showMerchantOptions && registrationMode === "new_vendor";
 
   useEffect(() => {
     if (!open) return;
@@ -81,6 +98,9 @@ export default function AddEventModal({
       googleMapsLink: initialEvent?.googleMapsLink ?? "",
       paymentLink: initialEvent?.paymentLink ?? "",
       clientEmail: "",
+      vendorName: "",
+      registrationMode: "new_vendor",
+      organizationId: initialEvent?.organizationId ?? "",
       ticketingEnabled: Boolean(initialEvent?.ticketingEnabled),
       publicInviteEnabled: Boolean(initialEvent?.publicInviteEnabled),
     });
@@ -131,6 +151,50 @@ export default function AddEventModal({
     };
   }, [open, selectedType, setValue, initialEvent]);
 
+  useEffect(() => {
+    if (!open || !showMerchantOptions) {
+      setMerchants([]);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      setMerchantsLoading(true);
+      try {
+        const data = await apiRequest(
+          "/api/admin/organizations?type=vendor",
+          { token: getAccessToken() }
+        );
+        if (cancelled) return;
+        setMerchants(data.organizations || []);
+      } catch (err) {
+        if (!cancelled) {
+          setMerchants([]);
+          setFormError(err.message || "Failed to load merchants");
+        }
+      } finally {
+        if (!cancelled) setMerchantsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, showMerchantOptions]);
+
+  useEffect(() => {
+    if (!open || mode !== "add") return;
+    if (selectedType === "wedding") {
+      setValue("registrationMode", "standalone");
+      setValue("organizationId", "");
+    } else if (
+      registrationMode !== "existing_vendor" &&
+      registrationMode !== "new_vendor"
+    ) {
+      setValue("registrationMode", "new_vendor");
+    }
+  }, [open, mode, selectedType, registrationMode, setValue]);
+
   if (!open) return null;
 
   const handleFormSubmit = async (data) => {
@@ -147,6 +211,29 @@ export default function AddEventModal({
 
     const isCorpOrParty =
       data.type === "corporate" || data.type === "party";
+    const resolvedMode =
+      data.type === "wedding"
+        ? "standalone"
+        : data.registrationMode === "existing_vendor"
+          ? "existing_vendor"
+          : "new_vendor";
+
+    if (mode === "add" && isCorpOrParty && resolvedMode === "existing_vendor") {
+      if (!String(data.organizationId || "").trim()) {
+        setFormError("Select an existing merchant.");
+        return;
+      }
+    }
+
+    if (
+      mode === "add" &&
+      resolvedMode !== "existing_vendor" &&
+      !String(data.clientEmail || "").trim()
+    ) {
+      setFormError("Client email is required.");
+      return;
+    }
+
     const payload = {
       id: initialEvent?.id,
       name: data.name.trim(),
@@ -159,10 +246,19 @@ export default function AddEventModal({
       publicInviteEnabled: isCorpOrParty
         ? Boolean(data.publicInviteEnabled)
         : false,
-      registrationMode: data.type === "wedding" ? "standalone" : "new_vendor",
+      registrationMode: resolvedMode,
     };
+
     if (mode === "add") {
-      payload.clientEmail = String(data.clientEmail || "").trim().toLowerCase();
+      if (resolvedMode === "existing_vendor") {
+        payload.organizationId = String(data.organizationId).trim();
+      } else {
+        payload.clientEmail = String(data.clientEmail || "").trim().toLowerCase();
+        if (resolvedMode === "new_vendor") {
+          payload.vendorName =
+            String(data.vendorName || "").trim() || data.name.trim();
+        }
+      }
       if (isCorpOrParty) {
         payload.paymentLink = String(data.paymentLink || "").trim();
       }
@@ -306,7 +402,111 @@ export default function AddEventModal({
             />
           </div>
 
-          {mode === "add" ? (
+          {showMerchantOptions ? (
+            <div className="space-y-3 rounded-xl border border-border bg-white p-4">
+              <p className="text-sm font-medium text-navy">Merchant account</p>
+              <p className="text-[11px] text-muted -mt-1">
+                Merchants can own multiple corporate or party events.
+              </p>
+              <div className="space-y-2">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    value="existing_vendor"
+                    {...register("registrationMode")}
+                    className="mt-1 border-[#CBD5E1] text-[#054380] focus:ring-[#054380]"
+                  />
+                  <span className="text-sm text-navy">
+                    Use existing merchant
+                  </span>
+                </label>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    value="new_vendor"
+                    {...register("registrationMode")}
+                    className="mt-1 border-[#CBD5E1] text-[#054380] focus:ring-[#054380]"
+                  />
+                  <span className="text-sm text-navy">
+                    Register as a new merchant
+                  </span>
+                </label>
+              </div>
+
+              {useExistingMerchant ? (
+                <div className="space-y-2 pt-1">
+                  <label className="text-sm font-medium text-muted block">
+                    Existing merchant
+                  </label>
+                  <select
+                    {...register("organizationId", {
+                      required: useExistingMerchant,
+                    })}
+                    disabled={merchantsLoading || merchants.length === 0}
+                    className="w-full px-4 py-3 rounded-xl border border-border bg-cream text-navy focus:outline-none focus:ring-2 focus:ring-[#054380]/50 transition-shadow disabled:opacity-60"
+                  >
+                    <option value="">
+                      {merchantsLoading
+                        ? "Loading merchants…"
+                        : merchants.length
+                          ? "Select a merchant"
+                          : "No merchants yet — create one first"}
+                    </option>
+                    {merchants.map((merchant) => (
+                      <option key={merchant.id} value={merchant.id}>
+                        {merchantOptionLabel(merchant)}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.organizationId ? (
+                    <p className="text-xs text-red-500">
+                      Select an existing merchant
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {useNewMerchant ? (
+                <div className="space-y-3 pt-1">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-muted block">
+                      Merchant name
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Defaults to event name"
+                      {...register("vendorName")}
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-cream text-navy focus:outline-none focus:ring-2 focus:ring-[#054380]/50 transition-shadow placeholder:text-gray-300"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-muted block">
+                      Merchant owner email
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="merchant@example.com"
+                      {...register("clientEmail", {
+                        required: useNewMerchant,
+                      })}
+                      className="w-full px-4 py-3 rounded-xl border border-border bg-cream text-navy focus:outline-none focus:ring-2 focus:ring-[#054380]/50 transition-shadow placeholder:text-gray-300"
+                    />
+                    <p className="text-[11px] text-muted">
+                      A login password is generated automatically. You can view
+                      or regenerate it from Actions → User credentials.
+                    </p>
+                    {errors.clientEmail ? (
+                      <p className="text-xs text-red-500">
+                        Merchant owner email is required
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {mode === "add" && !showMerchantOptions ? (
             <div className="space-y-2">
               <label className="text-sm font-medium text-muted block">
                 Client email
@@ -318,8 +518,8 @@ export default function AddEventModal({
                 className="w-full px-4 py-3 rounded-xl border border-border bg-white text-navy focus:outline-none focus:ring-2 focus:ring-[#054380]/50 transition-shadow placeholder:text-gray-300"
               />
               <p className="text-[11px] text-muted">
-                A login password is generated automatically. You can view or
-                regenerate it from Actions → User credentials.
+                Wedding accounts are standalone (one event per login). A
+                password is generated automatically.
               </p>
               {errors.clientEmail ? (
                 <p className="text-xs text-red-500">Client email is required</p>

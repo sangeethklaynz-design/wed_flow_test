@@ -245,6 +245,44 @@ async function ensureRsvpChangeRequestsTable() {
       ADD COLUMN id_number VARCHAR(64) NULL AFTER email;
     `);
   }
+
+  await ensureGuestRsvpStatusEnum();
+}
+
+/**
+ * Expand guests.rsvp_status for ticketing lifecycle:
+ * PENDING → REGISTERED → PAYMENT_PENDING → CONFIRMED (or DECLINED).
+ */
+async function ensureGuestRsvpStatusEnum() {
+  if (!(await tableExists("guests")) || !(await columnExists("guests", "rsvp_status"))) {
+    return;
+  }
+
+  const [rows] = await sequelize.query(
+    `
+    SELECT COLUMN_TYPE
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = ?
+      AND TABLE_NAME = 'guests'
+      AND COLUMN_NAME = 'rsvp_status'
+    LIMIT 1;
+    `,
+    { replacements: [env.DB_NAME] }
+  );
+
+  const columnType = String(rows[0]?.COLUMN_TYPE || "").toLowerCase();
+  if (!columnType.startsWith("enum(")) return;
+
+  const needed = ["registered", "payment_pending"];
+  const missing = needed.filter((value) => !columnType.includes(`'${value}'`));
+  if (!missing.length) return;
+
+  await sequelize.query(`
+    ALTER TABLE guests
+    MODIFY COLUMN rsvp_status
+      ENUM('PENDING','REGISTERED','PAYMENT_PENDING','CONFIRMED','DECLINED')
+      NOT NULL DEFAULT 'PENDING';
+  `);
 }
 
 async function ensureNotificationsTable() {
@@ -517,6 +555,30 @@ async function ensureTicketingTables() {
       CREATE UNIQUE INDEX uq_ticket_orders_stripe_session
       ON ticket_orders (stripe_checkout_session_id);
     `);
+  }
+
+  if (
+    (await tableExists("ticket_orders")) &&
+    !(await columnExists("ticket_orders", "expires_at"))
+  ) {
+    await sequelize.query(`
+      ALTER TABLE ticket_orders
+      ADD COLUMN expires_at DATETIME NULL AFTER stripe_checkout_session_id,
+      ADD INDEX idx_ticket_orders_expires (payment_status, expires_at);
+    `);
+  }
+
+  // Expand payment_status to include expired holds (safe no-op if already present)
+  if (await tableExists("ticket_orders")) {
+    try {
+      await sequelize.query(`
+        ALTER TABLE ticket_orders
+        MODIFY COLUMN payment_status
+          ENUM('pending','paid','failed','expired') NOT NULL DEFAULT 'pending';
+      `);
+    } catch {
+      // ignore if dialect/version already matches
+    }
   }
 
   if (!(await tableExists("tickets"))) {
@@ -799,6 +861,7 @@ async function ensureCoreSchema() {
   await ensureWeddingScheduleTemplateColumns();
   await ensureInvitationTemplateColumns();
   await ensureRsvpChangeRequestsTable();
+  await ensureGuestRsvpStatusEnum();
   await ensureNotificationsTable();
   await ensureEventsTable();
   await ensureTicketingTables();

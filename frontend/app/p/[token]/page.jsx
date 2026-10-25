@@ -20,6 +20,7 @@ export default function PublicEventInvitePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [templateData, setTemplateData] = useState(null);
+  const [guestToken, setGuestToken] = useState(null);
 
   const loadTemplate = useCallback(async () => {
     if (!token) {
@@ -48,9 +49,14 @@ export default function PublicEventInvitePage() {
 
   const handleRsvpSuccess = useCallback(
     (payload) => {
-      const guestToken = payload?.guestToken || payload?.uniqueToken;
-      if (guestToken) {
-        router.replace(`/i/${encodeURIComponent(guestToken)}`);
+      const nextToken =
+        payload?.guestToken ||
+        payload?.uniqueToken ||
+        payload?.guest?.uniqueToken ||
+        null;
+      if (nextToken) {
+        setGuestToken(nextToken);
+        router.replace(`/i/${encodeURIComponent(nextToken)}`);
       }
     },
     [router]
@@ -80,7 +86,7 @@ export default function PublicEventInvitePage() {
           eventType={eventType}
           templateKey={templateKey}
           templateData={templateData}
-          guestToken={null}
+          guestToken={guestToken}
           publicEventToken={token}
           onRsvpSuccess={handleRsvpSuccess}
           interactive

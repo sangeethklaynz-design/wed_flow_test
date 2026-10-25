@@ -79,6 +79,10 @@ export default function AdminGuestViewModal({ open, onClose, guest }) {
             <Field label="Event">{guest.eventName || "—"}</Field>
           </div>
 
+          <Field label="Status">
+            {guest.statusLabel || guest.status || "—"}
+          </Field>
+
           <Field label="Email">{guest.email || "—"}</Field>
           <Field label="Mobile Number">{guest.phone || "—"}</Field>
           <Field label="ID Number">{guest.idNumber || "—"}</Field>

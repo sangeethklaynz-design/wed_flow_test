@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { jsPDF } from 'jspdf';
+import TicketQrImage from '@/components/invite/common/TicketQrImage';
 
 export const TicketQrOverlay = ({
   isOpen,
@@ -413,12 +414,19 @@ export const TicketQrOverlay = ({
                     {/* Right: Clean White Card with QR Code and "Scan at Check-In" */}
                     <div className="w-[164px] h-[164px] rounded-[18px] bg-white border border-[#CBD5E1]/60 shadow-[0_4px_16px_rgba(2,18,43,0.08)] flex flex-col items-center justify-center p-2 shrink-0">
                       <div className="w-[114px] h-[114px] flex items-center justify-center bg-white p-1">
-                        <img
-                          src="/assets/events/corporate-events/templates/template-1/chrome/ticket-page/QR.webp"
-                          alt={`QR Code for ${ticket.id}`}
+                        <TicketQrImage
+                          guestName={
+                            ticket.guestName ||
+                            ticket.attendeeName ||
+                            bookingData?.fullName ||
+                            attendeeName
+                          }
+                          tierName={ticket.typeName || ticket.name}
+                          ticketCode={ticket.ticketCode || ticket.id}
+                          qrText={ticket.qrText}
+                          alt={`QR Code for ${ticket.ticketCode || ticket.id}`}
                           className="w-full h-full object-contain block"
-                          width={110}
-                          height={110}
+                          size={110}
                         />
                       </div>
                       <span className="text-[#64748B] font-sans font-medium text-[11px] leading-tight mt-1 text-center">
@@ -428,9 +436,9 @@ export const TicketQrOverlay = ({
                   </div>
 
                   {/* Three Columns Info Badges (Date | Venue | Ticket ID) */}
-                  <div className="w-[342px] grid grid-cols-3 items-center divide-x divide-[#CBD5E1] mt-5 py-1">
+                  <div className="w-[342px] grid grid-cols-3 items-start divide-x divide-[#CBD5E1] mt-5 py-1 min-w-0">
                     {/* Column 1: Date */}
-                    <div className="flex flex-col items-center text-center px-1">
+                    <div className="flex flex-col items-center text-center px-1 min-w-0 overflow-hidden">
                       <div className="w-[38px] h-[38px] rounded-full bg-[#DCEBFC] flex items-center justify-center mb-1.5 text-[#080480] shadow-sm">
                         <svg
                           className="w-[18px] h-[18px] text-[#080480]"
@@ -457,8 +465,8 @@ export const TicketQrOverlay = ({
                     </div>
 
                     {/* Column 2: Venue */}
-                    <div className="flex flex-col items-center text-center px-1">
-                      <div className="w-[38px] h-[38px] rounded-full bg-[#DCEBFC] flex items-center justify-center mb-1.5 text-[#080480] shadow-sm">
+                    <div className="flex flex-col items-center text-center px-1 min-w-0 overflow-hidden">
+                      <div className="w-[38px] h-[38px] rounded-full bg-[#DCEBFC] flex items-center justify-center mb-1.5 text-[#080480] shadow-sm shrink-0">
                         <svg
                           className="w-[18px] h-[18px] text-[#080480]"
                           viewBox="0 0 24 24"
@@ -473,17 +481,17 @@ export const TicketQrOverlay = ({
                           <circle cx="12" cy="10" r="3" />
                         </svg>
                       </div>
-                      <span className="font-sans font-bold text-[11.5px] leading-tight text-[#080480] truncate max-w-[105px]">
+                      <span className="font-sans font-bold text-[11.5px] leading-tight text-[#080480] truncate w-full">
                         {venueName}
                       </span>
-                      <span className="font-sans text-[10px] leading-tight text-[#080480] mt-0.5">
+                      <span className="font-sans text-[10px] leading-tight text-[#080480] mt-0.5 truncate w-full">
                         {venueCity}
                       </span>
                     </div>
 
                     {/* Column 3: Ticket ID */}
-                    <div className="flex flex-col items-center text-center px-1">
-                      <div className="w-[38px] h-[38px] rounded-full bg-[#DCEBFC] flex items-center justify-center mb-1.5 text-[#080480] shadow-sm">
+                    <div className="flex flex-col items-center text-center px-1 min-w-0 overflow-hidden">
+                      <div className="w-[38px] h-[38px] rounded-full bg-[#DCEBFC] flex items-center justify-center mb-1.5 text-[#080480] shadow-sm shrink-0">
                         <svg
                           className="w-[18px] h-[18px] text-[#080480]"
                           viewBox="0 0 24 24"
@@ -501,8 +509,11 @@ export const TicketQrOverlay = ({
                       <span className="font-sans font-bold text-[11.5px] leading-tight text-[#080480]">
                         Ticket ID
                       </span>
-                      <span className="font-sans font-medium text-[10.5px] leading-tight text-[#080480] mt-0.5 tracking-tight whitespace-nowrap">
-                        {ticket.id}
+                      <span
+                        className="font-sans font-medium text-[9.5px] leading-snug text-[#080480] mt-0.5 tracking-tight w-full break-all"
+                        title={String(ticket.ticketCode || ticket.id || "")}
+                      >
+                        {ticket.ticketCode || ticket.id}
                       </span>
                     </div>
                   </div>

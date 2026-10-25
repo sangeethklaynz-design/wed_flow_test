@@ -1,5 +1,9 @@
 const { sequelize } = require("../models");
-const { mapTicketRow } = require("../utils/ticketing");
+const {
+  mapTicketRow,
+  parseTicketIdFromScan,
+  formatTicketQrText,
+} = require("../utils/ticketing");
 
 async function listEventTickets(req, res) {
   try {
@@ -20,23 +24,34 @@ async function listEventTickets(req, res) {
     const replacements = [eventId];
     let statusClause = "";
     if (status === "valid" || status === "invalid") {
-      statusClause = "AND status = ?";
+      statusClause = "AND t.status = ?";
       replacements.push(status);
     }
 
     const [rows] = await sequelize.query(
       `
-      SELECT *
-      FROM tickets
-      WHERE event_id = ?
+      SELECT
+        t.*,
+        g.full_name AS guest_name
+      FROM tickets t
+      LEFT JOIN guests g ON g.id = t.guest_id
+      WHERE t.event_id = ?
         ${statusClause}
-      ORDER BY issued_at DESC;
+      ORDER BY t.issued_at DESC;
       `,
       { replacements }
     );
 
     return res.status(200).json({
-      tickets: rows.map(mapTicketRow),
+      tickets: rows.map((row) => ({
+        ...mapTicketRow(row),
+        guestName: row.guest_name || null,
+        qrText: formatTicketQrText({
+          guestName: row.guest_name || "Guest",
+          tierName: row.tier_name,
+          ticketCode: row.ticket_code,
+        }),
+      })),
     });
   } catch (err) {
     console.error("admin listEventTickets error:", err);
@@ -50,9 +65,15 @@ async function listEventTickets(req, res) {
 async function scanEventTicket(req, res) {
   try {
     const eventId = String(req.params.id || "").trim();
-    // QR CODE
-    const ticketCode = String(req.body?.ticketCode || req.body?.ticket_code || "")
-      .trim();
+    const rawScan = String(
+      req.body?.ticketCode ||
+        req.body?.ticket_code ||
+        req.body?.qrText ||
+        req.body?.qr_text ||
+        req.body?.scan ||
+        ""
+    ).trim();
+    const ticketCode = parseTicketIdFromScan(rawScan);
 
     if (!eventId) {
       return res.status(400).json({ error: "Bad Request", message: "id is required" });
@@ -74,9 +95,12 @@ async function scanEventTicket(req, res) {
 
     const [rows] = await sequelize.query(
       `
-      SELECT *
-      FROM tickets
-      WHERE event_id = ? AND ticket_code = ?
+      SELECT
+        t.*,
+        g.full_name AS guest_name
+      FROM tickets t
+      LEFT JOIN guests g ON g.id = t.guest_id
+      WHERE t.event_id = ? AND t.ticket_code = ?
       LIMIT 1;
       `,
       { replacements: [eventId, ticketCode] }
@@ -89,10 +113,24 @@ async function scanEventTicket(req, res) {
       });
     }
 
+    const guestName = ticket.guest_name || "Guest";
+    const details = {
+      guestName,
+      ticketType: ticket.tier_name || "",
+      ticketId: ticket.ticket_code,
+      ticketCode: ticket.ticket_code,
+      qrText: formatTicketQrText({
+        guestName,
+        tierName: ticket.tier_name,
+        ticketCode: ticket.ticket_code,
+      }),
+    };
+
     if (ticket.status === "invalid") {
       return res.status(409).json({
         error: "Conflict",
         message: "Ticket is already invalid and cannot be used for entry",
+        ...details,
         ticket: mapTicketRow(ticket),
       });
     }
@@ -111,12 +149,25 @@ async function scanEventTicket(req, res) {
     );
 
     const [updatedRows] = await sequelize.query(
-      `SELECT * FROM tickets WHERE id = ? LIMIT 1;`,
+      `
+      SELECT t.*, g.full_name AS guest_name
+      FROM tickets t
+      LEFT JOIN guests g ON g.id = t.guest_id
+      WHERE t.id = ?
+      LIMIT 1;
+      `,
       { replacements: [ticket.id] }
     );
 
+    const updated = updatedRows[0];
     return res.status(200).json({
-      ticket: mapTicketRow(updatedRows[0]),
+      ...details,
+      guestName: updated.guest_name || guestName,
+      authorized: true,
+      ticket: {
+        ...mapTicketRow(updated),
+        guestName: updated.guest_name || guestName,
+      },
     });
   } catch (err) {
     console.error("admin scanEventTicket error:", err);

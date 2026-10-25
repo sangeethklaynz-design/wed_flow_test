@@ -89,7 +89,7 @@ async function ensureBaseTables() {
       invitation_note TEXT NULL,
       table_number VARCHAR(50) NULL,
       unique_token VARCHAR(100) NOT NULL UNIQUE,
-      rsvp_status ENUM('PENDING','CONFIRMED','DECLINED') NOT NULL DEFAULT 'PENDING',
+      rsvp_status ENUM('PENDING','REGISTERED','PAYMENT_PENDING','CONFIRMED','DECLINED') NOT NULL DEFAULT 'PENDING',
       has_change_request TINYINT(1) NOT NULL DEFAULT 0,
       invite_shared_at TIMESTAMP NULL DEFAULT NULL,
       is_pinned TINYINT(1) NOT NULL DEFAULT 0,

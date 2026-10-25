@@ -30,6 +30,10 @@ import { RsvpChangeRequestPage } from './pages/RsvpChangeRequestPage';
 import { TicketingSelectionPage } from '@/components/invite/common/TicketingSelectionPage';
 import { TicketingPaymentOverlay } from '@/components/invite/common/TicketingPaymentOverlay';
 import { TicketSelectionView } from '@/components/invite/common/TicketSelectionView';
+import {
+  mapIssuedTicketsToUi,
+  reserveTicketOrder,
+} from '@/lib/ticketCheckout';
 
 function guestAlreadyRsvped(templateData) {
   const guest = templateData?.guest || templateData?.static?.guest || null;
@@ -253,6 +257,11 @@ function CorporateInvitationFull({
   const [isTicketingOpen, setIsTicketingOpen] = useState(false);
   const [isTicketingPaymentOpen, setIsTicketingPaymentOpen] = useState(false);
   const [ticketingBookingData, setTicketingBookingData] = useState(null);
+  const [activeGuestToken, setActiveGuestToken] = useState(guestToken || null);
+
+  useEffect(() => {
+    setActiveGuestToken(guestToken || null);
+  }, [guestToken]);
 
   useEffect(() => {
     try {
@@ -569,13 +578,32 @@ function CorporateInvitationFull({
     setRsvpData(answers || null);
     setTicketingBookingData(null);
     setHasSubmittedRsvp(true);
+    const issuedToken =
+      answers?.guestToken ||
+      answers?.uniqueToken ||
+      answers?.guest?.uniqueToken ||
+      null;
+    if (issuedToken) {
+      setActiveGuestToken(issuedToken);
+    }
     if (!interactive) return;
     if (typeof onRsvpSuccessProp === 'function') {
       onRsvpSuccessProp(answers);
-      return;
     }
 
-    if (isTicketing) {
+    const attending =
+      String(answers?.attendingStatus || answers?.status || '').toLowerCase() ===
+        'attending' ||
+      String(answers?.attendingStatus || '').toLowerCase() === 'confirmed' ||
+      answers?.attending === true ||
+      (answers?.attendance || 'yes').toLowerCase() !== 'no';
+    const declined =
+      String(answers?.attendingStatus || answers?.status || '').toLowerCase() ===
+        'declined' ||
+      answers?.attending === false ||
+      (answers?.attendance || '').toLowerCase() === 'no';
+
+    if (isTicketing && attending && !declined) {
       setIsConfirmationOpen(false);
       setIsPaymentSuccessOpen(false);
       setIsTicketOpen(false);
@@ -628,56 +656,130 @@ function CorporateInvitationFull({
     }, 50);
   };
 
-  const handleProceedToTicketingPayment = (data) => {
-    const bookingRef = 'LN2026-0001';
-    let ticketCounter = 1;
-    const individualTickets = (data.selectedTickets || []).flatMap((t) =>
-      Array.from({ length: Number(t.quantity) || 1 }, () => ({
-        id: `${bookingRef}-${ticketCounter++}`,
-        name: t.name,
-        typeName: `${t.name} Ticket`,
-        price: t.price,
-      }))
-    );
-    const booking = {
+  const handleProceedToTicketingPayment = async (data) => {
+    const token =
+      activeGuestToken ||
+      guestToken ||
+      templateData?.guestToken ||
+      ticketingBookingData?.guestToken ||
+      '';
+    const fullName =
+      data?.fullName ||
+      rsvpData?.fullName ||
+      guest?.name ||
+      `${data?.firstName || ''} ${data?.lastName || ''}`.trim() ||
+      'Guest';
+    const bookingBase = {
       ...data,
-      firstName: data?.firstName || rsvpData?.firstName || (rsvpData?.fullName ? rsvpData.fullName.split(' ')[0] : 'Kavindu'),
-      lastName: data?.lastName || rsvpData?.lastName || (rsvpData?.fullName && rsvpData.fullName.split(' ').length > 1 ? rsvpData.fullName.split(' ').slice(1).join(' ') : 'Perera'),
-      fullName: data?.fullName || rsvpData?.fullName || `${data?.firstName || 'Kavindu'} ${data?.lastName || 'Perera'}`,
-      email: data?.email || rsvpData?.email || rsvpData?.emailAddress || guest?.email || 'kavindu@gmail.com',
-      mobileNumber: data?.mobileNumber || rsvpData?.mobileNumber || rsvpData?.phone || guest?.mobileNumber || '+94 77 123 4567',
-      nic: data?.nic || rsvpData?.nic || '199012345678',
-      bookingRef,
+      guestToken: token,
+      firstName:
+        data?.firstName ||
+        rsvpData?.firstName ||
+        (fullName ? fullName.split(' ')[0] : 'Guest'),
+      lastName:
+        data?.lastName ||
+        rsvpData?.lastName ||
+        (fullName && fullName.split(' ').length > 1
+          ? fullName.split(' ').slice(1).join(' ')
+          : ''),
+      fullName,
+      email:
+        data?.email ||
+        rsvpData?.email ||
+        rsvpData?.emailAddress ||
+        guest?.email ||
+        '',
+      mobileNumber:
+        data?.mobileNumber ||
+        rsvpData?.mobileNumber ||
+        rsvpData?.phone ||
+        guest?.mobileNumber ||
+        guest?.phone ||
+        '',
+      nic: data?.nic || rsvpData?.nic || '',
       ticketsSummary: (data.selectedTickets || [])
-        .map((t) => `${t.quantity} x ${t.name} (LKR ${Number(t.price).toLocaleString('en-US')})`)
+        .map(
+          (t) =>
+            `${t.quantity} x ${t.name} (LKR ${Number(t.price).toLocaleString('en-US')})`
+        )
         .join(', '),
-      individualTickets,
+      individualTickets: [],
     };
-    setTicketingBookingData(booking);
-    setIsTicketingOpen(false);
-    setIsConfirmationOpen(false);
-    setIsPaymentSuccessOpen(false);
-    setIsTicketOpen(false);
-    setIsTicketingPaymentOpen(true);
-    setHash('#ticketing-payment');
-    if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: 'instant' });
+
+    try {
+      const reserved = await reserveTicketOrder({
+        guestToken: token,
+        selectedTickets: data.selectedTickets || [],
+        buyerName: fullName,
+        buyerContact: bookingBase.mobileNumber,
+      });
+      const booking = {
+        ...bookingBase,
+        orderId: reserved.orderId,
+        expiresAt: reserved.expiresAt,
+        totalAmount: reserved.amountTotal ?? data.totalAmount,
+        bookingRef: reserved.orderId,
+      };
+      setTicketingBookingData(booking);
+      setIsTicketingOpen(false);
+      setIsConfirmationOpen(false);
+      setIsPaymentSuccessOpen(false);
+      setIsTicketOpen(false);
+      setIsTicketingPaymentOpen(true);
+      setHash('#ticketing-payment');
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      }
+    } catch (err) {
+      console.error('Ticket reservation failed:', err);
+      if (typeof window !== 'undefined') {
+        window.alert(err?.message || 'Could not reserve tickets. Please try again.');
+      }
     }
   };
 
-  const handleTicketingPaymentSuccess = () => {
+  const handleTicketingPaymentSuccess = (payResult = {}) => {
+    const guestName =
+      payResult.guestName ||
+      payResult.fullName ||
+      ticketingBookingData?.fullName ||
+      'Guest';
+    const individualTickets = mapIssuedTicketsToUi(
+      payResult.tickets || [],
+      guestName
+    );
+    const nextBooking = {
+      ...(ticketingBookingData || {}),
+      ...payResult,
+      fullName: guestName,
+      guestName,
+      orderId: payResult.orderId || ticketingBookingData?.orderId,
+      bookingRef: payResult.orderId || ticketingBookingData?.bookingRef,
+      individualTickets,
+      selectedTickets:
+        payResult.selectedTickets || ticketingBookingData?.selectedTickets,
+      totalAmount:
+        payResult.order?.amountTotal ??
+        payResult.amountTotal ??
+        ticketingBookingData?.totalAmount,
+    };
+    setTicketingBookingData(nextBooking);
     setIsTicketingPaymentOpen(false);
     setIsPaymentSuccessOpen(true);
     setHash('#payment-success');
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: 0, behavior: 'instant' });
-      if (ticketingBookingData) {
-        try {
-          localStorage.setItem('wedflow_purchased_tickets', JSON.stringify(ticketingBookingData));
-          sessionStorage.setItem('wedflow_purchased_tickets', JSON.stringify(ticketingBookingData));
-        } catch (e) {
-          console.warn('Could not store tickets', e);
-        }
+      try {
+        localStorage.setItem(
+          'wedflow_purchased_tickets',
+          JSON.stringify(nextBooking)
+        );
+        sessionStorage.setItem(
+          'wedflow_purchased_tickets',
+          JSON.stringify(nextBooking)
+        );
+      } catch (e) {
+        console.warn('Could not store tickets', e);
       }
     }
   };
@@ -752,38 +854,8 @@ function CorporateInvitationFull({
   };
 
   const handleOpenTicket = () => {
-    if (!ticketingBookingData) {
-      const bookingRef = 'LN2026-0001';
-      const attendee =
-        rsvpData?.fullName ||
-        guest?.full_name ||
-        guest?.fullName ||
-        guest?.name ||
-        fields.guestName ||
-        'Kavindu Perera';
-      const email =
-        rsvpData?.email ||
-        rsvpData?.emailAddress ||
-        guest?.email ||
-        fields.guestEmail ||
-        'kavindu@gmail.com';
-      setTicketingBookingData({
-        bookingRef,
-        fullName: attendee,
-        email,
-        individualTickets: [
-          {
-            id: `${bookingRef}-1`,
-            name: 'Standard',
-            typeName: 'STANDARD',
-            price: 1000,
-            quantity: 1,
-            seatNo: 'GENERAL ADMISSION',
-            attendeeName: attendee,
-          },
-        ],
-      });
-    }
+    const tickets = ticketingBookingData?.individualTickets || [];
+    if (!tickets.length) return;
     setIsConfirmationOpen(false);
     setIsPaymentSuccessOpen(false);
     setIsTicketingOpen(false);
@@ -1025,6 +1097,13 @@ function CorporateInvitationFull({
           onBack={handleCloseTicketingPayment}
           onPaySuccess={handleTicketingPaymentSuccess}
           bookingData={ticketingBookingData || {}}
+          guestToken={
+            activeGuestToken ||
+            guestToken ||
+            ticketingBookingData?.guestToken ||
+            ''
+          }
+          orderId={ticketingBookingData?.orderId || ''}
           theme="corporate"
           eventMeta={{
             eventName: fields.eventName || templateData?.static?.event?.name || 'Annual Business Summit 2026',
@@ -1057,7 +1136,12 @@ function CorporateInvitationFull({
             }, 60);
           }}
           attendeeName={ticketingBookingData?.fullName || guest?.name || 'Kavindu Perera'}
-          ticketId={ticketingBookingData?.bookingRef || 'LN2026-0001'}
+          ticketId={
+            ticketingBookingData?.individualTickets?.[0]?.ticketCode ||
+            ticketingBookingData?.orderId ||
+            ticketingBookingData?.bookingRef ||
+            ''
+          }
           tickets={ticketingBookingData?.individualTickets || []}
           eventName={fields.eventName || templateData?.static?.event?.name || 'Annual Business Summit – 2026'}
           eventDescription={fields.eventDescription || templateData?.static?.event?.description || 'An evening celebration, networking, & entertainment.'}
@@ -1196,6 +1280,13 @@ function CorporateInvitationFull({
             onBack={handleCloseTicketingPayment}
             onPaySuccess={handleTicketingPaymentSuccess}
             bookingData={ticketingBookingData || {}}
+            guestToken={
+              activeGuestToken ||
+              guestToken ||
+              ticketingBookingData?.guestToken ||
+              ''
+            }
+            orderId={ticketingBookingData?.orderId || ''}
             theme="corporate"
             eventMeta={{
               eventName: fields.eventName || templateData?.static?.event?.name || 'Annual Business Summit 2026',
@@ -1228,7 +1319,12 @@ function CorporateInvitationFull({
               }, 60);
             }}
             attendeeName={ticketingBookingData?.fullName || guest?.name || 'Kavindu Perera'}
-            ticketId={ticketingBookingData?.bookingRef || 'LN2026-0001'}
+            ticketId={
+              ticketingBookingData?.individualTickets?.[0]?.ticketCode ||
+              ticketingBookingData?.orderId ||
+              ticketingBookingData?.bookingRef ||
+              ''
+            }
             tickets={ticketingBookingData?.individualTickets || []}
             eventName={fields.eventName || templateData?.static?.event?.name || 'Annual Business Summit – 2026'}
             eventDescription={fields.eventDescription || templateData?.static?.event?.description || 'An evening celebration, networking, & entertainment.'}

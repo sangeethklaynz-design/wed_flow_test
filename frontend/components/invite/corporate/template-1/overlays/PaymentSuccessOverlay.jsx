@@ -11,13 +11,18 @@ export const PaymentSuccessOverlay = ({
   onDownloadAllTickets,
   bookingData = null,
   attendeeName: attendeeNameProp = 'Kavindu Perera',
-  bookingRef: bookingRefProp = 'LN2026-0001',
+  bookingRef: bookingRefProp = '',
   theme = 'corporate',
 }) => {
   const [toastMessage, setToastMessage] = useState(null);
 
   const attendeeName = bookingData?.fullName || attendeeNameProp;
-  const bookingRef = bookingData?.bookingRef || bookingRefProp;
+  const bookingRef =
+    bookingData?.orderId ||
+    bookingData?.bookingRef ||
+    bookingData?.individualTickets?.[0]?.ticketCode ||
+    bookingRefProp ||
+    '';
   const isTicketing = Boolean(
     bookingData &&
       (bookingData.totalAmount !== undefined ||

@@ -4,6 +4,7 @@ const {
   getDashboard,
   listEvents,
   listOrganizations,
+  createVendorOrganization,
   createEvent,
   updateEvent,
   replaceEventTicketTiers,
@@ -65,6 +66,7 @@ router.get("/templates", getTemplates);
 router.get("/templates/:type/:templateKey/manifest", getTemplateManifest);
 router.get("/events", listEvents);
 router.get("/organizations", listOrganizations);
+router.post("/organizations", createVendorOrganization);
 router.post("/events", createEvent);
 router.put("/events/:id", updateEvent);
 router.put("/events/:id/ticket-tiers", replaceEventTicketTiers);

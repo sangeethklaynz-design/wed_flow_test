@@ -6,6 +6,7 @@ const {
   mapGuestTemplateBlock,
 } = require("../utils/invitationTemplate");
 const { createNotification } = require("./notificationsController");
+const { isEventTicketingEnabled } = require("../utils/ticketing");
 
 async function getPublicInvite(req, res) {
   try {
@@ -134,8 +135,22 @@ async function submitPublicRsvp(req, res) {
         ? null
         : String(req.body.wishes).trim() || null;
 
-    const guestRsvpStatus =
-      attendingStatus === "ATTENDING" ? "CONFIRMED" : "DECLINED";
+    const [eventRows] = await sequelize.query(
+      `
+      SELECT e.is_ticketing_enabled, e.ticketing_enabled, e.type
+      FROM weddings w
+      INNER JOIN events e ON e.id = w.event_id
+      WHERE w.id = ?
+      LIMIT 1;
+      `,
+      { replacements: [row.wedding_id], transaction }
+    );
+    const ticketingOn = isEventTicketingEnabled(eventRows[0]);
+
+    let guestRsvpStatus = "DECLINED";
+    if (attendingStatus === "ATTENDING") {
+      guestRsvpStatus = ticketingOn ? "REGISTERED" : "CONFIRMED";
+    }
 
     const updatedFullName =
       req.body?.fullName !== undefined && String(req.body.fullName).trim()
@@ -152,7 +167,8 @@ async function submitPublicRsvp(req, res) {
       SET
         rsvp_status = ?,
         full_name = COALESCE(?, full_name),
-        whatsapp_number = COALESCE(?, whatsapp_number)
+        whatsapp_number = COALESCE(?, whatsapp_number),
+        payment_due_at = NULL
       WHERE id = ?;
       `,
       {
@@ -216,9 +232,21 @@ async function submitPublicRsvp(req, res) {
     const rsvpLabel = attendingStatus === "ATTENDING" ? "confirmed attendance" : "declined";
     await createNotification(row.wedding_id, "rsvp_submitted", "New RSVP received", `${guestName} has ${rsvpLabel}.`, row.id);
 
+    const staticBundle = await loadStaticInvitationBundle(row.wedding_id);
     return res.status(200).json({
       message: "RSVP saved",
       guest: mapGuestTemplateBlock(updated),
+      isTicketingEnabled: Boolean(
+        staticBundle?.isTicketingEnabled ??
+          staticBundle?.event?.isTicketingEnabled
+      ),
+      ticketTypes: staticBundle?.ticketTypes || [],
+      redirectToTicketing:
+        attendingStatus === "ATTENDING" &&
+        Boolean(
+          staticBundle?.isTicketingEnabled ??
+            staticBundle?.event?.isTicketingEnabled
+        ),
     });
   } catch (err) {
     try {

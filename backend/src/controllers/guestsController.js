@@ -3,6 +3,19 @@ const { sequelize } = require("../models");
 const { getWeddingForUser, getWeddingForRequest } = require("../utils/wedding");
 const { createNotification } = require("./notificationsController");
 
+function displayGuestStatus(rsvpStatus) {
+  const s = String(rsvpStatus || "PENDING").toUpperCase();
+  if (s === "DECLINED") return "RSVP Declined";
+  if (s === "PAYMENT_PENDING") return "Payment Pending";
+  if (s === "REGISTERED") return "Registered";
+  if (s === "CONFIRMED") return "Confirmed";
+  if (s === "PENDING") return "Pending";
+  return s
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function mapGuestRow(row) {
   const status = String(row.rsvp_status || "PENDING").toLowerCase();
   const invitedCount = Number(row.invited_count) || 1;
@@ -18,6 +31,7 @@ function mapGuestRow(row) {
     email: row.email || "",
     idNumber: row.id_number || "",
     status,
+    statusLabel: displayGuestStatus(row.rsvp_status),
     guestCount: invitedCount,
     invitedCount,
     rsvpCount,
@@ -612,6 +626,7 @@ async function sendInviteToAll(req, res) {
 }
 
 module.exports = {
+  displayGuestStatus,
   listGuests,
   getGuest,
   createGuest,

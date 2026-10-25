@@ -1,10 +1,18 @@
 const { sequelize } = require("../models");
 const {
+  isPaymentsLive,
+  rejectIfPaymentsOffline,
+} = require("../utils/paymentsLive");
+const {
   mapPaymentStatus,
   createConnectedAccount,
   createAccountOnboardingLink,
   retrieveAccount,
 } = require("../services/stripePayments");
+
+function withPaymentsLiveFlag(payload) {
+  return { ...payload, paymentsLive: isPaymentsLive() };
+}
 
 async function loadEventOwner(eventId) {
   const [rows] = await sequelize.query(
@@ -91,15 +99,17 @@ async function getEventPayments(req, res) {
       });
     }
 
-    if (row.stripe_account_id) {
+    if (isPaymentsLive() && row.stripe_account_id) {
       try {
         const account = await retrieveAccount(row.stripe_account_id);
         await syncUserFromStripeAccount(row.user_id, account);
         const refreshed = await loadUserPaymentRow(row.user_id);
-        return res.status(200).json({
-          eventId,
-          payments: mapPaymentStatus(refreshed),
-        });
+        return res.status(200).json(
+          withPaymentsLiveFlag({
+            eventId,
+            payments: mapPaymentStatus(refreshed),
+          })
+        );
       } catch (err) {
         if (stripeConfigError(err, res)) return;
         // Fall through to DB status if Stripe retrieve fails transiently
@@ -107,10 +117,12 @@ async function getEventPayments(req, res) {
       }
     }
 
-    return res.status(200).json({
-      eventId,
-      payments: mapPaymentStatus(row),
-    });
+    return res.status(200).json(
+      withPaymentsLiveFlag({
+        eventId,
+        payments: mapPaymentStatus(row),
+      })
+    );
   } catch (err) {
     console.error("getEventPayments error:", err);
     return res.status(500).json({
@@ -121,6 +133,8 @@ async function getEventPayments(req, res) {
 }
 
 async function connectEventPayments(req, res) {
+  if (rejectIfPaymentsOffline(res)) return;
+
   try {
     const eventId = String(req.params.id || "").trim();
     if (!eventId) {
@@ -148,11 +162,13 @@ async function connectEventPayments(req, res) {
     const link = await createAccountOnboardingLink(stripeAccountId, { eventId });
     const refreshed = await loadUserPaymentRow(row.user_id);
 
-    return res.status(200).json({
-      eventId,
-      onboardingUrl: link.url,
-      payments: mapPaymentStatus(refreshed),
-    });
+    return res.status(200).json(
+      withPaymentsLiveFlag({
+        eventId,
+        onboardingUrl: link.url,
+        payments: mapPaymentStatus(refreshed),
+      })
+    );
   } catch (err) {
     if (stripeConfigError(err, res)) return;
     console.error("connectEventPayments error:", err);
@@ -164,6 +180,8 @@ async function connectEventPayments(req, res) {
 }
 
 async function refreshEventPaymentsConnect(req, res) {
+  if (rejectIfPaymentsOffline(res)) return;
+
   try {
     const eventId = String(req.params.id || "").trim();
     if (!eventId) {
@@ -184,11 +202,13 @@ async function refreshEventPaymentsConnect(req, res) {
     const link = await createAccountOnboardingLink(row.stripe_account_id, {
       eventId,
     });
-    return res.status(200).json({
-      eventId,
-      onboardingUrl: link.url,
-      payments: mapPaymentStatus(row),
-    });
+    return res.status(200).json(
+      withPaymentsLiveFlag({
+        eventId,
+        onboardingUrl: link.url,
+        payments: mapPaymentStatus(row),
+      })
+    );
   } catch (err) {
     if (stripeConfigError(err, res)) return;
     console.error("refreshEventPaymentsConnect error:", err);
@@ -211,19 +231,23 @@ async function getCouplePayments(req, res) {
       return res.status(404).json({ error: "Not Found", message: "User not found" });
     }
 
-    if (row.stripe_account_id) {
+    if (isPaymentsLive() && row.stripe_account_id) {
       try {
         const account = await retrieveAccount(row.stripe_account_id);
         await syncUserFromStripeAccount(userId, account);
         const refreshed = await loadUserPaymentRow(userId);
-        return res.status(200).json({ payments: mapPaymentStatus(refreshed) });
+        return res.status(200).json(
+          withPaymentsLiveFlag({ payments: mapPaymentStatus(refreshed) })
+        );
       } catch (err) {
         if (stripeConfigError(err, res)) return;
         console.error("getCouplePayments retrieveAccount:", err.message);
       }
     }
 
-    return res.status(200).json({ payments: mapPaymentStatus(row) });
+    return res.status(200).json(
+      withPaymentsLiveFlag({ payments: mapPaymentStatus(row) })
+    );
   } catch (err) {
     console.error("getCouplePayments error:", err);
     return res.status(500).json({
@@ -234,6 +258,8 @@ async function getCouplePayments(req, res) {
 }
 
 async function connectCouplePayments(req, res) {
+  if (rejectIfPaymentsOffline(res)) return;
+
   try {
     const userId = req.user?.id;
     if (!userId) {
@@ -255,10 +281,12 @@ async function connectCouplePayments(req, res) {
     const link = await createAccountOnboardingLink(stripeAccountId);
     const refreshed = await loadUserPaymentRow(userId);
 
-    return res.status(200).json({
-      onboardingUrl: link.url,
-      payments: mapPaymentStatus(refreshed),
-    });
+    return res.status(200).json(
+      withPaymentsLiveFlag({
+        onboardingUrl: link.url,
+        payments: mapPaymentStatus(refreshed),
+      })
+    );
   } catch (err) {
     if (stripeConfigError(err, res)) return;
     console.error("connectCouplePayments error:", err);
@@ -270,6 +298,8 @@ async function connectCouplePayments(req, res) {
 }
 
 async function refreshCouplePaymentsConnect(req, res) {
+  if (rejectIfPaymentsOffline(res)) return;
+
   try {
     const userId = req.user?.id;
     if (!userId) {
@@ -288,10 +318,12 @@ async function refreshCouplePaymentsConnect(req, res) {
     }
 
     const link = await createAccountOnboardingLink(row.stripe_account_id);
-    return res.status(200).json({
-      onboardingUrl: link.url,
-      payments: mapPaymentStatus(row),
-    });
+    return res.status(200).json(
+      withPaymentsLiveFlag({
+        onboardingUrl: link.url,
+        payments: mapPaymentStatus(row),
+      })
+    );
   } catch (err) {
     if (stripeConfigError(err, res)) return;
     console.error("refreshCouplePaymentsConnect error:", err);

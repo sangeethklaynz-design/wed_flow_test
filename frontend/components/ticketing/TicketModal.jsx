@@ -56,12 +56,29 @@ export default function TicketModal({
       return;
     }
 
+    const numQuantity = quantity === "" ? null : parseInt(quantity, 10);
+    if (
+      quantity !== "" &&
+      (!Number.isInteger(numQuantity) || numQuantity < 1)
+    ) {
+      setError("Ticket amount must be a whole number of at least 1");
+      return;
+    }
+
+    const soldCount = Number(initialTicket?.soldCount || 0);
+    if (numQuantity != null && numQuantity < soldCount) {
+      setError(
+        `Ticket amount cannot be less than already sold tickets (${soldCount})`
+      );
+      return;
+    }
+
     const payload = {
       id: initialTicket?.id,
       name: trimmedName,
       price: numPrice,
       description: description.trim(),
-      quantity: quantity ? parseInt(quantity, 10) : null,
+      quantity: numQuantity,
     };
 
     try {
@@ -148,16 +165,23 @@ export default function TicketModal({
 
           <div>
             <label className="block text-sm font-semibold text-navy mb-1.5">
-              Available Quantity / Capacity
+              Ticket amount
             </label>
             <input
               type="number"
               min="1"
+              step="1"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
-              placeholder="Leave blank for unlimited"
+              placeholder="e.g., 100"
               className="w-full px-4 py-2.5 rounded-xl border border-border focus:outline-none focus:ring-2 focus:ring-[#0B72E7] transition-all text-sm text-navy placeholder:text-muted/60"
             />
+            <p className="text-xs text-muted mt-1.5">
+              Total tickets available for this type. Leave blank for unlimited.
+              {initialTicket?.soldCount
+                ? ` ${initialTicket.soldCount} already sold.`
+                : ""}
+            </p>
           </div>
 
           <div className="flex gap-3 pt-4">

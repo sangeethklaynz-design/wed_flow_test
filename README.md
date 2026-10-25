@@ -11,6 +11,7 @@ See **[`guide files/`](./guide%20files/)** — single source of truth for develo
 - [Frontend deploy](./guide%20files/deploy-frontend.md)
 - [Backend deploy](./guide%20files/deploy-backend.md)
 - [Clients, events & media](./guide%20files/couples-scripts-and-media.md)
+- [Marketplace payments (Google Pay + Stripe Connect)](./guide%20files/marketplace-payments-google-pay.md) — scaffolded, **offline by default**
 
 ## Quick start
 

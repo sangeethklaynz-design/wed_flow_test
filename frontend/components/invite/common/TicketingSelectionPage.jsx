@@ -303,7 +303,10 @@ export function TicketingSelectionPage({
 
     const selected = [];
     let counter = 1;
-    const bookingRef = purchasedBookingData?.bookingRef || "LN2026-0001";
+    const bookingRef =
+      purchasedBookingData?.orderId ||
+      purchasedBookingData?.bookingRef ||
+      "pending";
 
     normalizedTickets.forEach((t) => {
       const qty = quantities[t.id] || 0;
@@ -315,7 +318,7 @@ export function TicketingSelectionPage({
           price: t.price,
           quantity: 1,
           seatNo: "GENERAL ADMISSION",
-          attendeeName: defaultName || "Kavindu Perera",
+          attendeeName: defaultName || "Guest",
         });
       }
     });

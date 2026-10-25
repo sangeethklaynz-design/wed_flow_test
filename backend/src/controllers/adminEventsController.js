@@ -417,6 +417,88 @@ async function listOrganizations(req, res) {
   }
 }
 
+async function createVendorOrganization(req, res) {
+  const transaction = await sequelize.transaction();
+  try {
+    const name = String(req.body?.name || req.body?.vendorName || "")
+      .trim();
+    const ownerEmail = String(
+      req.body?.ownerEmail || req.body?.clientEmail || req.body?.email || ""
+    )
+      .trim()
+      .toLowerCase();
+    const maxStaffAccounts = Number(
+      req.body?.maxStaffAccounts ?? req.body?.max_staff_accounts ?? 5
+    );
+
+    if (!name) {
+      await transaction.rollback();
+      return res.status(400).json({
+        error: "Bad Request",
+        message: "Vendor name is required",
+      });
+    }
+    if (!ownerEmail || !ownerEmail.includes("@")) {
+      await transaction.rollback();
+      return res.status(400).json({
+        error: "Bad Request",
+        message: "A valid owner email is required",
+      });
+    }
+
+    const [existingUser] = await sequelize.query(
+      `SELECT id FROM users WHERE email = ? LIMIT 1;`,
+      { replacements: [ownerEmail], transaction }
+    );
+    if (existingUser[0]) {
+      await transaction.rollback();
+      return res.status(409).json({
+        error: "Conflict",
+        message: "A client account with this email already exists",
+      });
+    }
+
+    const created = await createOrganizationWithOwner({
+      name,
+      type: "vendor",
+      ownerEmail,
+      maxStaffAccounts,
+      transaction,
+    });
+
+    await transaction.commit();
+
+    return res.status(201).json({
+      organization: {
+        id: created.organizationId,
+        name,
+        type: "vendor",
+        ownerUserId: created.userId,
+        ownerEmail: created.email,
+        ownerUsername: created.loginUsername,
+        eventCount: 0,
+        maxStaffAccounts: Math.max(0, Number(maxStaffAccounts) || 0),
+      },
+      credentials: {
+        email: created.email,
+        username: created.loginUsername,
+        password: created.plainPassword,
+      },
+    });
+  } catch (err) {
+    try {
+      await transaction.rollback();
+    } catch {
+      // ignore
+    }
+    console.error("admin createVendorOrganization error:", err);
+    return res.status(500).json({
+      error: "Internal Server Error",
+      message: "Failed to create vendor",
+    });
+  }
+}
+
 async function createEvent(req, res) {
   const transaction = await sequelize.transaction();
   try {
@@ -1474,6 +1556,7 @@ module.exports = {
   getDashboard,
   listEvents,
   listOrganizations,
+  createVendorOrganization,
   createEvent,
   updateEvent,
   replaceEventTicketTiers,

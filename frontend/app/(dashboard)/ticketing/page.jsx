@@ -1,30 +1,34 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, FileText, Eye, Pencil, Trash2, AlertCircle, Ticket, Gift, Minus } from "lucide-react";
-import clsx from "clsx";
+import { Plus, Pencil, Trash2, AlertCircle, Ticket, Gift, Minus } from "lucide-react";
 import { NotificationBell } from "@/components/ui/NotificationPanel";
-import RowActionsMenu from "@/components/ui/RowActionsMenu";
 import TicketModal from "@/components/ticketing/TicketModal";
 import ViewTicketModal from "@/components/ticketing/ViewTicketModal";
 import ConfirmDeleteModal from "@/components/guests/ConfirmDeleteModal";
 import { apiRequest } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 
+function formatRemaining(ticket) {
+  if (ticket.remaining != null) return String(ticket.remaining);
+  if (ticket.quantity == null) return "Unlimited";
+  const sold = Number(ticket.soldCount || 0);
+  return String(Math.max(0, Number(ticket.quantity) - sold));
+}
+
+function formatAmount(ticket) {
+  if (ticket.quantity == null) return "Unlimited";
+  return String(ticket.quantity);
+}
+
 export default function TicketingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [isTicketingEnabled, setIsTicketingEnabled] = useState(false);
   const [totalTicketLimit, setTotalTicketLimit] = useState(1000);
   const [freeTicketAllocation, setFreeTicketAllocation] = useState(50);
   const [ticketTypes, setTicketTypes] = useState([]);
-  const [toggling, setToggling] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
 
-  // RowActionsMenu open state
-  const [openActionId, setOpenActionId] = useState(null);
-
-  // Modal states
   const [modalMode, setModalMode] = useState(null); // 'add' | 'edit' | null
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [viewTicket, setViewTicket] = useState(null);
@@ -35,14 +39,36 @@ export default function TicketingPage() {
   const loadTicketingData = useCallback(async () => {
     const token = getAccessToken();
     if (!token) {
-      // In local preview/dev without auth, provide graceful default values
-      setIsTicketingEnabled(true);
       setTotalTicketLimit(1000);
       setFreeTicketAllocation(50);
       setTicketTypes([
-        { id: "1", name: "Standard", price: 1000, description: "General Admission" },
-        { id: "2", name: "VIP", price: 2000, description: "Access to VIP Lounge" },
-        { id: "3", name: "Premium", price: 5000, description: "Front Row Seating" },
+        {
+          id: "1",
+          name: "Standard",
+          price: 1000,
+          description: "General Admission",
+          quantity: 200,
+          soldCount: 25,
+          remaining: 175,
+        },
+        {
+          id: "2",
+          name: "VIP",
+          price: 2000,
+          description: "Access to VIP Lounge",
+          quantity: 50,
+          soldCount: 10,
+          remaining: 40,
+        },
+        {
+          id: "3",
+          name: "Premium",
+          price: 5000,
+          description: "Front Row Seating",
+          quantity: 20,
+          soldCount: 5,
+          remaining: 15,
+        },
       ]);
       setLoading(false);
       return;
@@ -53,7 +79,6 @@ export default function TicketingPage() {
     try {
       const data = await apiRequest("/api/couple/ticketing", { token });
       if (data) {
-        setIsTicketingEnabled(Boolean(data.isTicketingEnabled));
         if (data.totalTicketLimit != null) {
           setTotalTicketLimit(Number(data.totalTicketLimit));
         }
@@ -109,30 +134,6 @@ export default function TicketingPage() {
     saveSettingsToServer({ freeTicketAllocation: validVal });
   };
 
-  const handleToggleTicketing = async () => {
-    const token = getAccessToken();
-    if (!token || toggling) return;
-
-    const nextState = !isTicketingEnabled;
-    setToggling(true);
-    // Optimistic update
-    setIsTicketingEnabled(nextState);
-
-    try {
-      await apiRequest("/api/couple/ticketing/toggle", {
-        method: "PUT",
-        token,
-        body: { isTicketingEnabled: nextState },
-      });
-    } catch (err) {
-      // Revert if error
-      setIsTicketingEnabled(!nextState);
-      setError(err?.message || "Failed to update ticketing toggle");
-    } finally {
-      setToggling(false);
-    }
-  };
-
   const handleOpenAdd = () => {
     setSelectedTicket(null);
     setModalMode("add");
@@ -141,10 +142,6 @@ export default function TicketingPage() {
   const handleOpenEdit = (ticket) => {
     setSelectedTicket(ticket);
     setModalMode("edit");
-  };
-
-  const handleView = (ticket) => {
-    setViewTicket(ticket);
   };
 
   const handleDelete = (ticket) => {
@@ -212,13 +209,11 @@ export default function TicketingPage() {
 
   return (
     <div className="p-6 md:p-8 lg:p-12 w-full min-w-0">
-      {/* Mobile Title Bar */}
       <div className="md:hidden flex justify-between items-center mb-6 bg-white p-4 rounded-2xl border border-border shadow-sm">
         <h1 className="font-serif font-bold text-2xl text-[#054380]">Ticketing</h1>
         <NotificationBell />
       </div>
 
-      {/* Desktop / Laptop Top Header Bar (Screenshot 2) */}
       <div className="hidden md:flex justify-between items-center mb-8 bg-white p-5 md:px-8 rounded-2xl border border-border shadow-sm min-h-[78px] w-full">
         <h1 className="font-serif font-bold text-2xl text-[#054380]">Ticketing</h1>
         <NotificationBell />
@@ -240,52 +235,12 @@ export default function TicketingPage() {
         </div>
       ) : null}
 
-      {/* Selection Part: Ticketing Options (Screenshot 1) */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 sm:p-8 mb-6 md:mb-8 w-full">
         <h2 className="text-[#054380] font-bold text-base sm:text-lg mb-4">
           Ticketing Options
         </h2>
 
         <div className="flex flex-col gap-3.5 w-full">
-          {/* Row 1: Enable Ticketing for Guests */}
-          <div className="border border-[#D1D5DB] rounded-2xl p-4 sm:p-5 flex items-center justify-between gap-4 transition-all hover:border-[#0B72E7]/40 w-full">
-            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-[#EEF2F6] flex items-center justify-center shrink-0 border border-[#E2E8F0]">
-                <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-[#054380]" strokeWidth={2} />
-              </div>
-              <div className="min-w-0">
-                <p className="font-bold text-[#054380] text-sm sm:text-base leading-snug">
-                  Enable Ticketing for Guests
-                </p>
-                <p className="text-xs sm:text-sm text-[#64748B] mt-0.5 leading-snug">
-                  Replace RSVP page with ticket selection and payment
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              role="switch"
-              aria-checked={isTicketingEnabled}
-              aria-label="Enable Ticketing for Guests"
-              onClick={handleToggleTicketing}
-              disabled={toggling}
-              className={clsx(
-                "relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
-                isTicketingEnabled ? "bg-[#0B72E7]" : "bg-[#CBD5E1]",
-                toggling && "opacity-60 cursor-not-allowed"
-              )}
-            >
-              <span
-                className={clsx(
-                  "pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
-                  isTicketingEnabled ? "translate-x-5" : "translate-x-0"
-                )}
-              />
-            </button>
-          </div>
-
-          {/* Row 2: Total Event Ticket Limit */}
           <div className="border border-[#D1D5DB] rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all hover:border-[#0B72E7]/40 w-full">
             <div className="flex items-center gap-3 sm:gap-4 min-w-0 md:min-w-[260px] flex-1">
               <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-[#EEF2F6] flex items-center justify-center shrink-0 border border-[#E2E8F0]">
@@ -303,6 +258,7 @@ export default function TicketingPage() {
                   onClick={() => handleUpdateTicketLimit(totalTicketLimit > 100 ? totalTicketLimit - 50 : Math.max(1, totalTicketLimit - 10))}
                   className="w-7 h-7 flex items-center justify-center text-[#054380] hover:bg-[#EEF2F6] rounded-lg transition-colors font-bold text-lg active:scale-95 cursor-pointer select-none"
                   aria-label="Decrease total ticket limit"
+                  disabled={savingSettings}
                 >
                   <Minus className="w-4 h-4 stroke-[2.5]" />
                 </button>
@@ -318,6 +274,7 @@ export default function TicketingPage() {
                   onClick={() => handleUpdateTicketLimit(totalTicketLimit >= 100 ? totalTicketLimit + 50 : totalTicketLimit + 10)}
                   className="w-7 h-7 flex items-center justify-center text-[#054380] hover:bg-[#EEF2F6] rounded-lg transition-colors font-bold text-lg active:scale-95 cursor-pointer select-none"
                   aria-label="Increase total ticket limit"
+                  disabled={savingSettings}
                 >
                   <Plus className="w-4 h-4 stroke-[2.5]" />
                 </button>
@@ -331,7 +288,6 @@ export default function TicketingPage() {
             </div>
           </div>
 
-          {/* Row 3: Free Tickets Allocation */}
           <div className="border border-[#D1D5DB] rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all hover:border-[#0B72E7]/40 w-full">
             <div className="flex items-center gap-3 sm:gap-4 min-w-0 md:min-w-[260px] flex-1">
               <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-[#EEF2F6] flex items-center justify-center shrink-0 border border-[#E2E8F0]">
@@ -349,6 +305,7 @@ export default function TicketingPage() {
                   onClick={() => handleUpdateFreeAllocation(Math.max(0, freeTicketAllocation - 5))}
                   className="w-7 h-7 flex items-center justify-center text-[#054380] hover:bg-[#EEF2F6] rounded-lg transition-colors font-bold text-lg active:scale-95 cursor-pointer select-none"
                   aria-label="Decrease free tickets allocation"
+                  disabled={savingSettings}
                 >
                   <Minus className="w-4 h-4 stroke-[2.5]" />
                 </button>
@@ -364,6 +321,7 @@ export default function TicketingPage() {
                   onClick={() => handleUpdateFreeAllocation(freeTicketAllocation + 5)}
                   className="w-7 h-7 flex items-center justify-center text-[#054380] hover:bg-[#EEF2F6] rounded-lg transition-colors font-bold text-lg active:scale-95 cursor-pointer select-none"
                   aria-label="Increase free tickets allocation"
+                  disabled={savingSettings}
                 >
                   <Plus className="w-4 h-4 stroke-[2.5]" />
                 </button>
@@ -379,14 +337,12 @@ export default function TicketingPage() {
         </div>
       </div>
 
-      {/* Ticket Types Section (Screenshot 1) */}
       <div className="bg-white rounded-2xl border border-border shadow-sm p-6 sm:p-8 w-full">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <h2 className="text-[#054380] font-bold text-base sm:text-lg">
             Ticket Types
           </h2>
 
-          {/* Screenshot 1: Add Ticket Type button */}
           <button
             type="button"
             onClick={handleOpenAdd}
@@ -407,20 +363,26 @@ export default function TicketingPage() {
           </div>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-[#E2E8F0]">
-            <table className="w-full text-left border-collapse min-w-[650px]">
+            <table className="w-full text-left border-collapse min-w-[780px]">
               <thead>
                 <tr className="bg-[#E5EDF7] border-b border-[#E2E8F0]">
                   <th className="px-6 py-4 text-xs font-semibold text-[#475569] uppercase tracking-wider text-left">
-                    TICKET NAME
+                    Ticket name
                   </th>
                   <th className="px-6 py-4 text-xs font-semibold text-[#475569] uppercase tracking-wider text-left">
-                    PRICE (LKR)
+                    Price (LKR)
                   </th>
                   <th className="px-6 py-4 text-xs font-semibold text-[#475569] uppercase tracking-wider text-left">
-                    DESCRIPTION
+                    Ticket amount
+                  </th>
+                  <th className="px-6 py-4 text-xs font-semibold text-[#475569] uppercase tracking-wider text-left">
+                    Remaining
+                  </th>
+                  <th className="px-6 py-4 text-xs font-semibold text-[#475569] uppercase tracking-wider text-left">
+                    Description
                   </th>
                   <th className="px-6 py-4 text-xs font-semibold text-[#475569] uppercase tracking-wider text-center w-28">
-                    ACTIONS
+                    Actions
                   </th>
                 </tr>
               </thead>
@@ -435,6 +397,12 @@ export default function TicketingPage() {
                     </td>
                     <td className="px-6 py-4 text-sm text-[#334155] font-medium tabular-nums">
                       {Number(ticket.price).toLocaleString("en-US")}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-[#334155] font-medium tabular-nums">
+                      {formatAmount(ticket)}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-[#054380] font-semibold tabular-nums">
+                      {formatRemaining(ticket)}
                     </td>
                     <td className="px-6 py-4 text-sm text-[#054380] font-normal">
                       {ticket.description || "—"}
@@ -469,7 +437,6 @@ export default function TicketingPage() {
         )}
       </div>
 
-      {/* Add / Edit Ticket Modal */}
       <TicketModal
         open={modalMode !== null}
         mode={modalMode || "add"}
@@ -482,7 +449,6 @@ export default function TicketingPage() {
         onSubmit={handleSaveTicket}
       />
 
-      {/* View Ticket Modal */}
       <ViewTicketModal
         open={viewTicket !== null}
         ticket={viewTicket}
@@ -492,7 +458,6 @@ export default function TicketingPage() {
         }}
       />
 
-      {/* Confirm Delete Modal */}
       <ConfirmDeleteModal
         open={deleteTicket !== null}
         title="Delete Ticket Type"

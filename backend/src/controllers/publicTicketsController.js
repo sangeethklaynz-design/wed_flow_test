@@ -4,16 +4,25 @@ const { env } = require("../config/env");
 const { loadGuestByToken } = require("../utils/invitationTemplate");
 const {
   mapOrderRow,
+  mapTicketRow,
   parseCheckoutItems,
   loadTicketsForOrder,
   issueTicketsForPaidOrder,
   isEventTicketingEnabled,
   resolvePurchasableTier,
+  expireStalePendingOrders,
+  assertInventoryAvailable,
+  formatTicketQrText,
+  RESERVATION_HOURS,
 } = require("../utils/ticketing");
 const {
   createCheckoutSessionForOrder,
   constructWebhookEvent,
 } = require("../services/stripePayments");
+const {
+  isPaymentsLive,
+  rejectIfPaymentsOffline,
+} = require("../utils/paymentsLive");
 
 async function loadEventForGuest(guestRow) {
   const [rows] = await sequelize.query(
@@ -100,6 +109,35 @@ async function createTicketCheckout(req, res) {
       });
     }
 
+    const attending = String(guest.attending_status || "")
+      .trim()
+      .toUpperCase();
+    if (attending === "DECLINED") {
+      await transaction.rollback();
+      return res.status(400).json({
+        error: "Bad Request",
+        message: "Declined guests cannot purchase tickets",
+      });
+    }
+
+    await expireStalePendingOrders({
+      eventId: event.id,
+      guestId: guest.guest_id,
+      transaction,
+    });
+
+    // Cancel any other active pending holds for this guest before creating a new one
+    await sequelize.query(
+      `
+      UPDATE ticket_orders
+      SET payment_status = 'expired', updated_at = NOW()
+      WHERE guest_id = ?
+        AND event_id = ?
+        AND payment_status = 'pending';
+      `,
+      { replacements: [guest.guest_id, event.id], transaction }
+    );
+
     const items = Array.isArray(req.body?.items) ? req.body.items : null;
     if (!items || !items.length) {
       await transaction.rollback();
@@ -131,6 +169,7 @@ async function createTicketCheckout(req, res) {
           items[i]?.ticketTypeId ||
           items[i]?.ticket_type_id ||
           items[i]?.typeId ||
+          items[i]?.id ||
           ""
       ).trim();
       const quantity = Number(items[i]?.quantity);
@@ -160,6 +199,20 @@ async function createTicketCheckout(req, res) {
         });
       }
 
+      const inventoryError = await assertInventoryAvailable(
+        event.id,
+        tier,
+        quantity,
+        { transaction }
+      );
+      if (inventoryError) {
+        await transaction.rollback();
+        return res.status(409).json({
+          error: "Conflict",
+          message: inventoryError,
+        });
+      }
+
       const unitPrice = Number(tier.price);
       currency = tier.currency || currency;
       amountTotal += unitPrice * quantity;
@@ -183,8 +236,9 @@ async function createTicketCheckout(req, res) {
       `
       INSERT INTO ticket_orders (
         id, event_id, guest_id, buyer_name, buyer_contact,
-        payment_provider, payment_status, amount_total, currency, checkout_items
-      ) VALUES (?, ?, ?, ?, ?, 'stripe', 'pending', ?, ?, ?);
+        payment_provider, payment_status, amount_total, currency,
+        checkout_items, expires_at
+      ) VALUES (?, ?, ?, ?, ?, 'demo', 'pending', ?, ?, ?, DATE_ADD(NOW(), INTERVAL ? HOUR));
       `,
       {
         replacements: [
@@ -196,9 +250,20 @@ async function createTicketCheckout(req, res) {
           amountTotal,
           currency,
           JSON.stringify(checkoutItems),
+          RESERVATION_HOURS,
         ],
         transaction,
       }
+    );
+
+    await sequelize.query(
+      `
+      UPDATE guests
+      SET rsvp_status = 'PAYMENT_PENDING',
+          payment_due_at = DATE_ADD(NOW(), INTERVAL ? HOUR)
+      WHERE id = ?;
+      `,
+      { replacements: [RESERVATION_HOURS, guest.guest_id], transaction }
     );
 
     await transaction.commit();
@@ -212,6 +277,8 @@ async function createTicketCheckout(req, res) {
       orderId,
       amountTotal,
       currency,
+      expiresAt: orderRows[0]?.expires_at || null,
+      reservationHours: RESERVATION_HOURS,
       items: normalizedItems.map((n) => ({
         tierId: n.tier.id,
         tierName: n.tier.name,
@@ -236,7 +303,177 @@ async function createTicketCheckout(req, res) {
   }
 }
 
+async function demoCompleteTicketOrder(req, res) {
+  const transaction = await sequelize.transaction();
+  try {
+    const token = String(req.params.token || "").trim();
+    const orderId = String(req.params.orderId || "").trim();
+    if (!token || !orderId) {
+      await transaction.rollback();
+      return res.status(400).json({
+        error: "Bad Request",
+        message: "Invitation token and orderId are required",
+      });
+    }
+
+    const guest = await loadGuestByToken(token);
+    if (!guest) {
+      await transaction.rollback();
+      return res.status(404).json({
+        error: "Not Found",
+        message: "Invitation not found",
+      });
+    }
+
+    await expireStalePendingOrders({
+      eventId: null,
+      guestId: guest.guest_id,
+      transaction,
+    });
+
+    const [orderRows] = await sequelize.query(
+      `SELECT * FROM ticket_orders WHERE id = ? LIMIT 1 FOR UPDATE;`,
+      { replacements: [orderId], transaction }
+    );
+    const order = orderRows[0];
+    if (!order) {
+      await transaction.rollback();
+      return res.status(404).json({
+        error: "Not Found",
+        message: "Order not found",
+      });
+    }
+    if (String(order.guest_id) !== String(guest.guest_id)) {
+      await transaction.rollback();
+      return res.status(403).json({
+        error: "Forbidden",
+        message: "Order does not belong to this guest",
+      });
+    }
+
+    if (order.payment_status === "paid") {
+      const tickets = await loadTicketsForOrder(orderId, { transaction });
+      await transaction.commit();
+      const guestName = guest.full_name || order.buyer_name || "Guest";
+      return res.status(200).json({
+        orderId,
+        alreadyPaid: true,
+        order: mapOrderRow(order),
+        guestName,
+        tickets: tickets.map((t) => ({
+          ...t,
+          guestName,
+          qrText: formatTicketQrText({
+            guestName,
+            tierName: t.tierName,
+            ticketCode: t.ticketCode,
+          }),
+        })),
+      });
+    }
+
+    if (order.payment_status !== "pending") {
+      await transaction.rollback();
+      return res.status(409).json({
+        error: "Conflict",
+        message: `Order cannot be completed from status ${order.payment_status}`,
+      });
+    }
+
+    if (order.expires_at && new Date(order.expires_at).getTime() < Date.now()) {
+      await sequelize.query(
+        `UPDATE ticket_orders SET payment_status = 'expired', updated_at = NOW() WHERE id = ?;`,
+        { replacements: [orderId], transaction }
+      );
+      await sequelize.query(
+        `
+        UPDATE guests
+        SET rsvp_status = 'REGISTERED', payment_due_at = NULL
+        WHERE id = ? AND rsvp_status = 'PAYMENT_PENDING';
+        `,
+        { replacements: [guest.guest_id], transaction }
+      );
+      await transaction.commit();
+      return res.status(409).json({
+        error: "Conflict",
+        message: "Reservation expired. Please select tickets again.",
+      });
+    }
+
+    const result = await issueTicketsForPaidOrder(orderId, {
+      paymentRef: `demo_${orderId.slice(0, 8)}`,
+      paymentProvider: "demo",
+      transaction,
+    });
+
+    await sequelize.query(
+      `
+      UPDATE guests
+      SET rsvp_status = 'CONFIRMED', payment_due_at = NULL
+      WHERE id = ?;
+      `,
+      { replacements: [guest.guest_id], transaction }
+    );
+
+    await transaction.commit();
+
+    const guestName = guest.full_name || order.buyer_name || "Guest";
+    const tickets = (result.tickets || []).map((t) => {
+      const mapped =
+        t.ticketCode != null && t.tierName != null
+          ? {
+              ticketId: t.ticketId,
+              ticketCode: t.ticketCode,
+              tierName: t.tierName,
+              price: t.price,
+              currency: t.currency,
+              status: t.status || "valid",
+            }
+          : mapTicketRow(t);
+      return {
+        ...mapped,
+        guestName,
+        qrText: formatTicketQrText({
+          guestName,
+          tierName: mapped.tierName,
+          ticketCode: mapped.ticketCode,
+        }),
+      };
+    });
+
+    return res.status(200).json({
+      orderId,
+      alreadyPaid: result.alreadyPaid,
+      order: mapOrderRow(result.order),
+      guestName,
+      tickets,
+    });
+  } catch (err) {
+    try {
+      await transaction.rollback();
+    } catch {
+      // ignore
+    }
+    if (err.code === "ORDER_NOT_FOUND") {
+      return res.status(404).json({ error: "Not Found", message: err.message });
+    }
+    if (
+      err.code === "ORDER_BAD_STATUS" ||
+      err.code === "CHECKOUT_SNAPSHOT_MISSING"
+    ) {
+      return res.status(409).json({ error: "Conflict", message: err.message });
+    }
+    console.error("public demoCompleteTicketOrder error:", err);
+    return res.status(500).json({
+      error: "Internal Server Error",
+      message: "Failed to complete demo payment",
+    });
+  }
+}
+
 async function startTicketOrderPay(req, res) {
+  if (rejectIfPaymentsOffline(res)) return;
+
   try {
     const orderId = String(req.params.orderId || "").trim();
     if (!orderId) {
@@ -445,6 +682,17 @@ async function handleStripeWebhook(req, res) {
   }
 
   try {
+    if (!isPaymentsLive()) {
+      console.warn(
+        "stripe webhook received while PAYMENTS_LIVE=false; acknowledging without issuing tickets"
+      );
+      return res.status(200).json({
+        received: true,
+        paymentsLive: false,
+        skipped: true,
+      });
+    }
+
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
       const orderId =
@@ -473,6 +721,17 @@ async function handleStripeWebhook(req, res) {
       }
     }
 
+    if (event.type === "payment_intent.succeeded") {
+      const pi = event.data.object;
+      const orderId = pi.metadata?.orderId || null;
+      if (orderId) {
+        await issueTicketsForPaidOrder(orderId, {
+          paymentRef: pi.id,
+          paymentProvider: "stripe",
+        });
+      }
+    }
+
     if (event.type === "account.updated") {
       const account = event.data.object;
       await sequelize.query(
@@ -492,7 +751,7 @@ async function handleStripeWebhook(req, res) {
       );
     }
 
-    return res.status(200).json({ received: true });
+    return res.status(200).json({ received: true, paymentsLive: true });
   } catch (err) {
     console.error("stripe webhook handler error:", err);
     return res.status(500).json({
@@ -504,6 +763,7 @@ async function handleStripeWebhook(req, res) {
 
 module.exports = {
   createTicketCheckout,
+  demoCompleteTicketOrder,
   startTicketOrderPay,
   confirmTicketPayment,
   getTicketOrder,

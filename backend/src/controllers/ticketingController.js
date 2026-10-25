@@ -151,12 +151,20 @@ async function seedDefaultTicketsIfEmpty(eventId) {
 }
 
 function mapTicketTypeRow(t) {
+  const quantity = t.quantity != null ? Number(t.quantity) : null;
+  const soldCount = Number(t.sold_count || 0);
+  const remaining =
+    quantity == null || Number.isNaN(quantity)
+      ? null
+      : Math.max(0, quantity - soldCount);
   return {
     id: t.id,
     name: t.name,
     price: Number(t.price),
     description: t.description || "",
-    quantity: t.quantity != null ? Number(t.quantity) : null,
+    quantity,
+    soldCount,
+    remaining,
     displayOrder: t.display_order,
     createdAt: t.created_at,
     updatedAt: t.updated_at,
@@ -201,10 +209,27 @@ async function getTicketingSettings(req, res) {
     }
 
     const [ticketTypes] = await sequelize.query(
-      `SELECT id, event_id, name, price, description, quantity, display_order, created_at, updated_at
-       FROM ticket_types
-       WHERE event_id = ?
-       ORDER BY display_order ASC, created_at ASC;`,
+      `
+      SELECT
+        tt.id,
+        tt.event_id,
+        tt.name,
+        tt.price,
+        tt.description,
+        tt.quantity,
+        tt.display_order,
+        tt.created_at,
+        tt.updated_at,
+        (
+          SELECT COUNT(*)
+          FROM tickets tk
+          WHERE tk.tier_id = tt.id
+            AND tk.event_id = tt.event_id
+        ) AS sold_count
+      FROM ticket_types tt
+      WHERE tt.event_id = ?
+      ORDER BY tt.display_order ASC, tt.created_at ASC;
+      `,
       { replacements: [eventId] }
     );
 
@@ -424,6 +449,16 @@ async function createTicketType(req, res) {
       });
     }
 
+    if (
+      quantity != null &&
+      (!Number.isFinite(quantity) || !Number.isInteger(quantity) || quantity < 1)
+    ) {
+      return res.status(400).json({
+        error: "Bad Request",
+        message: "Ticket amount must be a whole number of at least 1",
+      });
+    }
+
     const id = crypto.randomUUID();
     const [maxOrderRows] = await sequelize.query(
       "SELECT COALESCE(MAX(display_order), 0) AS max_order FROM ticket_types WHERE event_id = ?;",
@@ -448,7 +483,22 @@ async function createTicketType(req, res) {
     );
 
     const [createdRows] = await sequelize.query(
-      "SELECT id, event_id, name, price, description, quantity, display_order, created_at, updated_at FROM ticket_types WHERE id = ? LIMIT 1;",
+      `
+      SELECT
+        tt.id,
+        tt.event_id,
+        tt.name,
+        tt.price,
+        tt.description,
+        tt.quantity,
+        tt.display_order,
+        tt.created_at,
+        tt.updated_at,
+        0 AS sold_count
+      FROM ticket_types tt
+      WHERE tt.id = ?
+      LIMIT 1;
+      `,
       { replacements: [id] }
     );
 
@@ -499,6 +549,34 @@ async function updateTicketType(req, res) {
       });
     }
 
+    if (
+      quantity != null &&
+      (!Number.isFinite(quantity) || !Number.isInteger(quantity) || quantity < 1)
+    ) {
+      return res.status(400).json({
+        error: "Bad Request",
+        message: "Ticket amount must be a whole number of at least 1",
+      });
+    }
+
+    if (quantity != null) {
+      const [soldRows] = await sequelize.query(
+        `
+        SELECT COUNT(*) AS sold_count
+        FROM tickets
+        WHERE tier_id = ? AND event_id = ?;
+        `,
+        { replacements: [ticketId, eventId] }
+      );
+      const soldCount = Number(soldRows[0]?.sold_count || 0);
+      if (quantity < soldCount) {
+        return res.status(400).json({
+          error: "Bad Request",
+          message: `Ticket amount cannot be less than already sold tickets (${soldCount})`,
+        });
+      }
+    }
+
     await sequelize.query(
       `UPDATE ticket_types
        SET name = ?, price = ?, description = ?, quantity = ?, updated_at = NOW()
@@ -516,7 +594,27 @@ async function updateTicketType(req, res) {
     );
 
     const [updatedRows] = await sequelize.query(
-      "SELECT id, event_id, name, price, description, quantity, display_order, created_at, updated_at FROM ticket_types WHERE id = ? LIMIT 1;",
+      `
+      SELECT
+        tt.id,
+        tt.event_id,
+        tt.name,
+        tt.price,
+        tt.description,
+        tt.quantity,
+        tt.display_order,
+        tt.created_at,
+        tt.updated_at,
+        (
+          SELECT COUNT(*)
+          FROM tickets tk
+          WHERE tk.tier_id = tt.id
+            AND tk.event_id = tt.event_id
+        ) AS sold_count
+      FROM ticket_types tt
+      WHERE tt.id = ?
+      LIMIT 1;
+      `,
       { replacements: [ticketId] }
     );
 

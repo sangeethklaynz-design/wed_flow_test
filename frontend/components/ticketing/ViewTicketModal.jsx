@@ -76,9 +76,23 @@ export default function ViewTicketModal({
           <div className="flex items-start gap-3">
             <Layers className="w-4 h-4 text-muted mt-0.5 shrink-0" />
             <div>
-              <p className="text-xs font-semibold text-muted uppercase">Available Quantity</p>
+              <p className="text-xs font-semibold text-muted uppercase">Ticket amount</p>
               <p className="text-sm font-medium text-navy mt-0.5">
                 {ticket.quantity != null ? `${ticket.quantity} tickets` : "Unlimited"}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <Layers className="w-4 h-4 text-muted mt-0.5 shrink-0" />
+            <div>
+              <p className="text-xs font-semibold text-muted uppercase">Remaining</p>
+              <p className="text-sm font-medium text-navy mt-0.5">
+                {ticket.remaining != null
+                  ? `${ticket.remaining} tickets`
+                  : ticket.quantity == null
+                    ? "Unlimited"
+                    : `${Math.max(0, Number(ticket.quantity) - Number(ticket.soldCount || 0))} tickets`}
               </p>
             </div>
           </div>

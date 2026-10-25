@@ -88,6 +88,13 @@ async function retrieveAccount(stripeAccountId) {
   return stripe.accounts.retrieve(stripeAccountId);
 }
 
+function computeApplicationFeeAmount(totalMajor, currency) {
+  const pct = Number(env.PLATFORM_FEE_PERCENT) || 0;
+  if (pct <= 0) return 0;
+  const totalMinor = toStripeAmount(totalMajor, currency);
+  return Math.round((totalMinor * pct) / 100);
+}
+
 async function createCheckoutSessionForOrder({
   order,
   connectedAccountId,
@@ -96,8 +103,28 @@ async function createCheckoutSessionForOrder({
   const stripe = getStripe();
   const base = getPublicBaseUrl();
   const currency = String(order.currency || "usd").toLowerCase();
+  const amountTotal = Number(order.amount_total) || 0;
+  const applicationFeeAmount = computeApplicationFeeAmount(
+    amountTotal,
+    currency
+  );
+
+  const paymentIntentData = {
+    transfer_data: {
+      destination: connectedAccountId,
+    },
+    metadata: {
+      orderId: order.id,
+      eventId: order.event_id,
+    },
+  };
+  if (applicationFeeAmount > 0) {
+    paymentIntentData.application_fee_amount = applicationFeeAmount;
+  }
+
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
+    // Omit payment_method_types so Stripe can offer Google Pay when enabled
     success_url: `${base}/payments/ticket-success?orderId=${encodeURIComponent(order.id)}&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${base}/payments/ticket-cancel?orderId=${encodeURIComponent(order.id)}`,
     client_reference_id: order.id,
@@ -115,17 +142,62 @@ async function createCheckoutSessionForOrder({
         },
       },
     })),
-    payment_intent_data: {
-      transfer_data: {
-        destination: connectedAccountId,
-      },
-      metadata: {
-        orderId: order.id,
-        eventId: order.event_id,
-      },
-    },
+    payment_intent_data: paymentIntentData,
   });
   return session;
+}
+
+/**
+ * Charge a Stripe PaymentMethod (e.g. from Google Pay via Stripe.js) and
+ * route funds to the merchant Connect account with optional platform fee.
+ */
+async function createMarketplacePaymentIntent({
+  order,
+  connectedAccountId,
+  paymentMethodId,
+}) {
+  const stripe = getStripe();
+  const currency = String(order.currency || "usd").toLowerCase();
+  const amountTotal = Number(order.amount_total);
+  if (!Number.isFinite(amountTotal) || amountTotal < 0) {
+    throw new Error("Invalid order amount_total");
+  }
+  if (!paymentMethodId) {
+    const err = new Error("paymentMethodId is required");
+    err.code = "PAYMENT_METHOD_REQUIRED";
+    throw err;
+  }
+  if (!connectedAccountId) {
+    const err = new Error("connectedAccountId is required");
+    err.code = "CONNECT_ACCOUNT_REQUIRED";
+    throw err;
+  }
+
+  const amount = toStripeAmount(amountTotal, currency);
+  const applicationFeeAmount = computeApplicationFeeAmount(
+    amountTotal,
+    currency
+  );
+
+  const params = {
+    amount,
+    currency,
+    payment_method: paymentMethodId,
+    confirm: true,
+    off_session: false,
+    transfer_data: {
+      destination: connectedAccountId,
+    },
+    metadata: {
+      orderId: order.id,
+      eventId: order.event_id,
+    },
+  };
+  if (applicationFeeAmount > 0) {
+    params.application_fee_amount = applicationFeeAmount;
+  }
+
+  return stripe.paymentIntents.create(params);
 }
 
 function constructWebhookEvent(rawBody, signature) {
@@ -146,10 +218,12 @@ module.exports = {
   getStripe,
   getPublicBaseUrl,
   toStripeAmount,
+  computeApplicationFeeAmount,
   mapPaymentStatus,
   createConnectedAccount,
   createAccountOnboardingLink,
   retrieveAccount,
   createCheckoutSessionForOrder,
+  createMarketplacePaymentIntent,
   constructWebhookEvent,
 };

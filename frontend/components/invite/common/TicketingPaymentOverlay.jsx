@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
+import { isPaymentsLive } from "@/lib/paymentsLive";
+import { apiRequest } from "@/lib/api";
 
 export function TicketingPaymentOverlay({
   isOpen,
@@ -10,8 +12,14 @@ export function TicketingPaymentOverlay({
   bookingData = {},
   eventMeta = {},
   theme = "corporate",
+  /** When PAYMENTS_LIVE: guest invite token for ticket-checkout */
+  guestToken = "",
+  /** When PAYMENTS_LIVE: existing pending order id (optional) */
+  orderId = "",
 }) {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [payError, setPayError] = useState("");
+  const paymentsLive = isPaymentsLive();
 
   if (!isOpen) return null;
 
@@ -68,14 +76,154 @@ export function TicketingPaymentOverlay({
           },
         ];
 
-  const handlePay = () => {
+  const resolveCheckoutItems = () =>
+    (bookingData.selectedTickets || [])
+      .filter((t) => Number(t.quantity) > 0)
+      .map((t) => ({
+        tierId: t.id || t.tierId || t.ticketTypeId,
+        quantity: Number(t.quantity) || 1,
+      }));
+
+  const handlePayMock = async () => {
+    setPayError("");
     setIsProcessing(true);
-    setTimeout(() => {
-      setIsProcessing(false);
-      if (onPaySuccess) {
-        onPaySuccess();
+    try {
+      const token = String(guestToken || bookingData?.guestToken || "").trim();
+      if (!token) {
+        throw new Error("Missing guest invitation token for ticket payment");
       }
-    }, 600);
+
+      let resolvedOrderId = String(
+        orderId || bookingData?.orderId || ""
+      ).trim();
+
+      if (!resolvedOrderId) {
+        const items = resolveCheckoutItems();
+        if (!items.length) {
+          throw new Error("No tickets selected");
+        }
+        const checkout = await apiRequest(
+          `/api/public/invite/${encodeURIComponent(token)}/ticket-checkout`,
+          {
+            method: "POST",
+            body: {
+              items,
+              buyerName:
+                bookingData.fullName ||
+                `${bookingData.firstName || ""} ${bookingData.lastName || ""}`.trim() ||
+                undefined,
+              buyerContact:
+                bookingData.mobileNumber ||
+                bookingData.phone ||
+                bookingData.whatsappNumber ||
+                undefined,
+            },
+          }
+        );
+        resolvedOrderId = checkout?.orderId || checkout?.order?.orderId || "";
+        if (!resolvedOrderId) {
+          throw new Error("Could not reserve tickets");
+        }
+      }
+
+      const paid = await apiRequest(
+        `/api/public/invite/${encodeURIComponent(token)}/ticket-orders/${encodeURIComponent(resolvedOrderId)}/demo-complete`,
+        { method: "POST", body: {} }
+      );
+
+      if (onPaySuccess) {
+        onPaySuccess({
+          ...paid,
+          orderId: paid?.orderId || resolvedOrderId,
+          expiresAt: bookingData?.expiresAt || paid?.order?.expiresAt,
+          tickets: paid?.tickets || [],
+          guestName: paid?.guestName || bookingData?.fullName,
+          selectedTickets: bookingData.selectedTickets,
+          fullName: paid?.guestName || bookingData?.fullName,
+        });
+      }
+    } catch (err) {
+      setPayError(err?.message || "Demo payment failed");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  /**
+   * Future live path (PAYMENTS_LIVE=true):
+   * 1) Ensure ticket order exists (checkout)
+   * 2) Prefer Stripe Checkout redirect (Google Pay on hosted page), or
+   *    POST /checkout/marketplace-pay with a Stripe PaymentMethod from Google Pay.
+   * Until Stripe.js + Google Pay button are wired, falls back to Checkout redirect.
+   */
+  const handlePayLive = async () => {
+    setPayError("");
+    setIsProcessing(true);
+    try {
+      let resolvedOrderId = String(orderId || bookingData?.orderId || "").trim();
+
+      if (!resolvedOrderId && guestToken) {
+        const items = (bookingData.selectedTickets || [])
+          .filter((t) => Number(t.quantity) > 0)
+          .map((t) => ({
+            tierId: t.id || t.tierId,
+            quantity: Number(t.quantity) || 1,
+          }));
+        if (!items.length) {
+          throw new Error("No tickets selected");
+        }
+        const checkout = await apiRequest(
+          `/api/public/invite/${encodeURIComponent(guestToken)}/ticket-checkout`,
+          {
+            method: "POST",
+            body: {
+              items,
+              buyerName: bookingData.fullName || undefined,
+              buyerContact: bookingData.mobileNumber || bookingData.phone || undefined,
+            },
+          }
+        );
+        resolvedOrderId = checkout?.orderId || checkout?.order?.id;
+      }
+
+      if (!resolvedOrderId) {
+        throw new Error(
+          "Missing orderId. Live Google Pay requires a ticket order before pay."
+        );
+      }
+
+      const pay = await apiRequest(
+        `/api/public/ticket-orders/${encodeURIComponent(resolvedOrderId)}/pay`,
+        { method: "POST", body: {} }
+      );
+
+      if (pay?.alreadyPaid) {
+        if (onPaySuccess) onPaySuccess(pay);
+        return;
+      }
+
+      if (pay?.redirectUrl && typeof window !== "undefined") {
+        window.location.href = pay.redirectUrl;
+        return;
+      }
+
+      throw new Error(
+        pay?.message ||
+          "Live checkout did not return a redirect URL. Ensure merchant Connect is complete."
+      );
+    } catch (err) {
+      setPayError(err?.message || "Payment failed");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handlePay = () => {
+    if (paymentsLive) {
+      handlePayLive();
+    } else {
+      handlePayMock();
+    }
   };
 
   return (
@@ -247,6 +395,24 @@ export function TicketingPaymentOverlay({
 
         {/* Middle/Bottom Payment Action */}
         <div className="w-full flex flex-col items-center mt-5">
+          {!paymentsLive ? (
+            <p className="w-full text-[11px] text-[#64748B] text-center mb-2 leading-snug">
+              Demo payment — tickets are reserved for 1 hour. Completing payment
+              issues unique QR tickets immediately.
+              {bookingData?.expiresAt ? (
+                <>
+                  {" "}
+                  Hold expires:{" "}
+                  {new Date(bookingData.expiresAt).toLocaleString()}.
+                </>
+              ) : null}
+            </p>
+          ) : null}
+          {payError ? (
+            <p className="w-full text-[12px] text-red-600 text-center mb-2">
+              {payError}
+            </p>
+          ) : null}
           {/* Google Pay Button */}
           <button
             type="button"

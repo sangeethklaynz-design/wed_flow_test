@@ -47,9 +47,158 @@ function mapOrderRow(row) {
     amountTotal: Number(row.amount_total),
     currency: row.currency || "LKR",
     stripeCheckoutSessionId: row.stripe_checkout_session_id || null,
+    expiresAt: row.expires_at || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+const RESERVATION_HOURS = 1;
+
+function formatTicketQrText({ guestName, tierName, ticketCode }) {
+  return [
+    `Guest: ${String(guestName || "Guest").trim() || "Guest"}`,
+    `Ticket type: ${String(tierName || "Ticket").trim() || "Ticket"}`,
+    `Ticket ID: ${String(ticketCode || "").trim()}`,
+  ].join("\n");
+}
+
+function parseTicketIdFromScan(raw) {
+  const text = String(raw || "").trim();
+  if (!text) return "";
+  const idLine = text.match(/Ticket\s*ID\s*:\s*(.+)/i);
+  if (idLine?.[1]) return String(idLine[1]).trim();
+  // Raw ticket code pasted/scanned alone
+  if (/^tkt_[a-zA-Z0-9]+$/i.test(text) || /^[a-zA-Z0-9_-]{8,}$/.test(text)) {
+    return text;
+  }
+  return text;
+}
+
+/**
+ * Expire stale pending orders and restore guest status when appropriate.
+ */
+async function expireStalePendingOrders({ eventId, guestId, transaction } = {}) {
+  const replacements = [];
+  let where = `payment_status = 'pending' AND expires_at IS NOT NULL AND expires_at < NOW()`;
+  if (eventId) {
+    where += ` AND event_id = ?`;
+    replacements.push(eventId);
+  }
+  if (guestId) {
+    where += ` AND guest_id = ?`;
+    replacements.push(guestId);
+  }
+
+  const [expired] = await sequelize.query(
+    `SELECT id, guest_id, event_id FROM ticket_orders WHERE ${where};`,
+    { replacements, transaction }
+  );
+
+  if (!expired.length) return [];
+
+  await sequelize.query(
+    `
+    UPDATE ticket_orders
+    SET payment_status = 'expired', updated_at = NOW()
+    WHERE ${where};
+    `,
+    { replacements, transaction }
+  );
+
+  const guestIds = [
+    ...new Set(expired.map((r) => r.guest_id).filter(Boolean)),
+  ];
+  for (const gid of guestIds) {
+    const [open] = await sequelize.query(
+      `
+      SELECT id FROM ticket_orders
+      WHERE guest_id = ?
+        AND payment_status = 'pending'
+        AND (expires_at IS NULL OR expires_at >= NOW())
+      LIMIT 1;
+      `,
+      { replacements: [gid], transaction }
+    );
+    if (open[0]) continue;
+
+    const [paid] = await sequelize.query(
+      `
+      SELECT id FROM tickets
+      WHERE guest_id = ? AND status = 'valid'
+      LIMIT 1;
+      `,
+      { replacements: [gid], transaction }
+    );
+    if (paid[0]) continue;
+
+    await sequelize.query(
+      `
+      UPDATE guests
+      SET rsvp_status = 'REGISTERED',
+          payment_due_at = NULL
+      WHERE id = ? AND rsvp_status = 'PAYMENT_PENDING';
+      `,
+      { replacements: [gid], transaction }
+    );
+  }
+
+  return expired;
+}
+
+async function countSoldForTier(eventId, tierId, { transaction } = {}) {
+  const [rows] = await sequelize.query(
+    `
+    SELECT COUNT(*) AS c
+    FROM tickets
+    WHERE event_id = ? AND tier_id = ?;
+    `,
+    { replacements: [eventId, tierId], transaction }
+  );
+  return Number(rows[0]?.c || 0);
+}
+
+async function countHeldForTier(eventId, tierId, { transaction } = {}) {
+  const [rows] = await sequelize.query(
+    `
+    SELECT checkout_items
+    FROM ticket_orders
+    WHERE event_id = ?
+      AND payment_status = 'pending'
+      AND (expires_at IS NULL OR expires_at >= NOW());
+    `,
+    { replacements: [eventId], transaction }
+  );
+  let held = 0;
+  for (const row of rows) {
+    const items = parseCheckoutItems(row.checkout_items);
+    if (!Array.isArray(items)) continue;
+    for (const item of items) {
+      if (String(item.tierId) === String(tierId)) {
+        held += Number(item.quantity) || 0;
+      }
+    }
+  }
+  return held;
+}
+
+async function assertInventoryAvailable(
+  eventId,
+  tier,
+  quantity,
+  { transaction } = {}
+) {
+  if (tier.quantity == null || Number.isNaN(Number(tier.quantity))) {
+    return null;
+  }
+  const cap = Number(tier.quantity);
+  const sold = await countSoldForTier(eventId, tier.id, { transaction });
+  const held = await countHeldForTier(eventId, tier.id, { transaction });
+  const remaining = Math.max(0, cap - sold - held);
+  if (quantity > remaining) {
+    return `Only ${remaining} ticket(s) remaining for ${tier.name}`;
+  }
+  return null;
 }
 
 function mapFinanceTicketRow(row) {
@@ -465,4 +614,11 @@ module.exports = {
   parseCheckoutItems,
   loadTicketsForOrder,
   issueTicketsForPaidOrder,
+  RESERVATION_HOURS,
+  formatTicketQrText,
+  parseTicketIdFromScan,
+  expireStalePendingOrders,
+  countSoldForTier,
+  countHeldForTier,
+  assertInventoryAvailable,
 };

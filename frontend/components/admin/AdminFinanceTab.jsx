@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Bell, Eye, Search } from "lucide-react";
+import { Bell, Eye, QrCode, Search } from "lucide-react";
 import { NotificationBell } from "@/components/ui/NotificationPanel";
 import RowActionsMenu from "@/components/ui/RowActionsMenu";
 import AdminFinanceDetailModal from "@/components/admin/AdminFinanceDetailModal";
+import AdminTicketScanModal from "@/components/admin/AdminTicketScanModal";
 import { apiRequest } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
 
@@ -49,6 +50,10 @@ export default function AdminFinanceTab({ hideNotificationBell = false }) {
   const [openMenuId, setOpenMenuId] = useState(null);
   const [detailTicket, setDetailTicket] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [events, setEvents] = useState([]);
+  const [scanOpen, setScanOpen] = useState(false);
+  const [scanEventId, setScanEventId] = useState("");
+  const [scanInitial, setScanInitial] = useState("");
 
   const loadMeta = useCallback(async () => {
     const token = getAccessToken();
@@ -56,6 +61,7 @@ export default function AdminFinanceTab({ hideNotificationBell = false }) {
     try {
       const data = await apiRequest("/api/admin/finances/meta", { token });
       setVendors(data.vendors || []);
+      setEvents(data.events || []);
     } catch (err) {
       setError(err.message || "Failed to load merchants");
     }
@@ -123,13 +129,27 @@ export default function AdminFinanceTab({ hideNotificationBell = false }) {
     }
   };
 
+  const openScan = (row = null) => {
+    setScanEventId(row?.eventId || "");
+    setScanInitial(row?.ticketCode || "");
+    setScanOpen(true);
+  };
+
   return (
     <div className="w-full flex flex-col gap-6 md:gap-8">
-      <section className="w-full min-h-[78px] bg-white rounded-[20px] px-6 md:px-8 py-3.5 flex items-center justify-between border border-[#E2E8F0]/70 shadow-sm">
+      <section className="w-full min-h-[78px] bg-white rounded-[20px] px-6 md:px-8 py-3.5 flex items-center justify-between border border-[#E2E8F0]/70 shadow-sm gap-3">
         <h1 className="font-serif font-bold text-[24px] md:text-[28px] text-[#0A2569] leading-tight tracking-[-0.01em]">
           Finance
         </h1>
-        <div className="flex items-center">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => openScan()}
+            className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-[#0A2569] text-white text-sm font-medium hover:bg-[#0A2569]/90 transition-colors"
+          >
+            <QrCode className="w-4 h-4" strokeWidth={2} />
+            Scan ticket
+          </button>
           {!hideNotificationBell ? (
             <NotificationBell />
           ) : (
@@ -320,6 +340,11 @@ export default function AdminFinanceTab({ hideNotificationBell = false }) {
                                 icon: Eye,
                                 onClick: () => handleViewDetail(row),
                               },
+                              {
+                                label: "Scan / invalidate",
+                                icon: QrCode,
+                                onClick: () => openScan(row),
+                              },
                             ]}
                           />
                         </div>
@@ -337,6 +362,15 @@ export default function AdminFinanceTab({ hideNotificationBell = false }) {
         open={Boolean(detailTicket)}
         ticket={detailTicket}
         onClose={() => setDetailTicket(null)}
+      />
+
+      <AdminTicketScanModal
+        open={scanOpen}
+        onClose={() => setScanOpen(false)}
+        eventId={scanEventId}
+        initialScan={scanInitial}
+        events={events.filter((e) => e.ticketingEnabled)}
+        onScanned={() => loadFinances()}
       />
     </div>
   );

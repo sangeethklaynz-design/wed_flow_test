@@ -231,6 +231,9 @@ export default function AdminGuestsPage() {
                   Event
                 </th>
                 <th className="px-6 py-4 text-xs font-medium text-muted uppercase tracking-wide text-center">
+                  Status
+                </th>
+                <th className="px-6 py-4 text-xs font-medium text-muted uppercase tracking-wide text-center">
                   Tickets Bought
                 </th>
                 <th className="px-6 py-4 text-xs font-medium text-muted uppercase tracking-wide text-center">
@@ -241,13 +244,13 @@ export default function AdminGuestsPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-sm text-muted text-center">
+                  <td colSpan={6} className="px-6 py-12 text-sm text-muted text-center">
                     Loading guests…
                   </td>
                 </tr>
               ) : guests.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-sm text-muted text-center">
+                  <td colSpan={6} className="px-6 py-12 text-sm text-muted text-center">
                     No guests match these filters.
                   </td>
                 </tr>
@@ -265,6 +268,11 @@ export default function AdminGuestsPage() {
                     </td>
                     <td className="px-6 py-4 text-center text-sm text-navy">
                       {guest.eventName || "—"}
+                    </td>
+                    <td className="px-6 py-4 text-center text-sm text-navy font-medium">
+                      {guest.statusLabel ||
+                        guest.status ||
+                        "—"}
                     </td>
                     <td className="px-6 py-4 text-center text-sm text-navy font-medium">
                       {guest.isTicketingEnabled || guest.ticketCount > 0

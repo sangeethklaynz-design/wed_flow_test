@@ -24,6 +24,7 @@ wedflow_phase2/
 | [deploy-backend.md](./deploy-backend.md) | Local + Railway (or similar) deploy for the Express API / MySQL |
 | [creating-event-templates.md](./creating-event-templates.md) | Add wedding / corporate / party invitation templates (manifest + chrome + React) |
 | [couples-scripts-and-media.md](./couples-scripts-and-media.md) | Admin-first client provisioning; legacy couple scripts / slug media |
+| [marketplace-payments-google-pay.md](./marketplace-payments-google-pay.md) | **Scaffolded / offline:** Google Pay + Stripe Connect marketplace split; enable later via `PAYMENTS_LIVE` |
 
 ## Quick mental model
 

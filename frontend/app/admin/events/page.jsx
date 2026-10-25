@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
 import AddEventModal from "@/components/admin/AddEventModal";
+import AddMerchantModal from "@/components/admin/AddMerchantModal";
 import EventsTable from "@/components/admin/EventsTable";
 import ViewEventModal from "@/components/admin/ViewEventModal";
 import TemplateEventModal from "@/components/admin/TemplateEventModal";
@@ -137,6 +138,7 @@ export default function AdminEventsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [addOpen, setAddOpen] = useState(false);
+  const [addMerchantOpen, setAddMerchantOpen] = useState(false);
   const [viewEvent, setViewEvent] = useState(null);
   const [editEvent, setEditEvent] = useState(null);
   const [templateEvent, setTemplateEvent] = useState(null);
@@ -265,6 +267,16 @@ export default function AdminEventsPage() {
     }
   };
 
+  const handleAddMerchant = async (payload) => {
+    const token = getAccessToken();
+    if (!token) throw new Error("Not authenticated");
+    return apiRequest("/api/admin/organizations", {
+      method: "POST",
+      token,
+      body: payload,
+    });
+  };
+
   return (
     <div className="p-6 md:p-8 lg:p-12 w-full min-w-0">
       <div className="md:hidden mb-6">
@@ -323,6 +335,15 @@ export default function AdminEventsPage() {
 
             <button
               type="button"
+              onClick={() => setAddMerchantOpen(true)}
+              className="hidden md:inline-flex items-center gap-2 bg-navy text-white font-medium px-4 py-2.5 rounded-xl hover:bg-navy/90 transition-colors whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-[#054380]"
+            >
+              <Plus className="w-4 h-4" strokeWidth={2.5} />
+              Add merchant
+            </button>
+
+            <button
+              type="button"
               onClick={() => setAddOpen(true)}
               aria-label="Add event"
               className="w-11 h-11 rounded-full bg-navy text-white flex items-center justify-center hover:bg-navy/90 transition-colors shadow-sm md:hidden focus:outline-none focus:ring-2 focus:ring-[#054380]"
@@ -339,6 +360,17 @@ export default function AdminEventsPage() {
               Add event
             </button>
           </div>
+        </div>
+
+        <div className="mt-3 md:hidden">
+          <button
+            type="button"
+            onClick={() => setAddMerchantOpen(true)}
+            className="w-full inline-flex items-center justify-center gap-2 bg-navy text-white font-medium px-4 py-2.5 rounded-xl hover:bg-navy/90 transition-colors focus:outline-none focus:ring-2 focus:ring-[#054380]"
+          >
+            <Plus className="w-4 h-4" strokeWidth={2.5} />
+            Add merchant
+          </button>
         </div>
       </div>
 
@@ -459,6 +491,12 @@ export default function AdminEventsPage() {
         onClose={() => setAddOpen(false)}
         onSubmit={handleSave}
         mode="add"
+      />
+
+      <AddMerchantModal
+        open={addMerchantOpen}
+        onClose={() => setAddMerchantOpen(false)}
+        onSubmit={handleAddMerchant}
       />
 
       <AddEventModal

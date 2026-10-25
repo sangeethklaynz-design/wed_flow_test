@@ -4,4 +4,4 @@ Express + MySQL API. Static media: legacy `/assets/*` and event packs/chrome at 
 
 **Setup guide:** [../guide files/local-setup-backend-db.md](../guide%20files/local-setup-backend-db.md)
 
-Also: [deploy-backend.md](../guide%20files/deploy-backend.md) · [creating-event-templates.md](../guide%20files/creating-event-templates.md)
+Also: [deploy-backend.md](../guide%20files/deploy-backend.md) · [creating-event-templates.md](../guide%20files/creating-event-templates.md) · [marketplace-payments-google-pay.md](../guide%20files/marketplace-payments-google-pay.md) (Google Pay + Stripe Connect — **disabled by default**)

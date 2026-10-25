@@ -197,14 +197,14 @@ async function submitPublicEventRsvp(req, res) {
         : String(req.body.wishes).trim() || null;
 
     const ticketingOn = isEventTicketingEnabled(event);
-    const setPaymentDue =
-      ticketingOn && attendingStatus === "ATTENDING";
-
     const guestId = crypto.randomUUID();
     const rsvpId = crypto.randomUUID();
     const uniqueToken = `token_${crypto.randomUUID().replace(/-/g, "")}`;
-    const guestRsvpStatus =
-      attendingStatus === "ATTENDING" ? "CONFIRMED" : "DECLINED";
+    // Attending + ticketing → REGISTERED until payment; non-ticketing attending → CONFIRMED
+    let guestRsvpStatus = "DECLINED";
+    if (attendingStatus === "ATTENDING") {
+      guestRsvpStatus = ticketingOn ? "REGISTERED" : "CONFIRMED";
+    }
 
     await sequelize.query(
       `
@@ -216,7 +216,7 @@ async function submitPublicEventRsvp(req, res) {
         ?, ?, ?, ?,
         ?, ?, ?, ?, ?, 'you',
         ?, 'public', ?,
-        ${setPaymentDue ? "DATE_ADD(NOW(), INTERVAL 1 HOUR)" : "NULL"},
+        NULL,
         NOW()
       );
       `,
@@ -279,10 +279,13 @@ async function submitPublicEventRsvp(req, res) {
     };
     response.guestToken = uniqueToken;
     response.message = "RSVP saved";
+    response.redirectToTicketing =
+      attendingStatus === "ATTENDING" && ticketingOn;
     response.guest = {
       ...mapGuestTemplateBlock(guestRow),
       paymentDueAt: guestRow?.payment_due_at || null,
       isPublicRegistration: true,
+      rsvpStatus: guestRsvpStatus,
     };
 
     return res.status(201).json(response);
