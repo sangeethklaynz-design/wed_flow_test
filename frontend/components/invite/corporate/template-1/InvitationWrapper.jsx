@@ -178,19 +178,34 @@ export function CorporatePagePreview({
   }
 
   if (pageId === 'ticketing') {
-    const ticketTypes =
-      templateData?.ticketTypes ||
-      templateData?.static?.ticketTypes ||
-      templateData?.event?.tickets ||
-      templateData?.static?.event?.tickets ||
-      [];
     return (
-      <div {...frameProps} style={{ ...frameProps.style, backgroundColor: '#FFFFFF' }}>
-        <TicketingSelectionPage
-          ticketTypes={ticketTypes}
+      <div {...frameProps} style={{ ...frameProps.style, backgroundColor: '#020A24', height: 'auto', minHeight: 844 }}>
+        <TicketQrOverlay
+          isOpen={true}
+          embedded={true}
           theme="corporate"
-          onProceedToPayment={() => {}}
-          onScrollNext={() => {}}
+          fields={fields}
+          eventName={fields?.ticketEventTitle || templateData?.event?.name || 'Auto Test Event 06'}
+          eventDescription={fields?.ticketSubtitle || templateData?.event?.subtitle || 'AN EVENING CELEBRATION, NETWORKING, & ENTERTAINMENT.'}
+          eventDate={fields?.ticketDateLabel || templateData?.event?.eventDate || '12 November 2026'}
+          eventTime={fields?.ticketTimeLabel || '6:00 PM Onwards'}
+          eventVenue={fields?.ticketVenueName ? `${fields.ticketVenueName}, ${fields.ticketVenueCity || 'Colombo'}` : (templateData?.event?.location || 'Colombo Grand Ballroom, Colombo')}
+          attendeeName="Kavindu Perera"
+          ticketId="LN2026-0001-1"
+          paymentReference="LN2026-0001"
+          bookingDateTime="21 Oct 2026, 03:14 PM"
+          paymentMethod="Google Pay"
+          tickets={[
+            {
+              id: 'LN2026-0001-1',
+              typeName: fields?.ticketCategory || 'VIP',
+              name: fields?.ticketCategory || 'VIP',
+              price: fields?.ticketPrice ? Number(String(fields.ticketPrice).replace(/[^0-9.]/g, '')) : 2000,
+              quantity: 1,
+              seatNo: fields?.ticketSeatLabel || 'GENERAL ADMISSION',
+              attendeeName: 'Kavindu Perera',
+            },
+          ]}
         />
       </div>
     );
@@ -304,6 +319,7 @@ function CorporateInvitationFull({
   const [hasSubmittedRsvp, setHasSubmittedRsvp] = useState(() =>
     guestAlreadyRsvped(templateData)
   );
+  const [isEditingAttendee, setIsEditingAttendee] = useState(false);
   const [rsvpData, setRsvpData] = useState(() => {
     const guestRsvp = guest?.rsvp;
     if (guestRsvp && (guestRsvp.hasSubmitted || guestAlreadyRsvped(templateData))) {
@@ -586,6 +602,7 @@ function CorporateInvitationFull({
     if (issuedToken) {
       setActiveGuestToken(issuedToken);
     }
+    setIsEditingAttendee(false);
     if (!interactive) return;
     if (typeof onRsvpSuccessProp === 'function') {
       onRsvpSuccessProp(answers);
@@ -654,6 +671,46 @@ function CorporateInvitationFull({
         }
       }
     }, 50);
+  };
+
+  const handleEditAttendeeFromPayment = () => {
+    setIsTicketingPaymentOpen(false);
+    setIsTicketingOpen(false);
+    setIsPaymentSuccessOpen(false);
+    setIsTicketOpen(false);
+    setIsEditingAttendee(true);
+    setHash('#rsvp');
+    setTimeout(() => {
+      const rsvpTarget =
+        document.querySelector('[data-invite-page="rsvp"]') ||
+        document.getElementById('page-6') ||
+        document.getElementById('page-3');
+      if (rsvpTarget) {
+        if (embedded && containerRef.current) {
+          containerRef.current.scrollTo({
+            top: rsvpTarget.offsetTop,
+            behavior: 'smooth',
+          });
+        } else if (typeof window !== 'undefined') {
+          rsvpTarget.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+    }, 60);
+  };
+
+  const handleOpenTicketingSelection = () => {
+    setIsConfirmationOpen(false);
+    setIsPaymentSuccessOpen(false);
+    setIsTicketOpen(false);
+    setIsTicketingPaymentOpen(false);
+    setIsTicketingOpen(true);
+    setHash('#ticketing');
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+    if (containerRef.current) {
+      containerRef.current.scrollTo({ top: 0, behavior: 'instant' });
+    }
   };
 
   const handleProceedToTicketingPayment = async (data) => {
@@ -738,6 +795,29 @@ function CorporateInvitationFull({
     }
   };
 
+  const handleUpdateTicketingBookingData = (updatedData) => {
+    if (!updatedData) return;
+    setTicketingBookingData((prev) => {
+      const merged = { ...(prev || {}), ...updatedData };
+      const attendeeName =
+        merged.fullName ||
+        `${merged.firstName || ''}`.trim() + (merged.lastName ? ` ${merged.lastName}` : '') ||
+        'Kavindu Perera';
+      if (Array.isArray(merged.individualTickets)) {
+        merged.individualTickets = merged.individualTickets.map((t) => ({
+          ...t,
+          attendeeName,
+          firstName: merged.firstName,
+          lastName: merged.lastName,
+          email: merged.email || merged.emailAddress,
+          mobileNumber: merged.mobileNumber || merged.phone,
+          nic: merged.nic || merged.nicNumber,
+        }));
+      }
+      return merged;
+    });
+  };
+
   const handleTicketingPaymentSuccess = (payResult = {}) => {
     const guestName =
       payResult.guestName ||
@@ -755,7 +835,17 @@ function CorporateInvitationFull({
       guestName,
       orderId: payResult.orderId || ticketingBookingData?.orderId,
       bookingRef: payResult.orderId || ticketingBookingData?.bookingRef,
-      individualTickets,
+      individualTickets: individualTickets.length
+        ? individualTickets
+        : (ticketingBookingData?.individualTickets || []).map((t) => ({
+            ...t,
+            attendeeName: guestName,
+            firstName: payResult.firstName || ticketingBookingData?.firstName,
+            lastName: payResult.lastName || ticketingBookingData?.lastName,
+            email: payResult.email || ticketingBookingData?.email,
+            mobileNumber: payResult.mobileNumber || ticketingBookingData?.mobileNumber,
+            nic: payResult.nic || ticketingBookingData?.nic,
+          })),
       selectedTickets:
         payResult.selectedTickets || ticketingBookingData?.selectedTickets,
       totalAmount:
@@ -895,7 +985,7 @@ function CorporateInvitationFull({
       templateData?.static?.event?.isTicketingEnabled
     );
 
-    if (pageId === 'rsvp' && hasSubmittedRsvp) {
+    if (pageId === 'rsvp' && hasSubmittedRsvp && !isEditingAttendee) {
       return (
         <RsvpChangeRequestPage
           key="rsvp-change"
@@ -905,6 +995,7 @@ function CorporateInvitationFull({
           hasPurchasedTickets={Boolean(ticketingBookingData?.individualTickets?.length || ticketingBookingData?.totalAmount)}
           purchasedBookingData={ticketingBookingData}
           onViewPurchasedTickets={handleOpenTicket}
+          onPurchaseMoreTickets={handleOpenTicketingSelection}
         />
       );
     }
@@ -928,6 +1019,9 @@ function CorporateInvitationFull({
         <Page
           key={pageId}
           fields={fields}
+          guest={guest}
+          rsvpData={rsvpData}
+          initialValues={rsvpData}
           guestToken={guestToken}
           publicEventToken={publicEventToken}
           maxGuests={isPublicReg ? Math.max(maxGuests, 10) : maxGuests}
@@ -1060,7 +1154,9 @@ function CorporateInvitationFull({
             }}
           >
             <TicketingSelectionPage
+              fields={fields}
               ticketTypes={
+                fields?.ticketTypes ||
                 templateData?.ticketTypes ||
                 templateData?.static?.ticketTypes ||
                 templateData?.event?.tickets ||
@@ -1095,7 +1191,9 @@ function CorporateInvitationFull({
           isOpen={isTicketingPaymentOpen}
           onClose={handleCloseTicketingPayment}
           onBack={handleCloseTicketingPayment}
+          onEditAttendee={handleEditAttendeeFromPayment}
           onPaySuccess={handleTicketingPaymentSuccess}
+          onUpdateBookingData={handleUpdateTicketingBookingData}
           bookingData={ticketingBookingData || {}}
           guestToken={
             activeGuestToken ||
@@ -1119,6 +1217,14 @@ function CorporateInvitationFull({
           onViewTicket={handleOpenTicket}
           bookingData={ticketingBookingData}
           theme="corporate"
+          eventMeta={{
+            eventName: fields.ticketEventTitle || fields.eventName || templateData?.static?.event?.name || "Auto Test Event 06",
+            eventSubtitle: fields.ticketSubtitle || fields.eventDescription || templateData?.static?.event?.description,
+            eventDate: fields.ticketDateLabel || fields.eventDate || "12 November 2026",
+            eventTime: fields.ticketTimeLabel || fields.eventTime || "6:00 PM Onwards",
+            venueName: fields.ticketVenueName || location.locationName || "Colombo Grand Ballroom",
+            venueCity: fields.ticketVenueCity || "Colombo",
+          }}
         />
         <TicketQrOverlay
           isOpen={isTicketOpen}
@@ -1243,7 +1349,9 @@ function CorporateInvitationFull({
               }}
             >
               <TicketingSelectionPage
+                fields={fields}
                 ticketTypes={
+                  fields?.ticketTypes ||
                   templateData?.ticketTypes ||
                   templateData?.static?.ticketTypes ||
                   templateData?.event?.tickets ||
@@ -1278,7 +1386,9 @@ function CorporateInvitationFull({
             isOpen={isTicketingPaymentOpen}
             onClose={handleCloseTicketingPayment}
             onBack={handleCloseTicketingPayment}
+            onEditAttendee={handleEditAttendeeFromPayment}
             onPaySuccess={handleTicketingPaymentSuccess}
+            onUpdateBookingData={handleUpdateTicketingBookingData}
             bookingData={ticketingBookingData || {}}
             guestToken={
               activeGuestToken ||
@@ -1302,6 +1412,14 @@ function CorporateInvitationFull({
             onViewTicket={handleOpenTicket}
             bookingData={ticketingBookingData}
             theme="corporate"
+            eventMeta={{
+              eventName: fields.ticketEventTitle || fields.eventName || templateData?.static?.event?.name || "Auto Test Event 06",
+              eventSubtitle: fields.ticketSubtitle || fields.eventDescription || templateData?.static?.event?.description,
+              eventDate: fields.ticketDateLabel || fields.eventDate || "12 November 2026",
+              eventTime: fields.ticketTimeLabel || fields.eventTime || "6:00 PM Onwards",
+              venueName: fields.ticketVenueName || location.locationName || "Colombo Grand Ballroom",
+              venueCity: fields.ticketVenueCity || "Colombo",
+            }}
           />
           <TicketQrOverlay
             isOpen={isTicketOpen}

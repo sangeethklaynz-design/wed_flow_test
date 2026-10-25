@@ -41,6 +41,11 @@ export const PARTY_TEMPLATE_1_MANIFEST = {
       "id": "saveTheDate",
       "label": "Save the date",
       "defaultEnabled": true
+    },
+    {
+      "id": "ticketing",
+      "label": "Ticketing",
+      "defaultEnabled": true
     }
   ],
   "dynamicFields": [
@@ -405,6 +410,118 @@ export const PARTY_TEMPLATE_1_MANIFEST = {
           "icon": "dj"
         }
       ]
+    },
+    {
+      "id": "ticketEventTitle",
+      "pageId": "ticketing",
+      "type": "text",
+      "label": "Event title on ticket",
+      "defaultValue": "Annual Gala Night 2026"
+    },
+    {
+      "id": "ticketSubtitle",
+      "pageId": "ticketing",
+      "type": "text",
+      "label": "Event tagline / subtitle",
+      "defaultValue": "CELEBRATION. ELEGANCE. MEMORIES"
+    },
+    {
+      "id": "ticketHeroImage",
+      "pageId": "ticketing",
+      "type": "media",
+      "mediaKind": "images",
+      "label": "Ticket hero / venue image"
+    },
+    {
+      "id": "ticketOrgName",
+      "pageId": "ticketing",
+      "type": "text",
+      "label": "Organization badge text (over hero)",
+      "defaultValue": "GALA"
+    },
+    {
+      "id": "ticketQrLabel",
+      "pageId": "ticketing",
+      "type": "text",
+      "label": "QR code caption",
+      "defaultValue": "Scan at Check-In"
+    },
+    {
+      "id": "ticketDateLabel",
+      "pageId": "ticketing",
+      "type": "text",
+      "label": "Event date on ticket",
+      "defaultValue": "12 November 2026"
+    },
+    {
+      "id": "ticketTimeLabel",
+      "pageId": "ticketing",
+      "type": "text",
+      "label": "Event time on ticket",
+      "defaultValue": "6:00 PM Onwards"
+    },
+    {
+      "id": "ticketVenueName",
+      "pageId": "ticketing",
+      "type": "text",
+      "label": "Venue name",
+      "defaultValue": "Colombo Grand Ballroom"
+    },
+    {
+      "id": "ticketVenueCity",
+      "pageId": "ticketing",
+      "type": "text",
+      "label": "Venue city / location",
+      "defaultValue": "Colombo"
+    },
+    {
+      "id": "ticketCategory",
+      "pageId": "ticketing",
+      "type": "text",
+      "label": "Ticket category / tier",
+      "defaultValue": "VIP"
+    },
+    {
+      "id": "ticketPrice",
+      "pageId": "ticketing",
+      "type": "text",
+      "label": "Ticket price (LKR)",
+      "defaultValue": "2,000"
+    },
+    {
+      "id": "ticketSeatLabel",
+      "pageId": "ticketing",
+      "type": "text",
+      "label": "Seat no. / Admission note",
+      "defaultValue": "GENERAL ADMISSION"
+    },
+    {
+      "id": "ticketDownloadButtonText",
+      "pageId": "ticketing",
+      "type": "text",
+      "label": "Download button label",
+      "defaultValue": "Download Ticket"
+    },
+    {
+      "id": "ticketBannerNotice",
+      "pageId": "ticketing",
+      "type": "text",
+      "label": "Red footer banner notice",
+      "defaultValue": "THIS IS AN E-TICKET – Present this ticket at event check-in."
+    },
+    {
+      "id": "ticketTermsTitle",
+      "pageId": "ticketing",
+      "type": "text",
+      "label": "Terms & conditions title",
+      "defaultValue": "EVENT TERMS & CONDITIONS"
+    },
+    {
+      "id": "ticketTermsText",
+      "pageId": "ticketing",
+      "type": "textarea",
+      "label": "Terms & conditions points (one per line)",
+      "defaultValue": "This ticket is valid only for the event.\nPlease present this e-ticket (digital or printed) at the event check-in counter.\nEach ticket admits one person as per the quantity purchased.\nTickets are non-transferable and non-refundable, except in case of event cancellation.\nThe organizer reserves the right to refuse entry for invalid or duplicated tickets.\nPlease follow the event guidelines and instructions from the event staff."
     }
   ]
 };

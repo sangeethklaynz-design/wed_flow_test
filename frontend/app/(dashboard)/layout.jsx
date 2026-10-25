@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Home, Mail, Users, Calendar, LogOut, Bell, Ticket, CreditCard, Settings } from "lucide-react";
+import { Home, Mail, Users, Calendar, LogOut, Bell, Ticket, CreditCard, Settings, QrCode } from "lucide-react";
 import clsx from "clsx";
 import Image from "next/image";
 import { logout, getStoredUser, getAccessToken, clearAuthSession, setAuthSession } from "@/lib/auth";
@@ -15,6 +15,7 @@ const navItems = [
   { name: "Guests", href: "/guests", icon: Users },
   { name: "Schedule", href: "/schedule", icon: Calendar },
   { name: "Finance", href: "/finance", icon: CreditCard },
+  { name: "QR Check-in", href: "/qr-checkin", icon: QrCode },
   { name: "Ticketing", href: "/ticketing", icon: Ticket },
   { name: "Notifications", href: "/notifications", icon: Bell },
   { name: "Settings", href: "/settings", icon: Settings },
@@ -46,6 +47,15 @@ export default function DashboardLayout({ children }) {
   const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
+    // Allow previewing QR checkin and ticketing preview without forcing login
+    if (pathname?.startsWith("/qr-checkin") || pathname?.startsWith("/ticketing-preview")) {
+      setIsAuthorized(true);
+      setAuthChecked(true);
+      const stored = getStoredUser();
+      setUser(stored || { name: "Event 001", eventName: "Event 001", initials: "" });
+      return;
+    }
+
     const token = getAccessToken();
     if (!token) {
       clearAuthSession();
